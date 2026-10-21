@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Memory Mesh — Installazione interattiva Kiosk per il Centro Giovanile Stoà." />
-  <title>Memory Mesh</title>
+  <title>Memory Mesh · Exhibition Display</title>
 
-  <!-- Google Fonts: Inter per pulizia e rigore tipografico minimale -->
+  <!-- Google Fonts: Space Mono (MĒNĒM Editorial) & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
 
   <!-- MediaPipe Hands & Camera Utils CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -20,137 +20,150 @@
 </head>
 <body class="kiosk-body">
 
-  <!-- Canvas Principale per il rendering delle miniature fotografiche e filamenti -->
+  <!-- Canvas Principale per il rendering (Light Mode espositivo) -->
   <canvas id="scene-canvas" aria-label="Spazio visivo delle memorie"></canvas>
 
   <!-- Video sorgente webcam per MediaPipe (nascosto dall'HUD) -->
   <video id="webcam-video" autoplay playsinline muted></video>
 
-  <!-- ── 1. HUD SUPERIORE: Titolo Minimale e Discreto ────────────── -->
+  <!-- ── 1. HUD SUPERIORE: Titolo Editoriale MĒNĒM Style ───────────── -->
   <header class="kiosk-header" id="hud-header">
-    <div class="header-minimal">
-      <h1 class="header-title">Memory Mesh</h1>
-      <span class="header-dot">·</span>
-      <span class="header-counter"><span id="memory-counter">0</span> ricordi</span>
+    <div class="header-capsule">
+      <div class="header-accent-line"></div>
+      <div class="header-content">
+        <h1 class="header-title">MEMORY MESH</h1>
+        <span class="header-sep">/</span>
+        <span class="header-tag">CENTRO GIOVANILE STOÀ</span>
+        <span class="header-sep">/</span>
+        <span class="header-counter"><span id="memory-counter">0</span> ARCHIVIO</span>
+      </div>
     </div>
   </header>
 
-  <!-- ── 2. MENU A RUOTA LATERALE SINISTRO: Selettore Layout 3D Arco Verticale -->
+  <!-- ── 2. MENU A RUOTA LATERALE SINISTRO: Wheel Selector 3D ─────── -->
   <aside class="wheel-dock wheel-dock--left" id="wheel-left" aria-label="Selettore layout a ruota">
-    <div class="wheel-barrel">
+    <div class="wheel-pill">
+      <div class="wheel-pill__header">LAYOUT</div>
       <div class="wheel-arc" id="wheel-left-items">
         <button class="wheel-btn is-active" data-layout="nodi" aria-label="Visualizzazione Nodi">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Nodi</span>
+          <span class="wheel-btn__text">NODI</span>
         </button>
         <button class="wheel-btn" data-layout="cluster" aria-label="Visualizzazione Cluster">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Cluster</span>
+          <span class="wheel-btn__text">CLUSTER</span>
         </button>
         <button class="wheel-btn" data-layout="planimetria" aria-label="Visualizzazione Planimetria">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Planimetria</span>
+          <span class="wheel-btn__text">PLANIMETRIA</span>
         </button>
         <button class="wheel-btn" data-layout="timeline" aria-label="Visualizzazione Timeline">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Timeline</span>
+          <span class="wheel-btn__text">TIMELINE</span>
         </button>
         <button class="wheel-btn" data-layout="griglia" aria-label="Visualizzazione Griglia">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Griglia</span>
+          <span class="wheel-btn__text">GRIGLIA</span>
         </button>
       </div>
     </div>
   </aside>
 
-  <!-- ── 3. MENU A RUOTA LATERALE DESTRO: Selettore Filtri 3D Arco Verticale ── -->
+  <!-- ── 3. MENU A RUOTA LATERALE DESTRO: Wheel Selector Filtri 3D ──── -->
   <aside class="wheel-dock wheel-dock--right" id="wheel-right" aria-label="Selettore filtri a ruota">
-    <div class="wheel-barrel">
+    <div class="wheel-pill">
+      <div class="wheel-pill__header">FILTRI</div>
       <div class="wheel-arc" id="wheel-right-items">
         <button class="wheel-btn is-active" data-filter="all" aria-label="Tutti i ricordi">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Tutti</span>
+          <span class="wheel-btn__text">TUTTI</span>
         </button>
         <button class="wheel-btn" data-filter="type-image" aria-label="Filtra solo immagini">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Foto</span>
+          <span class="wheel-btn__text">FOTO</span>
         </button>
         <button class="wheel-btn" data-filter="type-audio" aria-label="Filtra solo audio">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Audio</span>
+          <span class="wheel-btn__text">AUDIO</span>
         </button>
         <button class="wheel-btn" data-filter="tag-Musica" aria-label="Filtra tag Musica">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Musica</span>
+          <span class="wheel-btn__text">MUSICA</span>
         </button>
         <button class="wheel-btn" data-filter="tag-Design" aria-label="Filtra tag Design">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Design</span>
+          <span class="wheel-btn__text">DESIGN</span>
         </button>
         <button class="wheel-btn" data-filter="tag-Social" aria-label="Filtra tag Social">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Social</span>
+          <span class="wheel-btn__text">SOCIAL</span>
         </button>
         <button class="wheel-btn" data-filter="tag-Relax" aria-label="Filtra tag Relax">
           <span class="wheel-dot"></span>
-          <span class="wheel-btn__text">Relax</span>
+          <span class="wheel-btn__text">RELAX</span>
         </button>
       </div>
     </div>
   </aside>
 
-  <!-- ── 4. ANGOLO IN BASSO A SINISTRA: Feed Webcam Compatto & Skeleton ────── -->
+  <!-- ── 4. ANGOLO IN BASSO A SINISTRA: Feed Webcam Pulito ─────────── -->
   <section class="camera-hud" id="camera-hud" aria-label="Feed webcam compatto">
-    <div class="camera-hud__frame">
-      <canvas id="camera-canvas" width="180" height="120"></canvas>
-      <div class="camera-hud__badge" id="camera-badge">
-        <span class="hud-status-dot" id="hud-status-dot"></span>
-        <span class="hud-status-text" id="hud-status-text">In attesa</span>
+    <div class="camera-hud__card">
+      <div class="camera-hud__viewport">
+        <canvas id="camera-canvas" width="180" height="120"></canvas>
+      </div>
+      <div class="camera-hud__meta" id="camera-badge">
+        <div class="camera-hud__status">
+          <span class="hud-status-dot" id="hud-status-dot"></span>
+          <span class="hud-status-text" id="hud-status-text">IN ATTESA DELLE MANI</span>
+        </div>
         <div class="hud-hands-tags">
-          <span class="hud-hand-tag" id="ind-right">R</span>
-          <span class="hud-hand-tag" id="ind-left">L</span>
+          <span class="hud-hand-tag" id="ind-right">R: POINTER</span>
+          <span class="hud-hand-tag" id="ind-left">L: NAV</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── 5. ANGOLO IN BASSO A DESTRA: Pillola Essenziale Info ─────────────── -->
+  <!-- ── 5. ANGOLO IN BASSO A DESTRA: Tasto INFO MĒNĒM Style ───────── -->
   <button class="info-pill-btn info-trigger-btn" id="btn-info" aria-label="Informazioni e guida gesture">
     <span class="info-pill__dot"></span>
-    <span class="info-pill__text">Info</span>
+    <span class="info-pill__text">INFO</span>
   </button>
 
-  <!-- ── 6. MODALE BENTO MINIMALE: Info Progetto & Gesture ────────────────── -->
+  <!-- ── 6. MODALE BENTO: Info Progetto & Gesture (Light Mode) ─────── -->
   <div class="modal-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-labelledby="info-modal-title">
-    <div class="minimal-modal minimal-modal--info">
-      <div class="modal-card modal-card--hero">
-        <span class="modal-card__tag">Centro Giovanile Stoà</span>
-        <h2 id="info-modal-title" class="modal-card__title">Memory Mesh</h2>
-        <p class="modal-card__desc">
-          Archivio visivo e sonoro della comunità giovanile di Stoà. Le fotografie e le tracce audio fluttuano in uno spazio continuo connesse dalle risonanze e dai luoghi della casa.
+    <div class="bento-modal bento-modal--info">
+      <div class="modal-accent-strip"></div>
+
+      <div class="bento-card bento-card--hero">
+        <span class="bento-card__eyebrow">CENTRO GIOVANILE STOÀ</span>
+        <h2 id="info-modal-title" class="bento-card__title">MEMORY MESH</h2>
+        <p class="bento-card__body">
+          Un archivio relazionale permanente che raccoglie tracce vocali, fotografie e ricordi donati dalla comunità di Stoà. Le memorie si intrecciano in una costellazione generativa sensibile alla prossimità e alle relazioni umane.
         </p>
       </div>
 
-      <div class="modal-card modal-card--gesture">
-        <span class="modal-card__tag modal-card__tag--green">Mano Destra</span>
-        <h3 class="modal-card__subtitle">Punta &amp; Seleziona</h3>
-        <p class="modal-card__desc">
-          Muovi l'indice per puntare il cursore. <strong>Pinch (pollice-indice)</strong> per aprire un ricordo.
+      <div class="bento-card bento-card--gesture">
+        <span class="bento-card__eyebrow bento-card__eyebrow--green">MANO DESTRA</span>
+        <h3 class="bento-card__subtitle">Punta &amp; Seleziona</h3>
+        <p class="bento-card__body">
+          Punta l'indice per muovere il mirino. <strong>Pinch (pollice-indice)</strong> per aprire una memoria. Le coordinate si congelano al tocco per evitare scivolamenti.
         </p>
       </div>
 
-      <div class="modal-card modal-card--gesture">
-        <span class="modal-card__tag modal-card__tag--subtle">Mano Sinistra</span>
-        <h3 class="modal-card__subtitle">Navigazione Spaziale</h3>
-        <p class="modal-card__desc">
-          <strong>Pinch mantenuto</strong> per trascinare la vista (Pan 2D) con inerzia. Ruota il polso per Zoom In/Out.
+      <div class="bento-card bento-card--gesture">
+        <span class="bento-card__eyebrow bento-card__eyebrow--red">MANO SINISTRA</span>
+        <h3 class="bento-card__subtitle">Pan &amp; Zoom</h3>
+        <p class="bento-card__body">
+          <strong>Pinch mantenuto</strong> per trascinare la vista con inerzia. Ruota il polso (>20°) per avvicinare o allontanare la visuale.
         </p>
       </div>
 
-      <div class="modal-card modal-card--upload">
-        <span class="modal-card__tag">Partecipa</span>
-        <p class="modal-card__desc">
-          Invia il tuo ricordo con lo smartphone visitando <code>/upload</code>.
+      <div class="bento-card bento-card--upload">
+        <span class="bento-card__eyebrow">PARTECIPA</span>
+        <p class="bento-card__body">
+          Invia il tuo ricordo con lo smartphone scansionando il QR o visitando <code>/upload</code>.
         </p>
       </div>
 
@@ -163,9 +176,11 @@
     </div>
   </div>
 
-  <!-- ── 7. MODALE DETTAGLIO RICORDO MINIMALE ────────────────────────────── -->
+  <!-- ── 7. MODALE DETTAGLIO RICORDO (Bento Light Mode) ───────────── -->
   <div class="modal-backdrop" id="modal-detail" aria-hidden="true" role="dialog" aria-labelledby="detail-title">
-    <div class="minimal-modal minimal-modal--detail">
+    <div class="bento-modal bento-modal--detail">
+      <div class="modal-accent-strip"></div>
+
       <div class="detail-media-wrap" id="detail-media-wrap">
         <img id="detail-img" class="detail-img" src="" alt="Anteprima ricordo" hidden />
         <div id="detail-audio-wrap" class="detail-audio-box" hidden>
@@ -177,20 +192,20 @@
 
       <div class="detail-content-wrap">
         <div class="detail-pills-row">
-          <span class="detail-pill" id="detail-location">📍 Salone</span>
-          <span class="detail-pill" id="detail-time">⏱️ 18:30</span>
+          <span class="detail-pill detail-pill--location" id="detail-location">📍 Salone</span>
+          <span class="detail-pill detail-pill--time" id="detail-time">⏱️ 18:30</span>
         </div>
 
         <h2 class="detail-title" id="detail-title">Titolo Ricordo</h2>
         <p class="detail-desc" id="detail-desc">Descrizione della memoria...</p>
 
         <div class="detail-section">
-          <span class="detail-section__tag">TAG</span>
+          <span class="detail-section__header">TAG TEMATICI</span>
           <div class="tags-cluster" id="detail-tags"></div>
         </div>
 
         <div class="detail-section" id="detail-related-section">
-          <span class="detail-section__tag">COLLEGAMENTI (<span id="detail-related-count">0</span>)</span>
+          <span class="detail-section__header">COLLEGAMENTI (<span id="detail-related-count">0</span>)</span>
           <div class="related-chips-grid" id="detail-related-chips"></div>
         </div>
       </div>
@@ -204,15 +219,15 @@
     </div>
   </div>
 
-  <!-- ── 8. TOAST REALTIME DISCRETO ──────────────────────────────────────── -->
+  <!-- ── 8. TOAST REALTIME DISCRETO ───────────────────────────────── -->
   <div class="live-toast" id="live-toast" role="status" aria-live="polite">
     <span class="live-toast__dot"></span>
-    <span class="live-toast__text">Nuovo ricordo aggiunto alla rete</span>
+    <span class="live-toast__text">NUOVO RICORDO AGGIUNTO ALLA RETE</span>
   </div>
 
-  <!-- ── 9. CURSORE MANUALE VIRTUALE MINIMALE ────────────────────────────── -->
+  <!-- ── 9. CURSORE MANUALE VIRTUALE ─────────────────────────────── -->
   <div class="virtual-cursor" id="virtual-cursor" aria-hidden="true">
-    <div class="cursor-dot"></div>
+    <div class="cursor-center"></div>
     <svg class="cursor-svg" viewBox="0 0 50 50">
       <circle class="cursor-bg" cx="25" cy="25" r="18" />
       <circle class="cursor-fill" id="cursor-progress-ring" cx="25" cy="25" r="18" />

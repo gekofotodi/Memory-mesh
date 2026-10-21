@@ -1,24 +1,37 @@
 /**
- * Scene Module — Minimal Essential Canvas Engine & Spatial Layouts
- * Inspired by: 'images_connection.jpg'
+ * Scene Module — Light Mode Editorial Canvas Engine (MĒNĒM & Section Clusters Style)
+ * References: MĒNĒM, visualizzazione_sezioni.png, images_connection.jpg
  *
- * Visual System:
- *  - Deep clean dark background (#08080A), no heavy textures or artificial glow
- *  - Nodes rendered as clean rectangular photo/audio thumbnails (no cards or thick borders)
- *  - Hover: subtle scale expansion with clean floating title and thin border
- *  - Connections: ultra-thin neutral gray filaments (0.8px, opacity ~0.14) connecting shared tags
- *  - 5 Layouts: nodi (constellation), cluster, planimetria, timeline, griglia
+ * System Features:
+ *  - Light Mode exhibition background (#F4F4F6)
+ *  - Clean rectangular photo thumbnails with crisp white borders (#FFFFFF)
+ *  - Minimal thin gray filaments (#B0B0B0, 1px) connecting shared memories
+ *  - Organic colored boundary rings (red, sage green, blue, yellow) for Clusters (visualizzazione_sezioni.png)
+ *  - Architectural blueprint styling for Planimetria & sleek timeline ribbon
+ *  - Hover with Space Mono typography & crisp metadata tags
  *  - Real-Time Fabric Wave ('triggerFabricWave()')
  */
 
 // ── House Blueprint Locations (Planimetria Layout) ─────────────
 const HOUSE_ROOMS = {
-  Salone:      { x: 0,    y: -80,  w: 440, h: 280, label: 'Salone' },
-  Giardino:    { x: 420,  y: 60,   w: 380, h: 320, label: 'Giardino' },
-  Cucina:      { x: -400, y: -190, w: 280, h: 240, label: 'Cucina' },
-  Terrazza:    { x: -380, y: 170,  w: 300, h: 220, label: 'Terrazza' },
-  Portico:     { x: 40,   y: 270,  w: 340, h: 180, label: 'Portico' },
-  'Sala Studio': { x: -80, y: -380, w: 340, h: 200, label: 'Sala Studio' },
+  Salone:      { x: 0,    y: -80,  w: 440, h: 280, label: 'SALONE CENTRALE', code: 'SEC.01' },
+  Giardino:    { x: 420,  y: 60,   w: 380, h: 320, label: 'GIARDINO ESTERNO', code: 'SEC.02' },
+  Cucina:      { x: -400, y: -190, w: 280, h: 240, label: 'CUCINA CONDIVISA', code: 'SEC.03' },
+  Terrazza:    { x: -380, y: 170,  w: 300, h: 220, label: 'TERRAZZA PANORAMICA', code: 'SEC.04' },
+  Portico:     { x: 40,   y: 270,  w: 340, h: 180, label: 'PORTICO D\'INGRESSO', code: 'SEC.05' },
+  'Sala Studio': { x: -80, y: -380, w: 340, h: 200, label: 'SALA STUDIO // CO-WORKING', code: 'SEC.06' },
+};
+
+// ── Primary Section Ring Colors (visualizzazione_sezioni.png) ──
+const CLUSTER_PALETTE = {
+  Musica:      { stroke: '#A8C3A0', fill: 'rgba(168, 195, 160, 0.08)' }, // Salvia
+  Design:      { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.06)' },  // Blu
+  Laboratorio: { stroke: '#FF2E2E', fill: 'rgba(255, 46, 46, 0.06)' },   // Rosso
+  Sport:       { stroke: '#F5A623', fill: 'rgba(245, 166, 35, 0.07)' },  // Giallo/Ambra
+  Talk:        { stroke: '#9B51E0', fill: 'rgba(155, 81, 224, 0.06)' },  // Viola
+  Social:      { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.07)' },   // Menta
+  Relax:       { stroke: '#636E72', fill: 'rgba(99, 110, 114, 0.06)' },   // Fumo
+  Default:     { stroke: '#A8C3A0', fill: 'rgba(168, 195, 160, 0.08)' },
 };
 
 /**
@@ -56,9 +69,9 @@ export function initScene(canvas) {
   // Image cache
   const imageCache = new Map();
 
-  // Rectangular Thumbnail Base Dimensions
-  const THUMB_W = 72;
-  const THUMB_H = 52;
+  // Rectangular Photo Dimensions
+  const THUMB_W = 76;
+  const THUMB_H = 54;
   const THUMB_R = 4;
 
   // ── Fabric Wave Distortion State ─────────────────────────────
@@ -68,7 +81,7 @@ export function initScene(canvas) {
     duration: 2800,
     centerX: 0,
     centerY: 0,
-    amplitude: 30,
+    amplitude: 28,
     frequency: 0.012,
     speed: 500,
   };
@@ -105,7 +118,7 @@ export function initScene(canvas) {
     };
   }
 
-  // ── Fabric Wave Displacement Offset ──────────────────────────
+  // ── Fabric Wave Offset ───────────────────────────────────────
   function getWaveOffset(wx, wy, now) {
     if (!fabricWave.active) return { dx: 0, dy: 0 };
 
@@ -161,9 +174,12 @@ export function initScene(canvas) {
       }
 
       const angle = (index / Math.max(1, memories.length)) * Math.PI * 2;
-      const radius = 220 + (index % 4) * 85;
+      const radius = 230 + (index % 4) * 85;
       const initX = Math.cos(angle) * radius;
       const initY = Math.sin(angle) * radius;
+
+      const primaryTag = (m.tags && m.tags[0]) || 'Generale';
+      const cluster = CLUSTER_PALETTE[primaryTag] || CLUSTER_PALETTE.Default;
 
       return {
         id: m.id || `node-${index}`,
@@ -180,7 +196,8 @@ export function initScene(canvas) {
         scale: 0.2,
         targetScale: 1.0,
         alpha: 1.0,
-        primaryTag: (m.tags && m.tags[0]) || 'Generale',
+        primaryTag,
+        accentColor: cluster.stroke,
       };
     });
 
@@ -197,11 +214,14 @@ export function initScene(canvas) {
       img.onload = () => imageCache.set(newMem.media_url, img);
     }
 
+    const primaryTag = (newMem.tags && newMem.tags[0]) || 'Generale';
+    const cluster = CLUSTER_PALETTE[primaryTag] || CLUSTER_PALETTE.Default;
+
     const newNode = {
       id: newMem.id || `node-${Date.now()}`,
       memory: newMem,
-      x: camera.x + (Math.random() - 0.5) * 70,
-      y: camera.y + (Math.random() - 0.5) * 70,
+      x: camera.x + (Math.random() - 0.5) * 60,
+      y: camera.y + (Math.random() - 0.5) * 60,
       targetX: 0,
       targetY: 0,
       vx: (Math.random() - 0.5) * 0.3,
@@ -212,7 +232,8 @@ export function initScene(canvas) {
       scale: 0.1,
       targetScale: 1.15,
       alpha: 1.0,
-      primaryTag: (newMem.tags && newMem.tags[0]) || 'Generale',
+      primaryTag,
+      accentColor: cluster.stroke,
     };
 
     nodes.unshift(newNode);
@@ -229,7 +250,7 @@ export function initScene(canvas) {
         const count = nodes.length;
         nodes.forEach((node, i) => {
           const phi = (i / count) * Math.PI * 2;
-          const dist = 230 + ((i * 59) % 360);
+          const dist = 240 + ((i * 61) % 350);
           node.targetX = Math.cos(phi) * dist;
           node.targetY = Math.sin(phi) * dist * 0.72;
           node.targetScale = 1.0;
@@ -250,13 +271,13 @@ export function initScene(canvas) {
 
         tagGroups.forEach((groupNodes) => {
           const clusterAngle = (clusterIdx / numClusters) * Math.PI * 2;
-          const clusterDist = 430;
+          const clusterDist = 440;
           const cx = Math.cos(clusterAngle) * clusterDist;
-          const cy = Math.sin(clusterAngle) * clusterDist * 0.78;
+          const cy = Math.sin(clusterAngle) * clusterDist * 0.76;
 
           groupNodes.forEach((node, ni) => {
             const subAngle = (ni / groupNodes.length) * Math.PI * 2;
-            const subDist = 65 + Math.floor(ni / 5) * 75;
+            const subDist = 70 + Math.floor(ni / 5) * 75;
             node.targetX = cx + Math.cos(subAngle) * subDist;
             node.targetY = cy + Math.sin(subAngle) * subDist;
             node.targetScale = 1.0;
@@ -292,14 +313,14 @@ export function initScene(canvas) {
           return tA.localeCompare(tB);
         });
 
-        const spacingX = 140;
+        const spacingX = 145;
         const totalW = sorted.length * spacingX;
         const startX = -totalW / 2;
 
         sorted.forEach((node, i) => {
           node.targetX = startX + i * spacingX;
           const sign = i % 2 === 0 ? 1 : -1;
-          const stemLength = 100 + ((i * 37) % 80);
+          const stemLength = 105 + ((i * 35) % 80);
           node.targetY = sign * stemLength;
           node.targetScale = 1.0;
         });
@@ -308,8 +329,8 @@ export function initScene(canvas) {
 
       case 'griglia': {
         const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.5)));
-        const cellW = 120;
-        const cellH = 90;
+        const cellW = 130;
+        const cellH = 95;
         const rows = Math.ceil(nodes.length / cols);
         const startX = -((cols - 1) * cellW) / 2;
         const startY = -((rows - 1) * cellH) / 2;
@@ -326,7 +347,7 @@ export function initScene(canvas) {
     }
   }
 
-  // ── Layout & Filter Selectors ────────────────────────────────
+  // ── Selectors ────────────────────────────────────────────────
   function setLayout(layoutName) {
     if (currentLayout === layoutName) return;
     currentLayout = layoutName;
@@ -363,7 +384,7 @@ export function initScene(canvas) {
     pointerScreen.y = sy;
   }
 
-  // ── Hit-Testing (Thumbnail Bounds) ───────────────────────────
+  // ── Hit-Testing ──────────────────────────────────────────────
   function hitTest(screenX, screenY) {
     const worldP = screenToWorld(screenX, screenY);
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -404,7 +425,7 @@ export function initScene(canvas) {
       node.scale += (targetS - node.scale) * 0.16;
 
       const matches = isNodeMatchingFilter(node);
-      const targetA = matches ? 1.0 : 0.15;
+      const targetA = matches ? 1.0 : 0.12;
       node.alpha += (targetA - node.alpha) * 0.12;
     });
 
@@ -423,8 +444,8 @@ export function initScene(canvas) {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
-    // Deep clean solid dark background (#08080A)
-    ctx.fillStyle = '#08080A';
+    // Light Mode Exhibition Gallery Background (#F4F4F6)
+    ctx.fillStyle = '#F4F4F6';
     ctx.fillRect(0, 0, width, height);
 
     // Camera transform
@@ -432,60 +453,67 @@ export function initScene(canvas) {
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
-    // 1. Layout-specific subtle guides
+    // 1. Planimetria / Timeline Guides
     if (currentLayout === 'planimetria') {
       drawPlanimetriaGuides();
     } else if (currentLayout === 'timeline') {
       drawTimelineGuides();
     } else if (currentLayout === 'cluster') {
-      drawClusterGuides();
+      // 2. Colored Ring Boundaries (visualizzazione_sezioni.png)
+      drawClusterSectionRings(now);
     }
 
-    // 2. Ultra-thin clean neutral filaments
+    // 3. Thin Gray Filaments (#B0B0B0, 1px) (images_connection.jpg)
     drawFilaments(now);
 
-    // 3. Clean rectangular photo/audio thumbnails
+    // 4. Clean Rectangular Photo Thumbnails
     drawThumbnails(now);
 
     ctx.restore();
     requestAnimationFrame(render);
   }
 
-  // ── Planimetria Minimal Guides ───────────────────────────────
+  // ── Planimetria Architectural Blueprint Guides ───────────────
   function drawPlanimetriaGuides() {
     ctx.save();
     Object.entries(HOUSE_ROOMS).forEach(([key, room]) => {
       const rx = room.x - room.w / 2;
       const ry = room.y - room.h / 2;
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-      ctx.lineWidth = 1;
+      // Architectural outline
+      ctx.strokeStyle = '#D8D8DC';
+      ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(rx, ry, room.w, room.h);
       ctx.setLineDash([]);
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.font = '500 11px "Inter", sans-serif';
-      ctx.fillText(room.label, rx + 14, ry + 22);
+      // Room Header MĒNĒM style (Space Mono)
+      ctx.fillStyle = '#8E8E93';
+      ctx.font = '600 10px "Space Mono", monospace';
+      ctx.fillText(`// ${room.code}`, rx + 16, ry + 22);
+
+      ctx.fillStyle = '#111111';
+      ctx.font = '600 11px "Space Mono", monospace';
+      ctx.fillText(room.label, rx + 16, ry + 38);
     });
     ctx.restore();
   }
 
-  // ── Timeline Minimal Guides ──────────────────────────────────
+  // ── Timeline Minimal Axis ────────────────────────────────────
   function drawTimelineGuides() {
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(-1400, 0);
     ctx.lineTo(1400, 0);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#D0D0D5';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
     nodes.forEach((n) => {
       ctx.beginPath();
       ctx.moveTo(n.x, 0);
       ctx.lineTo(n.x, n.y);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.strokeStyle = '#D8D8DE';
       ctx.setLineDash([2, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -493,8 +521,8 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Cluster Minimal Guides ───────────────────────────────────
-  function drawClusterGuides() {
+  // ── Colored Section Rings (visualizzazione_sezioni.png) ───────
+  function drawClusterSectionRings(now) {
     const tagGroups = new Map();
     nodes.forEach((n) => {
       const t = n.primaryTag;
@@ -510,26 +538,42 @@ export function initScene(canvas) {
       avgX /= groupNodes.length;
       avgY /= groupNodes.length;
 
-      const radius = 130 + groupNodes.length * 12;
+      const cluster = CLUSTER_PALETTE[tag] || CLUSTER_PALETTE.Default;
+      const radius = 135 + groupNodes.length * 14;
 
+      // Organic smooth ring contour
       ctx.beginPath();
-      ctx.arc(avgX, avgY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      const points = 16;
+      for (let i = 0; i < points; i++) {
+        const theta = (i / points) * Math.PI * 2;
+        const wobble = Math.sin(theta * 3 + now * 0.001) * 6 + Math.cos(theta * 2 - now * 0.0008) * 4;
+        const r = radius + wobble;
+        const px = avgX + Math.cos(theta) * r;
+        const py = avgY + Math.sin(theta) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.font = '500 11px "Inter", sans-serif';
+      // Translucent section wash
+      ctx.fillStyle = cluster.fill;
+      ctx.fill();
+
+      // Crisp colored outline ring
+      ctx.strokeStyle = cluster.stroke;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Section Tag Pill in Space Mono
+      ctx.fillStyle = '#111111';
+      ctx.font = '700 10px "Space Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(tag, avgX, avgY - radius - 10);
+      ctx.fillText(`SEZIONE // ${tag.toUpperCase()}`, avgX, avgY - radius - 12);
     });
     ctx.restore();
   }
 
-  // ── Ultra-Thin Clean Neutral Filaments ───────────────────────
-  // Exactly as in 'images_connection.jpg' — fine, minimal, elegant lines
+  // ── Thin Gray Filaments (#B0B0B0, 1px) (images_connection.jpg) ─
   function drawFilaments(now) {
     if (nodes.length < 2) return;
 
@@ -559,12 +603,12 @@ export function initScene(canvas) {
 
             const baseAlpha = Math.min(n1.alpha, n2.alpha) * (1 - Math.min(1, dist / 520));
 
-            // Ultra-fine neutral line
+            // Fine clean gray line exactly as in images_connection.jpg
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha * 0.14})`;
-            ctx.lineWidth = 0.9;
+            ctx.strokeStyle = `rgba(176, 176, 176, ${baseAlpha * 0.85})`;
+            ctx.lineWidth = 1.0;
             ctx.stroke();
           }
         }
@@ -573,7 +617,7 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Rectangular Thumbnails (Nodes) ───────────────────────────
+  // ── Clean Rectangular Photo Thumbnails with Crisp White Borders
   function drawThumbnails(now) {
     nodes.forEach((node) => {
       ctx.save();
@@ -591,74 +635,103 @@ export function initScene(canvas) {
       const x0 = nx - w / 2;
       const y0 = ny - h / 2;
 
-      // Draw rectangular thumbnail content
+      // Soft light-gallery shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+      ctx.shadowBlur = isHover ? 12 : 6;
+      ctx.shadowOffsetY = isHover ? 6 : 2;
+
+      // White solid backing
+      ctx.beginPath();
+      ctx.roundRect(x0, y0, w, h, r);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+
+      // Reset shadow for inner drawing
+      ctx.shadowColor = 'transparent';
+
+      // Draw media thumbnail
       if (node.memory.media_type === 'image' && node.memory.media_url && imageCache.has(node.memory.media_url)) {
         const img = imageCache.get(node.memory.media_url);
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(x0, y0, w, h, r);
+        ctx.roundRect(x0 + 1.5, y0 + 1.5, w - 3, h - 3, r - 1);
         ctx.clip();
-        ctx.drawImage(img, x0, y0, w, h);
+        ctx.drawImage(img, x0 + 1.5, y0 + 1.5, w - 3, h - 3);
         ctx.restore();
       } else {
-        // Audio node: clean dark slate tile with musical glyph
-        ctx.beginPath();
-        ctx.roundRect(x0, y0, w, h, r);
-        ctx.fillStyle = '#14161B';
-        ctx.fill();
-
-        ctx.fillStyle = '#8E929B';
-        ctx.font = `500 ${Math.round(18 * node.scale)}px sans-serif`;
+        // Audio node: clean white card with charcoal glyph
+        ctx.fillStyle = '#111111';
+        ctx.font = `600 ${Math.round(18 * node.scale)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('♪', nx, ny);
       }
 
-      // Thin neat border
+      // Crisp White Border + Hairline
       ctx.beginPath();
       ctx.roundRect(x0, y0, w, h, r);
-      ctx.strokeStyle = isHover ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = isHover ? 1.5 : 1.0;
+      ctx.strokeStyle = isHover ? '#FF2E2E' : '#FFFFFF';
+      ctx.lineWidth = isHover ? 2.5 : 2.0;
       ctx.stroke();
 
-      // Hover: Clean minimal tooltip showing title
+      // Subtle outer definition hairline when not hovered
+      if (!isHover) {
+        ctx.beginPath();
+        ctx.roundRect(x0 - 0.5, y0 - 0.5, w + 1, h + 1, r + 0.5);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+      }
+
+      // Hover: Clean White Tooltip Card with Space Mono typography
       if (isHover) {
-        drawMinimalHoverTitle(node, nx, y0 + h + 10 * node.scale);
+        drawHoverTooltip(node, nx, y0 + h + 12 * node.scale);
       }
 
       ctx.restore();
     });
   }
 
-  // ── Minimal Hover Tooltip ────────────────────────────────────
-  function drawMinimalHoverTitle(node, cx, topY) {
-    const title = node.memory.title || 'Ricordo';
-    const loc = node.memory.location_tag ? ` · ${node.memory.location_tag}` : '';
-    const text = `${title}${loc}`;
+  // ── Hover Tooltip (Space Mono Typography) ────────────────────
+  function drawHoverTooltip(node, cx, topY) {
+    const rawTitle = (node.memory.title || 'MEMORIA').toUpperCase();
+    const loc = node.memory.location_tag ? ` // ${node.memory.location_tag.toUpperCase()}` : '';
+    const text = `${rawTitle}${loc}`;
 
     ctx.save();
-    ctx.font = '500 11px "Inter", sans-serif';
+    ctx.font = '600 10px "Space Mono", monospace';
     const textW = ctx.measureText(text).width;
-    const boxW = textW + 16;
-    const boxH = 24;
+    const boxW = textW + 20;
+    const boxH = 26;
 
     const bx = cx - boxW / 2;
     const by = topY;
 
-    // Dark solid pill
-    ctx.fillStyle = 'rgba(8, 8, 10, 0.92)';
+    // Clean white card
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.10)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+
+    ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.roundRect(bx, by, boxW, boxH, 4);
+    ctx.roundRect(bx, by, boxW, boxH, 6);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.shadowColor = 'transparent';
+
+    ctx.strokeStyle = '#E0E0E0';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#EDEDED';
+    // Red left accent indicator
+    ctx.fillStyle = '#FF2E2E';
+    ctx.fillRect(bx, by + 4, 3, boxH - 8);
+
+    // Text in deep charcoal
+    ctx.fillStyle = '#111111';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, cx, by + boxH / 2);
+    ctx.fillText(text, cx + 2, by + boxH / 2);
 
     ctx.restore();
   }
