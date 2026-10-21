@@ -1,40 +1,36 @@
 /**
- * Scene Module — 2D Canvas Graphics Engine & Spatial Layouts
+ * Scene Module — Exhibition Canvas Engine & Spatial Layouts (MĒNĒM / CAPSUL3 Style)
  *
- * Responsibilities:
- *  - 60 FPS rendering loop with HiDPI support
- *  - Virtual camera with Pan & Zoom smoothing
- *  - 5 Interactive Visualization Layouts:
- *      1. 'nodi': Floating constellation with glowing filaments between shared tags
- *      2. 'cluster': Thematic clouds with colored boundaries and tag labels
- *      3. 'planimetria': Spatial house floorplan (Salone, Cucina, Giardino, Portico...)
- *      4. 'timeline': Chronological axis with time ticks and stems
- *      5. 'griglia': Curated museum matrix / ordered sequential grid
- *  - Real-Time Fabric Wave ('triggerFabricWave()'): fluid mesh wave distortion
- *    triggered upon Supabase real-time INSERT without interrupting user view
- *  - Node Hover, Hit-testing, and Filtering states
+ * Visual Highlights:
+ *  - Nodes rendered as floating translucent micro-cards with rounded corners,
+ *    embedded media preview, and minimalist typography
+ *  - Hover state with sage glow (#B4D4C0), subtle scale expansion, and metadata reveal
+ *  - Organic ultra-thin glowing filaments with traveling micro-particles
+ *  - Pastel desaturated organic boundary blobs for thematic clusters
+ *  - Architectural blueprint styling for Planimetria and sleek Timeline ribbon
+ *  - Real-Time Fabric Wave distortion animation ('triggerFabricWave()')
  */
 
 // ── House Blueprint Locations (Planimetria Layout) ─────────────
 const HOUSE_ROOMS = {
-  Salone:      { x: 0,    y: -80,  w: 420, h: 260, label: 'Salone Centrale',  color: 'rgba(132, 169, 140, 0.12)' },
-  Giardino:    { x: 380,  y: 40,   w: 360, h: 320, label: 'Giardino Esterno', color: 'rgba(82, 121, 111, 0.14)' },
-  Cucina:      { x: -360, y: -180, w: 260, h: 220, label: 'Cucina Comunitaria', color: 'rgba(202, 210, 197, 0.1)' },
-  Terrazza:    { x: -340, y: 150,  w: 280, h: 200, label: 'Terrazza Panoramica', color: 'rgba(91, 192, 190, 0.12)' },
-  Portico:     { x: 40,   y: 240,  w: 320, h: 160, label: 'Portico d\'Ingresso', color: 'rgba(167, 201, 87, 0.12)' },
-  'Sala Studio': { x: -80, y: -340, w: 320, h: 180, label: 'Sala Studio & Co-Working', color: 'rgba(132, 169, 140, 0.1)' },
+  Salone:      { x: 0,    y: -80,  w: 440, h: 280, label: 'SALONE CENTRALE',  tag: '01' },
+  Giardino:    { x: 410,  y: 50,   w: 380, h: 340, label: 'GIARDINO ESTERNO', tag: '02' },
+  Cucina:      { x: -390, y: -190, w: 280, h: 240, label: 'CUCINA CONDIVISA', tag: '03' },
+  Terrazza:    { x: -370, y: 160,  w: 300, h: 220, label: 'TERRAZZA PANORAMICA', tag: '04' },
+  Portico:     { x: 50,   y: 260,  w: 340, h: 180, label: 'PORTICO D\'INGRESSO', tag: '05' },
+  'Sala Studio': { x: -80, y: -370, w: 340, h: 200, label: 'SALA STUDIO // CO-WORKING', tag: '06' },
 };
 
-// ── Color Palettes & Clusters ──────────────────────────────────
-const TAG_COLORS = {
-  Musica:      '#84a98c',
-  Design:      '#5bc0be',
-  Laboratorio: '#a7c957',
-  Sport:       '#f4a261',
-  Talk:        '#e76f51',
-  Social:      '#6fffe9',
-  Relax:       '#cad2c5',
-  Default:     '#84a98c',
+// ── Pastel Desaturated Thematic Colors ─────────────────────────
+const THEME_PALETTE = {
+  Musica:      { primary: '#B4D4C0', tint: 'rgba(180, 212, 192, 0.12)' },
+  Design:      { primary: '#B8D4E3', tint: 'rgba(184, 212, 227, 0.12)' },
+  Laboratorio: { primary: '#D9E3B8', tint: 'rgba(217, 227, 184, 0.12)' },
+  Sport:       { primary: '#E8C5B8', tint: 'rgba(232, 197, 184, 0.12)' },
+  Talk:        { primary: '#E3B8C8', tint: 'rgba(227, 184, 200, 0.12)' },
+  Social:      { primary: '#B8E3D8', tint: 'rgba(184, 227, 216, 0.12)' },
+  Relax:       { primary: '#D2C4DE', tint: 'rgba(210, 196, 222, 0.12)' },
+  Default:     { primary: '#CBE3D6', tint: 'rgba(203, 227, 214, 0.10)' },
 };
 
 /**
@@ -49,7 +45,7 @@ export function initScene(canvas) {
   let height = window.innerHeight;
   let dpr = window.devicePixelRatio || 1;
 
-  // ── Camera (World Space to Screen Space) ──────────────────────
+  // ── Camera (World to Screen) ─────────────────────────────────
   const camera = {
     x: 0,
     y: 0,
@@ -58,12 +54,12 @@ export function initScene(canvas) {
     targetY: 0,
     targetZoom: 1,
     minZoom: 0.35,
-    maxZoom: 2.8,
+    maxZoom: 2.6,
   };
 
   // ── Scene State ──────────────────────────────────────────────
   let currentLayout = 'nodi'; // 'nodi' | 'cluster' | 'planimetria' | 'timeline' | 'griglia'
-  let currentFilter = 'all';  // 'all' | 'type-image' | 'type-audio' | 'tag-XXX'
+  let currentFilter = 'all';
   let memories = [];
   let nodes = [];
   let hoveredNode = null;
@@ -72,6 +68,11 @@ export function initScene(canvas) {
   // Image cache for avatar thumbnails
   const imageCache = new Map();
 
+  // ── Micro-Card Dimensions ────────────────────────────────────
+  const CARD_W = 146;
+  const CARD_H = 46;
+  const CARD_R = 14;
+
   // ── Fabric Wave Distortion State ─────────────────────────────
   const fabricWave = {
     active: false,
@@ -79,9 +80,9 @@ export function initScene(canvas) {
     duration: 3200,      // ms
     centerX: 0,          // in world coordinates
     centerY: 0,
-    amplitude: 45,       // max distortion offset
+    amplitude: 40,       // max distortion offset
     frequency: 0.012,    // wave frequency
-    speed: 550,          // speed of wave ripple propagation
+    speed: 520,          // ripple propagation speed
   };
 
   // ── Resize Handler ───────────────────────────────────────────
@@ -101,7 +102,7 @@ export function initScene(canvas) {
   window.addEventListener('resize', resize);
   resize();
 
-  // ── World & Screen Coordinate Transforms ─────────────────────
+  // ── Coordinate Transforms ────────────────────────────────────
   function screenToWorld(sx, sy) {
     return {
       x: (sx - width / 2) / camera.zoom + camera.x,
@@ -116,7 +117,7 @@ export function initScene(canvas) {
     };
   }
 
-  // ── Fabric Wave Distortion Offset ────────────────────────────
+  // ── Fabric Wave Displacement Offset ──────────────────────────
   function getWaveOffset(wx, wy, now) {
     if (!fabricWave.active) return { dx: 0, dy: 0, intensity: 0 };
 
@@ -127,18 +128,16 @@ export function initScene(canvas) {
     }
 
     const progress = elapsed / fabricWave.duration;
-    // Harmonic envelope decay: smoothly rises then dissolves
     const envelope = Math.sin(progress * Math.PI) * (1.0 - progress * 0.4);
 
     const dist = Math.hypot(wx - fabricWave.centerX, wy - fabricWave.centerY);
     const waveFront = elapsed * (fabricWave.speed / 1000);
     const distFromFront = Math.abs(dist - waveFront);
 
-    // Damped sinusoidal ripple around expanding front
     const ripple = Math.exp(-distFromFront * 0.015) * Math.sin((dist - waveFront) * fabricWave.frequency);
     const amp = fabricWave.amplitude * envelope * ripple;
-
     const angle = Math.atan2(wy - fabricWave.centerY, wx - fabricWave.centerX);
+
     return {
       dx: Math.cos(angle) * amp,
       dy: Math.sin(angle) * amp,
@@ -154,11 +153,11 @@ export function initScene(canvas) {
     fabricWave.centerY = originY;
   }
 
-  // ── Populate & Sync Memories ─────────────────────────────────
+  // ── Memory Node Creation & Caching ───────────────────────────
   function setMemories(memoriesList) {
     memories = memoriesList || [];
 
-    // Preload images into cache
+    // Preload image thumbnails
     memories.forEach((m) => {
       if (m.media_type === 'image' && m.media_url && !imageCache.has(m.media_url)) {
         const img = new Image();
@@ -168,39 +167,39 @@ export function initScene(canvas) {
       }
     });
 
-    // Create node objects
     nodes = memories.map((m, index) => {
-      // Find existing node if any to preserve smooth motion
       const existing = nodes.find((n) => n.id === m.id);
       if (existing) {
         existing.memory = m;
         return existing;
       }
 
-      // Initial placement
       const angle = (index / Math.max(1, memories.length)) * Math.PI * 2;
-      const radius = 180 + (index % 4) * 80;
+      const radius = 220 + (index % 4) * 90;
       const initX = Math.cos(angle) * radius;
       const initY = Math.sin(angle) * radius;
 
+      const primaryTag = (m.tags && m.tags[0]) || 'General';
+      const palette = THEME_PALETTE[primaryTag] || THEME_PALETTE.Default;
+
       return {
-        id: m.id || `temp-${index}`,
+        id: m.id || `node-${index}`,
         memory: m,
-        // Current animated world coordinates
         x: initX,
         y: initY,
-        // Target layout coordinates
         targetX: initX,
         targetY: initY,
-        // Float drift velocities for 'nodi' constellation
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        radius: 34,
-        scale: 0.2, // initial spawn scale
+        vx: (Math.random() - 0.5) * 0.28,
+        vy: (Math.random() - 0.5) * 0.28,
+        w: CARD_W,
+        h: CARD_H,
+        radius: CARD_R,
+        scale: 0.2,
         targetScale: 1.0,
         alpha: 1.0,
-        primaryTag: (m.tags && m.tags[0]) || 'General',
-        color: TAG_COLORS[(m.tags && m.tags[0])] || TAG_COLORS.Default,
+        primaryTag,
+        color: palette.primary,
+        tint: palette.tint,
       };
     });
 
@@ -210,7 +209,6 @@ export function initScene(canvas) {
   function addMemory(newMem) {
     memories.unshift(newMem);
 
-    // Preload image if applicable
     if (newMem.media_type === 'image' && newMem.media_url) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -218,51 +216,53 @@ export function initScene(canvas) {
       img.onload = () => imageCache.set(newMem.media_url, img);
     }
 
+    const primaryTag = (newMem.tags && newMem.tags[0]) || 'General';
+    const palette = THEME_PALETTE[primaryTag] || THEME_PALETTE.Default;
+
     const newNode = {
       id: newMem.id || `node-${Date.now()}`,
       memory: newMem,
-      x: camera.x + (Math.random() - 0.5) * 100,
-      y: camera.y + (Math.random() - 0.5) * 100,
+      x: camera.x + (Math.random() - 0.5) * 80,
+      y: camera.y + (Math.random() - 0.5) * 80,
       targetX: 0,
       targetY: 0,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      radius: 38,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      w: CARD_W,
+      h: CARD_H,
+      radius: CARD_R,
       scale: 0.1,
-      targetScale: 1.25,
+      targetScale: 1.15,
       alpha: 1.0,
-      primaryTag: (newMem.tags && newMem.tags[0]) || 'General',
-      color: TAG_COLORS[(newMem.tags && newMem.tags[0])] || TAG_COLORS.Default,
+      primaryTag,
+      color: palette.primary,
+      tint: palette.tint,
       isBrandNew: true,
     };
 
     nodes.unshift(newNode);
     recalculateLayoutTargets();
-
-    // Trigger fabric wave radiating from the new node!
     triggerFabricWave(newNode.x, newNode.y);
   }
 
-  // ── Calculate Target Positions for the 5 Layouts ─────────────
+  // ── Calculate Layout Target Positions ────────────────────────
   function recalculateLayoutTargets() {
     if (!nodes.length) return;
 
     switch (currentLayout) {
       case 'nodi': {
-        // Constellation layout: Organic radial orbit with elasticity
         const count = nodes.length;
         nodes.forEach((node, i) => {
           const phi = (i / count) * Math.PI * 2;
-          const dist = 220 + ((i * 47) % 360);
+          const dist = 240 + ((i * 53) % 360);
           node.targetX = Math.cos(phi) * dist;
-          node.targetY = Math.sin(phi) * dist * 0.75;
+          node.targetY = Math.sin(phi) * dist * 0.72;
           node.targetScale = 1.0;
         });
         break;
       }
 
       case 'cluster': {
-        // Group by primary tag in soft circular clouds
         const tagGroups = new Map();
         nodes.forEach((n) => {
           const t = n.primaryTag;
@@ -273,15 +273,15 @@ export function initScene(canvas) {
         const numClusters = tagGroups.size;
         let clusterIdx = 0;
 
-        tagGroups.forEach((groupNodes, tag) => {
+        tagGroups.forEach((groupNodes) => {
           const clusterAngle = (clusterIdx / numClusters) * Math.PI * 2;
-          const clusterDist = 420;
+          const clusterDist = 440;
           const cx = Math.cos(clusterAngle) * clusterDist;
           const cy = Math.sin(clusterAngle) * clusterDist * 0.8;
 
           groupNodes.forEach((node, ni) => {
             const subAngle = (ni / groupNodes.length) * Math.PI * 2;
-            const subDist = 60 + Math.floor(ni / 6) * 75;
+            const subDist = 70 + Math.floor(ni / 5) * 80;
             node.targetX = cx + Math.cos(subAngle) * subDist;
             node.targetY = cy + Math.sin(subAngle) * subDist;
             node.targetScale = 1.0;
@@ -292,7 +292,6 @@ export function initScene(canvas) {
       }
 
       case 'planimetria': {
-        // Distribute nodes into architectural rooms of Stoà
         const roomCounts = {};
         Object.keys(HOUSE_ROOMS).forEach((r) => (roomCounts[r] = 0));
 
@@ -302,9 +301,8 @@ export function initScene(canvas) {
           const count = roomCounts[loc] || 0;
           roomCounts[loc] = count + 1;
 
-          // Spiral distribution inside room bounding box
-          const spiralAngle = count * 1.6;
-          const spiralDist = Math.min(room.w, room.h) * 0.28 * Math.sqrt(count + 1);
+          const spiralAngle = count * 1.5;
+          const spiralDist = Math.min(room.w, room.h) * 0.26 * Math.sqrt(count + 1);
           node.targetX = room.x + Math.cos(spiralAngle) * spiralDist;
           node.targetY = room.y + Math.sin(spiralAngle) * spiralDist;
           node.targetScale = 0.95;
@@ -313,23 +311,20 @@ export function initScene(canvas) {
       }
 
       case 'timeline': {
-        // Horizontal chronological ribbon
-        // Sort chronologically by time_event or created_at
         const sorted = [...nodes].sort((a, b) => {
           const tA = a.memory.created_at || a.memory.time_event || '';
           const tB = b.memory.created_at || b.memory.time_event || '';
           return tA.localeCompare(tB);
         });
 
-        const spacingX = 140;
+        const spacingX = 180;
         const totalW = sorted.length * spacingX;
         const startX = -totalW / 2;
 
         sorted.forEach((node, i) => {
           node.targetX = startX + i * spacingX;
-          // Alternating stems above and below timeline
           const sign = i % 2 === 0 ? 1 : -1;
-          const stemLength = 100 + ((i * 31) % 90);
+          const stemLength = 110 + ((i * 37) % 85);
           node.targetY = sign * stemLength;
           node.targetScale = 1.0;
         });
@@ -337,10 +332,9 @@ export function initScene(canvas) {
       }
 
       case 'griglia': {
-        // Balanced museum matrix
-        const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.5)));
-        const cellW = 160;
-        const cellH = 160;
+        const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.6)));
+        const cellW = 190;
+        const cellH = 90;
         const rows = Math.ceil(nodes.length / cols);
         const startX = -((cols - 1) * cellW) / 2;
         const startY = -((rows - 1) * cellH) / 2;
@@ -357,7 +351,7 @@ export function initScene(canvas) {
     }
   }
 
-  // ── Switch Layout & Apply Filters ────────────────────────────
+  // ── Layout & Filter Selectors ────────────────────────────────
   function setLayout(layoutName) {
     if (currentLayout === layoutName) return;
     currentLayout = layoutName;
@@ -394,13 +388,21 @@ export function initScene(canvas) {
     pointerScreen.y = sy;
   }
 
-  // ── Hit-Testing (Node Selection) ─────────────────────────────
+  // ── Hit-Testing (Micro-Card Bounds) ──────────────────────────
   function hitTest(screenX, screenY) {
     const worldP = screenToWorld(screenX, screenY);
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
-      const dist = Math.hypot(n.x - worldP.x, n.y - worldP.y);
-      if (dist <= n.radius * n.scale * 1.15) {
+      const halfW = (n.w * n.scale) / 2;
+      const halfH = (n.h * n.scale) / 2;
+
+      // Card bounding box hit test with generous buffer
+      if (
+        worldP.x >= n.x - halfW - 10 &&
+        worldP.x <= n.x + halfW + 10 &&
+        worldP.y >= n.y - halfH - 10 &&
+        worldP.y <= n.y + halfH + 10
+      ) {
         return n;
       }
     }
@@ -409,39 +411,29 @@ export function initScene(canvas) {
 
   // ── Update Logic ─────────────────────────────────────────────
   function update() {
-    const now = performance.now();
-
-    // 1. Smooth Camera Lerp
     camera.x += (camera.targetX - camera.x) * 0.12;
     camera.y += (camera.targetY - camera.y) * 0.12;
     camera.zoom += (camera.targetZoom - camera.zoom) * 0.14;
 
-    // 2. Update Node Positions with Lerp + Physics Drift
     nodes.forEach((node) => {
-      // In 'nodi' constellation mode, apply gentle harmonic drift
       if (currentLayout === 'nodi') {
         node.targetX += node.vx;
         node.targetY += node.vy;
-        // Soft boundary reflection
-        if (Math.abs(node.targetX) > 600) node.vx *= -1;
-        if (Math.abs(node.targetY) > 450) node.vy *= -1;
+        if (Math.abs(node.targetX) > 650) node.vx *= -1;
+        if (Math.abs(node.targetY) > 480) node.vy *= -1;
       }
 
-      // Smooth position lerp
       node.x += (node.targetX - node.x) * 0.085;
       node.y += (node.targetY - node.y) * 0.085;
 
-      // Smooth scale lerp
-      const targetS = (hoveredNode === node) ? node.targetScale * 1.35 : node.targetScale;
-      node.scale += (targetS - node.scale) * 0.15;
+      const targetS = (hoveredNode === node) ? node.targetScale * 1.25 : node.targetScale;
+      node.scale += (targetS - node.scale) * 0.16;
 
-      // Filter alpha handling
       const matches = isNodeMatchingFilter(node);
-      const targetA = matches ? 1.0 : 0.18;
-      node.alpha += (targetA - node.alpha) * 0.1;
+      const targetA = matches ? 1.0 : 0.15;
+      node.alpha += (targetA - node.alpha) * 0.12;
     });
 
-    // 3. Test Hover under pointer
     if (pointerScreen.x > 0 && pointerScreen.y > 0) {
       hoveredNode = hitTest(pointerScreen.x, pointerScreen.y);
     } else {
@@ -457,50 +449,49 @@ export function initScene(canvas) {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
+    // Deep Dark Slate background fill (#0B0D10)
+    ctx.fillStyle = '#0B0D10';
+    ctx.fillRect(0, 0, width, height);
+
     // Camera transform
     ctx.translate(width / 2, height / 2);
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
-    // ── 1. Background Visual Grid / Fabric Waves ───────────────
-    drawBackgroundGrid(now);
+    // 1. Technical Exhibition Coordinates & Ambient Grid
+    drawExhibitionGrid(now);
 
-    // ── 2. Layout-specific Backgrounds (Planimetria / Timeline) ──
+    // 2. Layout-specific structures
     if (currentLayout === 'planimetria') {
-      drawPlanimetriaFloorplan();
+      drawPlanimetriaBlueprint();
     } else if (currentLayout === 'timeline') {
-      drawTimelineAxis();
+      drawTimelineRibbon();
     } else if (currentLayout === 'cluster') {
-      drawClusterBoundaries();
+      drawClusterBlobs(now);
     }
 
-    // ── 3. Filaments / Connections between Shared Tags ─────────
-    drawConnections(now);
+    // 3. Ultra-fine Glowing Filaments with Traveling Particles
+    drawFilaments(now);
 
-    // ── 4. Nodes ───────────────────────────────────────────────
-    drawNodes(now);
-
-    // ── 5. Hover Tooltip ───────────────────────────────────────
-    if (hoveredNode) {
-      drawNodeTooltip(hoveredNode, now);
-    }
+    // 4. Render Micro-Cards (Nodes)
+    drawMicroCards(now);
 
     ctx.restore();
     requestAnimationFrame(render);
   }
 
-  // ── Draw Background Grid & Dynamic Fabric Waves ──────────────
-  function drawBackgroundGrid(now) {
-    const gridSize = 100;
-    const halfSpan = 1400;
+  // ── Exhibition Blueprint Grid ────────────────────────────────
+  function drawExhibitionGrid(now) {
+    const gridSize = 120;
+    const halfSpan = 1600;
 
     ctx.save();
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.022)';
 
     for (let x = -halfSpan; x <= halfSpan; x += gridSize) {
       ctx.beginPath();
-      for (let y = -halfSpan; y <= halfSpan; y += 40) {
+      for (let y = -halfSpan; y <= halfSpan; y += 45) {
         const offset = getWaveOffset(x, y, now);
         const px = x + offset.dx;
         const py = y + offset.dy;
@@ -510,7 +501,7 @@ export function initScene(canvas) {
       ctx.stroke();
     }
 
-    // Wave ripples overlay
+    // Wave ripple concentric rings
     if (fabricWave.active) {
       const elapsed = now - fabricWave.startTime;
       const progress = elapsed / fabricWave.duration;
@@ -519,8 +510,8 @@ export function initScene(canvas) {
 
       ctx.beginPath();
       ctx.arc(fabricWave.centerX, fabricWave.centerY, rippleRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(167, 201, 87, ${alpha})`;
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = `rgba(180, 212, 192, ${alpha})`;
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
 
@@ -528,49 +519,60 @@ export function initScene(canvas) {
   }
 
   // ── Planimetria Architectural Floorplan ───────────────────────
-  function drawPlanimetriaFloorplan() {
+  function drawPlanimetriaBlueprint() {
     ctx.save();
     Object.entries(HOUSE_ROOMS).forEach(([key, room]) => {
-      // Room translucent fill
-      ctx.fillStyle = room.color;
-      ctx.fillRect(room.x - room.w / 2, room.y - room.h / 2, room.w, room.h);
+      const rx = room.x - room.w / 2;
+      const ry = room.y - room.h / 2;
 
-      // Room border
-      ctx.strokeStyle = 'rgba(132, 169, 140, 0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(room.x - room.w / 2, room.y - room.h / 2, room.w, room.h);
+      // Soft slate glass fill
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.018)';
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, room.w, room.h, 16);
+      ctx.fill();
 
-      // Room label
-      ctx.fillStyle = 'rgba(240, 244, 242, 0.65)';
-      ctx.font = '600 13px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(room.label, room.x - room.w / 2 + 14, room.y - room.h / 2 + 24);
+      // Technical boundary line
+      ctx.strokeStyle = 'rgba(203, 227, 214, 0.20)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Room Tag & Label (Space Grotesk style)
+      ctx.fillStyle = '#B4D4C0';
+      ctx.font = '600 10px "Space Grotesk", monospace';
+      ctx.fillText(`// ROOM ${room.tag}`, rx + 18, ry + 24);
+
+      ctx.fillStyle = '#F2F4F7';
+      ctx.font = '500 12px "Space Grotesk", sans-serif';
+      ctx.fillText(room.label, rx + 18, ry + 42);
     });
     ctx.restore();
   }
 
-  // ── Timeline Axis ────────────────────────────────────────────
-  function drawTimelineAxis() {
+  // ── Timeline Ribbon ──────────────────────────────────────────
+  function drawTimelineRibbon() {
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(-1200, 0);
-    ctx.lineTo(1200, 0);
-    ctx.strokeStyle = 'rgba(132, 169, 140, 0.4)';
-    ctx.lineWidth = 2.5;
+    ctx.moveTo(-1400, 0);
+    ctx.lineTo(1400, 0);
+    ctx.strokeStyle = 'rgba(203, 227, 214, 0.3)';
+    ctx.lineWidth = 1.8;
     ctx.stroke();
 
-    // Time ticks
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    for (let x = -1100; x <= 1100; x += 140) {
-      ctx.fillRect(x - 1, -8, 2, 16);
+    // Ticks & stems
+    for (let x = -1300; x <= 1300; x += 180) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.fillRect(x - 1, -6, 2, 12);
     }
 
-    // Stem lines from timeline to nodes
     nodes.forEach((n) => {
       ctx.beginPath();
       ctx.moveTo(n.x, 0);
       ctx.lineTo(n.x, n.y);
-      ctx.strokeStyle = 'rgba(132, 169, 140, 0.25)';
-      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(203, 227, 214, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
     });
@@ -578,8 +580,8 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Cluster Boundaries ───────────────────────────────────────
-  function drawClusterBoundaries() {
+  // ── Cluster Organic Boundary Blobs ───────────────────────────
+  function drawClusterBlobs(now) {
     const tagGroups = new Map();
     nodes.forEach((n) => {
       const t = n.primaryTag;
@@ -590,37 +592,47 @@ export function initScene(canvas) {
     ctx.save();
     tagGroups.forEach((groupNodes, tag) => {
       if (groupNodes.length === 0) return;
-      // Calculate cluster center
       let avgX = 0, avgY = 0;
       groupNodes.forEach((n) => { avgX += n.x; avgY += n.y; });
       avgX /= groupNodes.length;
       avgY /= groupNodes.length;
 
-      // Soft circular cloud boundary
-      const radius = 130 + groupNodes.length * 14;
-      const color = TAG_COLORS[tag] || TAG_COLORS.Default;
+      const palette = THEME_PALETTE[tag] || THEME_PALETTE.Default;
+      const baseRadius = 140 + groupNodes.length * 15;
 
+      // Draw multi-layered organic blob with harmonic oscillation
       ctx.beginPath();
-      ctx.arc(avgX, avgY, radius, 0, Math.PI * 2);
-      ctx.fillStyle = `${color}10`;
+      const points = 12;
+      for (let i = 0; i < points; i++) {
+        const theta = (i / points) * Math.PI * 2;
+        const wobble = Math.sin(theta * 3 + now * 0.001) * 12 + Math.cos(theta * 2 - now * 0.0008) * 8;
+        const r = baseRadius + wobble;
+        const px = avgX + Math.cos(theta) * r;
+        const py = avgY + Math.sin(theta) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+
+      ctx.fillStyle = palette.tint;
       ctx.fill();
-      ctx.strokeStyle = `${color}40`;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = `${palette.primary}44`;
+      ctx.lineWidth = 1.2;
       ctx.setLineDash([6, 6]);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Cluster Tag Label
-      ctx.fillStyle = color;
-      ctx.font = '700 14px "Outfit", sans-serif';
+      // Cluster Tag Title
+      ctx.fillStyle = palette.primary;
+      ctx.font = '600 12px "Space Grotesk", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(tag.toUpperCase(), avgX, avgY - radius - 10);
+      ctx.fillText(`✦ ${tag.toUpperCase()} ARCHIVE`, avgX, avgY - baseRadius - 16);
     });
     ctx.restore();
   }
 
-  // ── Filaments between Shared Tags ────────────────────────────
-  function drawConnections(now) {
+  // ── Ultra-Thin Glowing Filaments & Traveling Particles ───────
+  function drawFilaments(now) {
     if (nodes.length < 2) return;
 
     ctx.save();
@@ -632,15 +644,13 @@ export function initScene(canvas) {
         const n2 = nodes[j];
         if (n2.alpha < 0.25) continue;
 
-        // Check for shared tags
         const tags1 = n1.memory.tags || [];
         const tags2 = n2.memory.tags || [];
         const shared = tags1.filter((t) => tags2.includes(t));
 
         if (shared.length > 0) {
           const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
-          // Limit connection distance for visual clarity
-          if (dist < 420 || currentLayout === 'nodi') {
+          if (dist < 460 || currentLayout === 'nodi') {
             const wave1 = getWaveOffset(n1.x, n1.y, now);
             const wave2 = getWaveOffset(n2.x, n2.y, now);
 
@@ -649,26 +659,27 @@ export function initScene(canvas) {
             const x2 = n2.x + wave2.dx;
             const y2 = n2.y + wave2.dy;
 
-            // Curved Quadratic Bezier
-            const midX = (x1 + x2) / 2 + Math.sin(now * 0.002 + i) * 15;
-            const midY = (y1 + y2) / 2 + Math.cos(now * 0.002 + j) * 15;
+            const midX = (x1 + x2) / 2 + Math.sin(now * 0.0018 + i) * 14;
+            const midY = (y1 + y2) / 2 + Math.cos(now * 0.0018 + j) * 14;
 
-            const baseAlpha = Math.min(n1.alpha, n2.alpha) * (1 - Math.min(1, dist / 500));
+            const baseAlpha = Math.min(n1.alpha, n2.alpha) * (1 - Math.min(1, dist / 520));
+
+            // Ultra-fine filament line
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.quadraticCurveTo(midX, midY, x2, y2);
-            ctx.strokeStyle = `rgba(132, 169, 140, ${baseAlpha * 0.35})`;
-            ctx.lineWidth = 1.2 + shared.length * 0.6;
+            ctx.strokeStyle = `rgba(180, 212, 192, ${baseAlpha * 0.24})`;
+            ctx.lineWidth = 1.0;
             ctx.stroke();
 
-            // Particle traveling along filament
-            const t = ((now * 0.0006 + i * 0.3) % 1);
+            // Traveling micro-particle
+            const t = ((now * 0.00045 + i * 0.25) % 1);
             const px = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * midX + t * t * x2;
             const py = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * midY + t * t * y2;
 
             ctx.beginPath();
-            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(167, 201, 87, ${baseAlpha * 0.8})`;
+            ctx.arc(px, py, 2.0, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(203, 227, 214, ${baseAlpha * 0.85})`;
             ctx.fill();
           }
         }
@@ -677,8 +688,8 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Nodes Rendering ──────────────────────────────────────────
-  function drawNodes(now) {
+  // ── Render Micro-Cards (Nodes) ───────────────────────────────
+  function drawMicroCards(now) {
     nodes.forEach((node) => {
       ctx.save();
       ctx.globalAlpha = node.alpha;
@@ -686,99 +697,130 @@ export function initScene(canvas) {
       const wave = getWaveOffset(node.x, node.y, now);
       const nx = node.x + wave.dx;
       const ny = node.y + wave.dy;
-      const r = node.radius * node.scale;
 
+      const w = node.w * node.scale;
+      const h = node.h * node.scale;
+      const r = node.radius * node.scale;
       const isHover = (hoveredNode === node);
 
-      // Outer Glow
-      const glowGrad = ctx.createRadialGradient(nx, ny, r * 0.7, nx, ny, r * 1.8);
-      glowGrad.addColorStop(0, isHover ? 'rgba(167, 201, 87, 0.45)' : 'rgba(132, 169, 140, 0.25)');
-      glowGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = glowGrad;
+      const x0 = nx - w / 2;
+      const y0 = ny - h / 2;
+
+      // 1. Soft Glow on Hover
+      if (isHover) {
+        const glowPad = 16;
+        const grad = ctx.createRadialGradient(nx, ny, h * 0.5, nx, ny, w * 0.8);
+        grad.addColorStop(0, 'rgba(180, 212, 192, 0.35)');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(x0 - glowPad, y0 - glowPad, w + glowPad * 2, h + glowPad * 2, r + glowPad);
+        ctx.fill();
+      }
+
+      // 2. Translucent Glassmorphic Card Body
       ctx.beginPath();
-      ctx.arc(nx, ny, r * 1.8, 0, Math.PI * 2);
+      ctx.roundRect(x0, y0, w, h, r);
+      ctx.fillStyle = isHover ? 'rgba(20, 24, 30, 0.94)' : 'rgba(15, 18, 24, 0.82)';
       ctx.fill();
 
-      // Node Body
-      ctx.beginPath();
-      ctx.arc(nx, ny, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#0f141a';
-      ctx.fill();
+      // Card border (Sage on hover, subtle translucent otherwise)
+      ctx.strokeStyle = isHover ? '#B4D4C0' : 'rgba(255, 255, 255, 0.09)';
+      ctx.lineWidth = isHover ? 1.8 : 1.0;
+      ctx.stroke();
 
-      // Image Thumbnail or Audio Icon
+      // 3. Media Thumbnail (Left Slot)
+      const thumbSize = 32 * node.scale;
+      const thumbPad = 7 * node.scale;
+      const tx = x0 + thumbPad;
+      const ty = y0 + (h - thumbSize) / 2;
+      const tr = 8 * node.scale;
+
       if (node.memory.media_type === 'image' && node.memory.media_url && imageCache.has(node.memory.media_url)) {
         const img = imageCache.get(node.memory.media_url);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(nx, ny, r - 3, 0, Math.PI * 2);
+        ctx.roundRect(tx, ty, thumbSize, thumbSize, tr);
         ctx.clip();
-        ctx.drawImage(img, nx - r, ny - r, r * 2, r * 2);
+        ctx.drawImage(img, tx, ty, thumbSize, thumbSize);
         ctx.restore();
       } else {
-        // Audio node: Sound wave concentric circles & icon
+        // Audio glyph slot
         ctx.save();
-        ctx.fillStyle = 'rgba(91, 192, 190, 0.15)';
         ctx.beginPath();
-        ctx.arc(nx, ny, r - 4, 0, Math.PI * 2);
+        ctx.roundRect(tx, ty, thumbSize, thumbSize, tr);
+        ctx.fillStyle = 'rgba(180, 212, 192, 0.15)';
         ctx.fill();
 
-        // Music note glyph
-        ctx.fillStyle = '#6fffe9';
-        ctx.font = `${Math.round(r * 0.7)}px sans-serif`;
+        ctx.fillStyle = '#B4D4C0';
+        ctx.font = `600 ${Math.round(14 * node.scale)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('♪', nx, ny);
+        ctx.fillText('♪', tx + thumbSize / 2, ty + thumbSize / 2);
         ctx.restore();
       }
 
-      // Border Ring
-      ctx.beginPath();
-      ctx.arc(nx, ny, r, 0, Math.PI * 2);
-      ctx.strokeStyle = isHover ? '#a7c957' : node.color;
-      ctx.lineWidth = isHover ? 3.5 : 2;
-      ctx.stroke();
+      // 4. Title & Meta Text (Right Slot)
+      const textX = tx + thumbSize + 8 * node.scale;
+      const titleY = y0 + h * 0.42;
+
+      ctx.fillStyle = '#F2F4F7';
+      ctx.font = `500 ${Math.round(11 * node.scale)}px "Space Grotesk", sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      // Truncate title cleanly
+      const rawTitle = node.memory.title || 'Memoria Stoà';
+      const maxChars = isHover ? 18 : 13;
+      const displayTitle = rawTitle.length > maxChars ? `${rawTitle.slice(0, maxChars)}…` : rawTitle;
+      ctx.fillText(displayTitle, textX, titleY);
+
+      // Sub-tag or Location
+      const subY = y0 + h * 0.72;
+      ctx.fillStyle = node.color;
+      ctx.font = `500 ${Math.round(9 * node.scale)}px "Inter", sans-serif`;
+      const subText = isHover && node.memory.location_tag
+        ? `📍 ${node.memory.location_tag}`
+        : `✦ ${node.primaryTag}`;
+      ctx.fillText(subText, textX, subY);
+
+      // 5. Extended Metadata Pill on Hover
+      if (isHover) {
+        drawHoverMetadataPill(node, nx, y0 + h + 8 * node.scale);
+      }
 
       ctx.restore();
     });
   }
 
-  // ── Node Hover Tooltip ───────────────────────────────────────
-  function drawNodeTooltip(node, now) {
-    const wave = getWaveOffset(node.x, node.y, now);
-    const nx = node.x + wave.dx;
-    const ny = node.y + wave.dy - (node.radius * node.scale + 16);
+  // ── Hover Secondary Metadata Tag ─────────────────────────────
+  function drawHoverMetadataPill(node, cx, topY) {
+    const loc = node.memory.location_tag ? `📍 ${node.memory.location_tag}` : '📍 Stoà';
+    const time = node.memory.time_event ? `⏱️ ${node.memory.time_event}` : '';
+    const label = time ? `${loc}  ·  ${time}` : loc;
 
     ctx.save();
-    const title = node.memory.title || 'Senza titolo';
-    const loc = node.memory.location_tag ? `📍 ${node.memory.location_tag}` : '';
-    const text = loc ? `${title} · ${loc}` : title;
+    ctx.font = '500 10px "Inter", sans-serif';
+    const textW = ctx.measureText(label).width;
+    const pillW = textW + 16;
+    const pillH = 22;
 
-    ctx.font = '600 13px "Plus Jakarta Sans", sans-serif';
-    const textW = ctx.measureText(text).width;
-    const padX = 14;
-    const padY = 7;
-    const boxW = textW + padX * 2;
-    const boxH = 28;
+    const px = cx - pillW / 2;
+    const py = topY;
 
-    // Tooltip Card
-    ctx.fillStyle = 'rgba(15, 19, 25, 0.92)';
-    ctx.strokeStyle = '#a7c957';
-    ctx.lineWidth = 1.2;
-
-    const bx = nx - boxW / 2;
-    const by = ny - boxH;
-
+    ctx.fillStyle = 'rgba(11, 13, 16, 0.94)';
     ctx.beginPath();
-    ctx.roundRect(bx, by, boxW, boxH, 8);
+    ctx.roundRect(px, py, pillW, pillH, 6);
     ctx.fill();
+
+    ctx.strokeStyle = '#B4D4C0';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Text
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#CBE3D6';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, nx, by + boxH / 2);
-
+    ctx.fillText(label, cx, py + pillH / 2);
     ctx.restore();
   }
 

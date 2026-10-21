@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Memory Mesh — Installazione interattiva Kiosk controllata via gesture manuali e webcam per il Centro Giovanile Stoà." />
-  <title>Memory Mesh · Kiosk Display</title>
+  <meta name="description" content="Memory Mesh — Installazione interattiva Kiosk controllata via gesture manuali per il Centro Giovanile Stoà." />
+  <title>Memory Mesh · Gallery Kiosk</title>
 
-  <!-- Typography: Plus Jakarta Sans & Outfit -->
+  <!-- Google Fonts: Space Grotesk & Inter (MĒNĒM / CAPSUL3 Aesthetic) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- MediaPipe Hands & Camera Utils CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -20,44 +20,43 @@
 </head>
 <body class="kiosk-body">
 
-  <!-- Canvas Principale per il rendering delle memorie -->
+  <!-- Canvas Principale per il rendering delle memorie a micro-card -->
   <canvas id="scene-canvas" aria-label="Spazio connettivo dei ricordi"></canvas>
 
-  <!-- Video sorgente webcam per MediaPipe (nascosto dal canvas overlay) -->
+  <!-- Video sorgente webcam per MediaPipe (nascosto dall'HUD) -->
   <video id="webcam-video" autoplay playsinline muted></video>
 
-  <!-- ── HUD SUPERIORE: Titolo Centrato & Live Stats ──────────────── -->
+  <!-- ── 1. HUD SUPERIORE: Titolo Editoriale & Live Stat Pill ────── -->
   <header class="kiosk-header" id="hud-header">
-    <div class="header-content">
-      <div class="brand-tag">
-        <span class="live-dot" aria-hidden="true"></span>
-        <span class="brand-sub">Centro Giovanile Stoà</span>
+    <div class="header-capsule">
+      <div class="header-eyebrow">
+        <span class="live-pulse" aria-hidden="true"></span>
+        <span class="eyebrow-text">CENTRO GIOVANILE STOÀ · ARCHIVIO CONNETTIVO</span>
       </div>
-      <h1 class="brand-title">Memory Mesh</h1>
-      <div class="stats-pill" id="stats-pill">
-        <span class="pulse-ring" aria-hidden="true"></span>
-        <span id="memory-counter" class="counter-num">0</span>
-        <span class="counter-label">ricordi connessi</span>
+      <h1 class="header-brand">MEMORY MESH</h1>
+      <div class="header-stats" id="stats-pill">
+        <span class="stats-count" id="memory-counter">0</span>
+        <span class="stats-sep">/</span>
+        <span class="stats-label">ricordi intessuti</span>
       </div>
     </div>
   </header>
 
-  <!-- ── WHEEL MENU SINISTRO: Cambio Layout ──────────────────────── -->
+  <!-- ── 2. WHEEL MENU SINISTRO: Layers Memory Layout Switch ──────── -->
   <aside class="wheel-dock wheel-dock--left" id="wheel-left" aria-label="Menu modalità di visualizzazione">
-    <div class="wheel-handle">
-      <span class="handle-icon" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </span>
-      <span class="handle-text">Layout</span>
+    <div class="wheel-trigger">
+      <div class="wheel-trigger__indicator" aria-hidden="true">
+        <span class="dot-bar"></span>
+        <span class="dot-bar"></span>
+        <span class="dot-bar"></span>
+      </div>
+      <span class="wheel-trigger__label">LAYOUT</span>
     </div>
-    <div class="wheel-arc" id="wheel-left-items">
-      <!-- 5 Modalità richieste -->
+    <div class="wheel-menu" id="wheel-left-items">
+      <div class="wheel-menu__header">PROSPETTIVA</div>
       <button class="wheel-btn is-active" data-layout="nodi" aria-label="Visualizzazione Nodi">
-        <span class="btn-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="6" cy="6" r="3"></circle>
             <circle cx="18" cy="8" r="3"></circle>
             <circle cx="12" cy="18" r="3"></circle>
@@ -66,209 +65,227 @@
             <line x1="16.5" y1="10" x2="13.5" y2="15.5"></line>
           </svg>
         </span>
-        <span class="btn-label">Nodi</span>
+        <span class="wheel-btn__text">Costellazione</span>
+        <span class="wheel-btn__tag">01</span>
       </button>
 
       <button class="wheel-btn" data-layout="cluster" aria-label="Visualizzazione Cluster">
-        <span class="btn-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
           </svg>
         </span>
-        <span class="btn-label">Cluster</span>
+        <span class="wheel-btn__text">Cluster Tematici</span>
+        <span class="wheel-btn__tag">02</span>
       </button>
 
       <button class="wheel-btn" data-layout="planimetria" aria-label="Visualizzazione Planimetria">
-        <span class="btn-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect width="18" height="18" x="3" y="3" rx="2"></rect>
             <path d="M3 9h18M9 21V9M15 21V15"></path>
           </svg>
         </span>
-        <span class="btn-label">Planimetria</span>
+        <span class="wheel-btn__text">Planimetria Stoà</span>
+        <span class="wheel-btn__tag">03</span>
       </button>
 
       <button class="wheel-btn" data-layout="timeline" aria-label="Visualizzazione Timeline">
-        <span class="btn-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
         </span>
-        <span class="btn-label">Timeline</span>
+        <span class="wheel-btn__text">Nastro Temporale</span>
+        <span class="wheel-btn__tag">04</span>
       </button>
 
       <button class="wheel-btn" data-layout="griglia" aria-label="Visualizzazione Griglia">
-        <span class="btn-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect width="7" height="7" x="3" y="3" rx="1"></rect>
             <rect width="7" height="7" x="14" y="3" rx="1"></rect>
             <rect width="7" height="7" x="14" y="14" rx="1"></rect>
             <rect width="7" height="7" x="3" y="14" rx="1"></rect>
           </svg>
         </span>
-        <span class="btn-label">Griglia</span>
+        <span class="wheel-btn__text">Archivio Griglia</span>
+        <span class="wheel-btn__tag">05</span>
       </button>
     </div>
   </aside>
 
-  <!-- ── WHEEL MENU DESTRO: Filtri & Criteri ──────────────────────── -->
+  <!-- ── 3. WHEEL MENU DESTRO: Filtri & Tassonomie ───────────────── -->
   <aside class="wheel-dock wheel-dock--right" id="wheel-right" aria-label="Menu filtri e criteri">
-    <div class="wheel-handle">
-      <span class="handle-icon" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-      </span>
-      <span class="handle-text">Filtri</span>
+    <div class="wheel-trigger">
+      <div class="wheel-trigger__indicator" aria-hidden="true">
+        <span class="dot-bar"></span>
+        <span class="dot-bar"></span>
+        <span class="dot-bar"></span>
+      </div>
+      <span class="wheel-trigger__label">FILTRI</span>
     </div>
-    <div class="wheel-arc" id="wheel-right-items">
+    <div class="wheel-menu" id="wheel-right-items">
+      <div class="wheel-menu__header">SELEZIONE</div>
       <button class="wheel-btn is-active" data-filter="all" aria-label="Tutti i ricordi">
-        <span class="btn-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
         </span>
-        <span class="btn-label">Tutti</span>
+        <span class="wheel-btn__text">Tutti i media</span>
       </button>
       <button class="wheel-btn" data-filter="type-image" aria-label="Filtra solo immagini">
-        <span class="btn-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
         </span>
-        <span class="btn-label">Foto</span>
+        <span class="wheel-btn__text">Fotografie</span>
       </button>
       <button class="wheel-btn" data-filter="type-audio" aria-label="Filtra solo audio">
-        <span class="btn-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span class="wheel-btn__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         </span>
-        <span class="btn-label">Audio</span>
+        <span class="wheel-btn__text">Tracce Audio</span>
       </button>
       <button class="wheel-btn" data-filter="tag-Musica" aria-label="Filtra tag Musica">
-        <span class="btn-icon">🎵</span>
-        <span class="btn-label">Musica</span>
+        <span class="wheel-btn__icon">✦</span>
+        <span class="wheel-btn__text">Musica</span>
       </button>
       <button class="wheel-btn" data-filter="tag-Design" aria-label="Filtra tag Design">
-        <span class="btn-icon">🎨</span>
-        <span class="btn-label">Design</span>
+        <span class="wheel-btn__icon">✦</span>
+        <span class="wheel-btn__text">Design</span>
       </button>
       <button class="wheel-btn" data-filter="tag-Social" aria-label="Filtra tag Social">
-        <span class="btn-icon">💬</span>
-        <span class="btn-label">Social</span>
+        <span class="wheel-btn__icon">✦</span>
+        <span class="wheel-btn__text">Social</span>
       </button>
       <button class="wheel-btn" data-filter="tag-Relax" aria-label="Filtra tag Relax">
-        <span class="btn-icon">🌿</span>
-        <span class="btn-label">Relax</span>
+        <span class="wheel-btn__icon">✦</span>
+        <span class="wheel-btn__text">Relax</span>
       </button>
     </div>
   </aside>
 
-  <!-- ── ANGOLO IN BASSO A SINISTRA: Webcam Mini-Feed & Hand Skeleton -->
-  <section class="camera-hud" id="camera-hud" aria-label="Stato hand tracking">
-    <div class="camera-hud__frame">
-      <canvas id="camera-canvas" width="220" height="160"></canvas>
-      <div class="camera-hud__scanline" aria-hidden="true"></div>
-      <div class="camera-hud__badge" id="camera-badge">
-        <span class="hud-status-dot" id="hud-status-dot"></span>
-        <span class="hud-status-text" id="hud-status-text">In attesa delle mani</span>
+  <!-- ── 4. ANGOLO IN BASSO A SINISTRA: Bento Mini-Feed & Tracking Skeleton -->
+  <section class="camera-hud" id="camera-hud" aria-label="Monitor Visione Computerizzata">
+    <div class="camera-hud__card">
+      <div class="camera-hud__viewport">
+        <canvas id="camera-canvas" width="220" height="150"></canvas>
+        <div class="camera-hud__ambient-grid" aria-hidden="true"></div>
       </div>
-    </div>
-    <div class="camera-hud__indicators">
-      <div class="hand-indicator" id="ind-right">
-        <span class="ind-dot ind-dot--right"></span>
-        <span class="ind-name">Destra: <strong>Puntatore</strong></span>
-      </div>
-      <div class="hand-indicator" id="ind-left">
-        <span class="ind-dot ind-dot--left"></span>
-        <span class="ind-name">Sinistra: <strong>Pan/Zoom</strong></span>
+      <div class="camera-hud__meta" id="camera-badge">
+        <div class="status-indicator">
+          <span class="status-indicator__dot" id="hud-status-dot"></span>
+          <span class="status-indicator__text" id="hud-status-text">In attesa delle mani</span>
+        </div>
+        <div class="hands-pills">
+          <span class="hand-pill" id="ind-right">R: Pointer</span>
+          <span class="hand-pill" id="ind-left">L: Nav</span>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ── ANGOLO IN BASSO A DESTRA: Pulsante Info ─────────────────── -->
-  <button class="info-trigger-btn" id="btn-info" aria-label="Informazioni sul progetto e legenda gesture">
-    <span class="info-btn-glow" aria-hidden="true"></span>
-    <span class="info-btn-icon">?</span>
-    <span class="info-btn-text">Info &amp; Gesture</span>
+  <!-- ── 5. ANGOLO IN BASSO A DESTRA: Bento Pill "Info & Gesture" ── -->
+  <button class="info-pill-btn info-trigger-btn" id="btn-info" aria-label="Informazioni e guida gesture">
+    <span class="info-pill__icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+    </span>
+    <span class="info-pill__text">INFO &amp; GESTURE</span>
   </button>
 
-  <!-- ── MODALE BENTO GRID: Info Progetto & Legenda Gesture ──────── -->
+  <!-- ── 6. MODALE BENTO GRID: Info Progetto, Guida & Disclaimer ── -->
   <div class="modal-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-labelledby="info-modal-title">
-    <div class="bento-modal bento-modal--info">
-      <!-- Header Bento -->
-      <div class="bento-card bento-card--hero">
-        <div class="card-tag">Centro Giovanile Stoà</div>
-        <h2 id="info-modal-title" class="card-title">Memory Mesh</h2>
-        <p class="card-desc">
-          Un archivio relazionale e connettivo a tutto schermo che raccoglie tracce, frammenti audio e fotografie donati dalla comunità di Stoà. I ricordi si intrecciano in un tessuto vivente guidato dalle risonanze tra temi e spazi.
+    <div class="bento-container bento-container--info">
+      <!-- Card 1: Visione & Missione Stoà -->
+      <div class="bento-box bento-box--hero">
+        <div class="box-tag">ARCHIVIO PARTECIPATIVO · STOÀ</div>
+        <h2 id="info-modal-title" class="box-title">MEMORY MESH</h2>
+        <p class="box-body">
+          Un ecosistema visuale generativo che tesse insieme tracce vocali, fotografie e ricordi donati dai giovani della comunità di Stoà. Ogni ricordo è una cellula luminosa connessa da risonanze tematiche, orari e spazi della casa.
         </p>
       </div>
 
-      <!-- Card Gesture Mano Destra -->
-      <div class="bento-card bento-card--gesture">
-        <div class="gesture-badge gesture-badge--sage">Mano Destra</div>
-        <h3 class="gesture-title">Puntatore &amp; Pinch</h3>
-        <div class="gesture-visual">
-          <div class="visual-hand visual-hand--pointer">
-            <span class="hand-glyph">👉</span>
-            <span class="visual-arrow">➔</span>
-            <span class="hand-glyph">👌</span>
+      <!-- Card 2: Mano Destra (Pointer & Pinch) -->
+      <div class="bento-box bento-box--gesture">
+        <div class="box-tag box-tag--accent">MANO DESTRA · PUNTATORE</div>
+        <h3 class="box-subtitle">Punta &amp; Seleziona</h3>
+        <div class="gesture-iconography">
+          <div class="gesture-step">
+            <span class="step-num">01</span>
+            <span class="step-glyph">☝️</span>
+            <span class="step-label">Punta l'indice per muovere il mirino</span>
+          </div>
+          <div class="gesture-divider"></div>
+          <div class="gesture-step">
+            <span class="step-num">02</span>
+            <span class="step-glyph">👌</span>
+            <span class="step-label">Pinch (pollice-indice) per aprire</span>
           </div>
         </div>
-        <p class="gesture-caption">
-          Punta l'indice per muovere il cursore. <strong>Unisci pollice e indice (Pinch)</strong> per selezionare un ricordo o un'azione. La posizione viene congelata per evitare misclick involontari!
+        <p class="box-hint">
+          All'attivazione del pinch le coordinate vengono congelate per garantire precisione millimetrica.
         </p>
       </div>
 
-      <!-- Card Gesture Mano Sinistra -->
-      <div class="bento-card bento-card--gesture">
-        <div class="gesture-badge gesture-badge--cyan">Mano Sinistra</div>
-        <h3 class="gesture-title">Pan &amp; Zoom</h3>
-        <div class="gesture-visual">
-          <div class="visual-hand visual-hand--pan">
-            <span class="hand-glyph">✋</span>
-            <span class="visual-arrow">⇄</span>
-            <span class="hand-glyph">🤏</span>
+      <!-- Card 3: Mano Sinistra (Pan & Zoom) -->
+      <div class="bento-box bento-box--gesture">
+        <div class="box-tag box-tag--secondary">MANO SINISTRA · NAVIGAZIONE</div>
+        <h3 class="box-subtitle">Spazio &amp; Scala</h3>
+        <div class="gesture-iconography">
+          <div class="gesture-step">
+            <span class="step-num">01</span>
+            <span class="step-glyph">🤏</span>
+            <span class="step-label">Pinch mantenuto per trascinare (Pan 2D)</span>
+          </div>
+          <div class="gesture-divider"></div>
+          <div class="gesture-step">
+            <span class="step-num">02</span>
+            <span class="step-glyph">✋</span>
+            <span class="step-label">Ruota il polso (>20°) per Zoom In/Out</span>
           </div>
         </div>
-        <p class="gesture-caption">
-          <strong>Pinch mantenuto</strong> per trascinare la vista (Pan 2D) con inerzia al rilascio. Mano aperta inclinata (>20°) per avvicinare o allontanare la vista (Zoom In/Out).
+        <p class="box-hint">
+          Rilasciando il pinch viene applicata un'inerzia fluida al movimento del canvas.
         </p>
       </div>
 
-      <!-- Card Modalità di Navigazione -->
-      <div class="bento-card bento-card--modes">
-        <div class="card-tag">Esplorazione Spaziale</div>
-        <h3 class="modes-title">5 Prospettive di Vista</h3>
-        <ul class="modes-list">
-          <li><strong>Nodi:</strong> Rete organica fluttuante con filamenti luminosi tra tag condivisi.</li>
-          <li><strong>Cluster:</strong> Nuvole raggruppate per macro-temi ed etichette.</li>
-          <li><strong>Planimetria:</strong> Nodi ancorati agli spazi architettonici della casa (Salone, Giardino, Cucina...).</li>
-          <li><strong>Timeline:</strong> Asse cronologico per orario e arrivo nel tempo.</li>
-          <li><strong>Griglia:</strong> Ordinamento geometrico e contemplativo.</li>
-        </ul>
+      <!-- Card 4: Disclaimer Privacy & Diritti -->
+      <div class="bento-box bento-box--privacy">
+        <div class="box-tag">DISCLAIMER &amp; PRIVACY</div>
+        <h3 class="box-subtitle">Archivio Etico</h3>
+        <p class="box-small">
+          Tutti i contributi proiettati sono stati caricati volontariamente con consenso esplicito per l'esposizione pubblica Kiosk di Memory Mesh.
+        </p>
+        <div class="bento-credits">
+          <span>Progetto di Interaction Design</span>
+          <span>Centro Giovanile Stoà · Busto Arsizio</span>
+        </div>
       </div>
 
-      <!-- Card Partecipa QR Code -->
-      <div class="bento-card bento-card--join">
-        <div class="card-tag">Invia un ricordo</div>
-        <h3 class="join-title">Aggiungi il tuo tassello</h3>
-        <p class="join-desc">
-          Scansiona il QR code con lo smartphone o visita <code>/upload</code> per caricare foto e tracce vocali in tempo reale.
-        </p>
-        <div class="join-qr-wrap">
-          <div class="qr-placeholder" aria-label="QR Code per /upload">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Card 5: QR Code Invio Ricordi -->
+      <div class="bento-box bento-box--join">
+        <div class="box-tag">CONTRIBUISCI</div>
+        <h3 class="box-subtitle">Intessi la tua traccia</h3>
+        <div class="qr-container">
+          <div class="qr-matrix" aria-label="QR Code per /upload">
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
               <rect width="6" height="6" x="2" y="2" rx="1"></rect>
               <rect width="6" height="6" x="16" y="2" rx="1"></rect>
               <rect width="6" height="6" x="2" y="16" rx="1"></rect>
               <path d="M10 2v6m0 4v2m-6-2h2m4 0h6m-2 4h4m-4 4h4m-8-4v4m8-14v2m0 4v2"></path>
             </svg>
           </div>
-          <span class="qr-url">memory-mesh/upload</span>
+          <span class="qr-caption">Scansiona con lo smartphone o visita <code>/upload</code></span>
         </div>
       </div>
 
       <!-- Pulsante Chiusura Bento -->
       <button class="bento-close-btn" id="btn-close-info" aria-label="Chiudi informazioni">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -276,49 +293,51 @@
     </div>
   </div>
 
-  <!-- ── MODALE DETTAGLIO RICORDO (Bento Grid) ───────────────────── -->
+  <!-- ── 7. MODALE DETTAGLIO RICORDO (Bento Grid Museale) ───────── -->
   <div class="modal-backdrop" id="modal-detail" aria-hidden="true" role="dialog" aria-labelledby="detail-title">
-    <div class="bento-modal bento-modal--detail">
+    <div class="bento-container bento-container--detail">
       <!-- Media Bento Box (Sinistra) -->
-      <div class="detail-media-card" id="detail-media-wrap">
-        <img id="detail-img" class="detail-img" src="" alt="Dettaglio ricordo" hidden />
+      <div class="detail-media-wrap" id="detail-media-wrap">
+        <img id="detail-img" class="detail-img" src="" alt="Anteprima ricordo" hidden />
         <div id="detail-audio-wrap" class="detail-audio-box" hidden>
           <div class="audio-pulse-avatar">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M9 18V5l12-2v13"></path>
               <circle cx="6" cy="18" r="3"></circle>
               <circle cx="18" cy="16" r="3"></circle>
             </svg>
           </div>
-          <canvas id="audio-waveform-canvas" width="300" height="80"></canvas>
+          <div class="audio-waveform-container">
+            <canvas id="audio-waveform-canvas" width="340" height="70"></canvas>
+          </div>
           <audio id="detail-audio-el" controls></audio>
         </div>
       </div>
 
       <!-- Info Bento Box (Destra) -->
-      <div class="detail-info-card">
-        <div class="detail-meta-row">
-          <span class="meta-pill meta-pill--location" id="detail-location">📍 Salone</span>
-          <span class="meta-pill meta-pill--time" id="detail-time">⏱️ 18:30</span>
+      <div class="detail-content-wrap">
+        <div class="detail-pills-row">
+          <span class="pill pill--location" id="detail-location">📍 Salone</span>
+          <span class="pill pill--time" id="detail-time">⏱️ 18:30</span>
         </div>
 
         <h2 class="detail-title" id="detail-title">Titolo Ricordo</h2>
-        <p class="detail-desc" id="detail-desc">Descrizione del ricordo...</p>
+        <p class="detail-desc" id="detail-desc">Descrizione della memoria...</p>
 
-        <div class="detail-tags-section">
-          <span class="section-micro">Tag Tematici</span>
+        <div class="detail-section">
+          <span class="detail-section__tag">TAG TEMATICI</span>
           <div class="tags-cluster" id="detail-tags"></div>
         </div>
 
-        <div class="detail-connections-section" id="detail-related-section">
-          <span class="section-micro">Risonanze Collegate (<span id="detail-related-count">0</span>)</span>
-          <div class="related-thumbnails" id="detail-related-chips"></div>
+        <div class="detail-section detail-section--related" id="detail-related-section">
+          <span class="detail-section__tag">RISONANZE CONNESSE (<span id="detail-related-count">0</span>)</span>
+          <div class="related-chips-grid" id="detail-related-chips"></div>
         </div>
       </div>
 
       <!-- Pulsante Chiusura Dettaglio -->
       <button class="bento-close-btn" id="btn-close-detail" aria-label="Chiudi dettaglio ricordo">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -326,22 +345,20 @@
     </div>
   </div>
 
-  <!-- ── NOTIFICA REALTIME: Toast Onda Tessuto ──────────────────── -->
+  <!-- ── 8. NOTIFICA REALTIME: Live Wave Toast ──────────────────── -->
   <div class="live-toast" id="live-toast" role="status" aria-live="polite">
-    <div class="toast-glow" aria-hidden="true"></div>
-    <span class="toast-icon">✨</span>
-    <span class="toast-msg">Nuovo ricordo intessuto nella memoria!</span>
+    <span class="live-toast__icon">✦</span>
+    <span class="live-toast__text">Nuovo ricordo intessuto nella memoria comune</span>
   </div>
 
-  <!-- ── CURSORE MANUALE VIRTUALE (Feedback Hand Tracking) ─────── -->
+  <!-- ── 9. CURSORE MANUALE VIRTUALE ────────────────────────────── -->
   <div class="virtual-cursor" id="virtual-cursor" aria-hidden="true">
-    <div class="cursor-glow"></div>
-    <div class="cursor-dot"></div>
-    <svg class="cursor-ring" viewBox="0 0 50 50">
-      <circle class="ring-bg" cx="25" cy="25" r="20" />
-      <circle class="ring-fill" id="cursor-progress-ring" cx="25" cy="25" r="20" />
+    <div class="cursor-halo"></div>
+    <div class="cursor-center"></div>
+    <svg class="cursor-progress" viewBox="0 0 50 50">
+      <circle class="cursor-progress__bg" cx="25" cy="25" r="20" />
+      <circle class="cursor-progress__fill" id="cursor-progress-ring" cx="25" cy="25" r="20" />
     </svg>
-    <div class="cursor-label" id="cursor-label"></div>
   </div>
 
   <!-- Entry Point ES Module -->
