@@ -1,36 +1,24 @@
 /**
- * Scene Module — Exhibition Canvas Engine & Spatial Layouts (MĒNĒM / CAPSUL3 Style)
+ * Scene Module — Minimal Essential Canvas Engine & Spatial Layouts
+ * Inspired by: 'images_connection.jpg'
  *
- * Visual Highlights:
- *  - Nodes rendered as floating translucent micro-cards with rounded corners,
- *    embedded media preview, and minimalist typography
- *  - Hover state with sage glow (#B4D4C0), subtle scale expansion, and metadata reveal
- *  - Organic ultra-thin glowing filaments with traveling micro-particles
- *  - Pastel desaturated organic boundary blobs for thematic clusters
- *  - Architectural blueprint styling for Planimetria and sleek Timeline ribbon
- *  - Real-Time Fabric Wave distortion animation ('triggerFabricWave()')
+ * Visual System:
+ *  - Deep clean dark background (#08080A), no heavy textures or artificial glow
+ *  - Nodes rendered as clean rectangular photo/audio thumbnails (no cards or thick borders)
+ *  - Hover: subtle scale expansion with clean floating title and thin border
+ *  - Connections: ultra-thin neutral gray filaments (0.8px, opacity ~0.14) connecting shared tags
+ *  - 5 Layouts: nodi (constellation), cluster, planimetria, timeline, griglia
+ *  - Real-Time Fabric Wave ('triggerFabricWave()')
  */
 
 // ── House Blueprint Locations (Planimetria Layout) ─────────────
 const HOUSE_ROOMS = {
-  Salone:      { x: 0,    y: -80,  w: 440, h: 280, label: 'SALONE CENTRALE',  tag: '01' },
-  Giardino:    { x: 410,  y: 50,   w: 380, h: 340, label: 'GIARDINO ESTERNO', tag: '02' },
-  Cucina:      { x: -390, y: -190, w: 280, h: 240, label: 'CUCINA CONDIVISA', tag: '03' },
-  Terrazza:    { x: -370, y: 160,  w: 300, h: 220, label: 'TERRAZZA PANORAMICA', tag: '04' },
-  Portico:     { x: 50,   y: 260,  w: 340, h: 180, label: 'PORTICO D\'INGRESSO', tag: '05' },
-  'Sala Studio': { x: -80, y: -370, w: 340, h: 200, label: 'SALA STUDIO // CO-WORKING', tag: '06' },
-};
-
-// ── Pastel Desaturated Thematic Colors ─────────────────────────
-const THEME_PALETTE = {
-  Musica:      { primary: '#B4D4C0', tint: 'rgba(180, 212, 192, 0.12)' },
-  Design:      { primary: '#B8D4E3', tint: 'rgba(184, 212, 227, 0.12)' },
-  Laboratorio: { primary: '#D9E3B8', tint: 'rgba(217, 227, 184, 0.12)' },
-  Sport:       { primary: '#E8C5B8', tint: 'rgba(232, 197, 184, 0.12)' },
-  Talk:        { primary: '#E3B8C8', tint: 'rgba(227, 184, 200, 0.12)' },
-  Social:      { primary: '#B8E3D8', tint: 'rgba(184, 227, 216, 0.12)' },
-  Relax:       { primary: '#D2C4DE', tint: 'rgba(210, 196, 222, 0.12)' },
-  Default:     { primary: '#CBE3D6', tint: 'rgba(203, 227, 214, 0.10)' },
+  Salone:      { x: 0,    y: -80,  w: 440, h: 280, label: 'Salone' },
+  Giardino:    { x: 420,  y: 60,   w: 380, h: 320, label: 'Giardino' },
+  Cucina:      { x: -400, y: -190, w: 280, h: 240, label: 'Cucina' },
+  Terrazza:    { x: -380, y: 170,  w: 300, h: 220, label: 'Terrazza' },
+  Portico:     { x: 40,   y: 270,  w: 340, h: 180, label: 'Portico' },
+  'Sala Studio': { x: -80, y: -380, w: 340, h: 200, label: 'Sala Studio' },
 };
 
 /**
@@ -58,31 +46,31 @@ export function initScene(canvas) {
   };
 
   // ── Scene State ──────────────────────────────────────────────
-  let currentLayout = 'nodi'; // 'nodi' | 'cluster' | 'planimetria' | 'timeline' | 'griglia'
+  let currentLayout = 'nodi';
   let currentFilter = 'all';
   let memories = [];
   let nodes = [];
   let hoveredNode = null;
   let pointerScreen = { x: -9999, y: -9999 };
 
-  // Image cache for avatar thumbnails
+  // Image cache
   const imageCache = new Map();
 
-  // ── Micro-Card Dimensions ────────────────────────────────────
-  const CARD_W = 146;
-  const CARD_H = 46;
-  const CARD_R = 14;
+  // Rectangular Thumbnail Base Dimensions
+  const THUMB_W = 72;
+  const THUMB_H = 52;
+  const THUMB_R = 4;
 
   // ── Fabric Wave Distortion State ─────────────────────────────
   const fabricWave = {
     active: false,
     startTime: 0,
-    duration: 3200,      // ms
-    centerX: 0,          // in world coordinates
+    duration: 2800,
+    centerX: 0,
     centerY: 0,
-    amplitude: 40,       // max distortion offset
-    frequency: 0.012,    // wave frequency
-    speed: 520,          // ripple propagation speed
+    amplitude: 30,
+    frequency: 0.012,
+    speed: 500,
   };
 
   // ── Resize Handler ───────────────────────────────────────────
@@ -119,12 +107,12 @@ export function initScene(canvas) {
 
   // ── Fabric Wave Displacement Offset ──────────────────────────
   function getWaveOffset(wx, wy, now) {
-    if (!fabricWave.active) return { dx: 0, dy: 0, intensity: 0 };
+    if (!fabricWave.active) return { dx: 0, dy: 0 };
 
     const elapsed = now - fabricWave.startTime;
     if (elapsed > fabricWave.duration) {
       fabricWave.active = false;
-      return { dx: 0, dy: 0, intensity: 0 };
+      return { dx: 0, dy: 0 };
     }
 
     const progress = elapsed / fabricWave.duration;
@@ -141,7 +129,6 @@ export function initScene(canvas) {
     return {
       dx: Math.cos(angle) * amp,
       dy: Math.sin(angle) * amp,
-      intensity: Math.abs(ripple) * envelope,
     };
   }
 
@@ -153,11 +140,10 @@ export function initScene(canvas) {
     fabricWave.centerY = originY;
   }
 
-  // ── Memory Node Creation & Caching ───────────────────────────
+  // ── Sync & Populate Memories ─────────────────────────────────
   function setMemories(memoriesList) {
     memories = memoriesList || [];
 
-    // Preload image thumbnails
     memories.forEach((m) => {
       if (m.media_type === 'image' && m.media_url && !imageCache.has(m.media_url)) {
         const img = new Image();
@@ -175,12 +161,9 @@ export function initScene(canvas) {
       }
 
       const angle = (index / Math.max(1, memories.length)) * Math.PI * 2;
-      const radius = 220 + (index % 4) * 90;
+      const radius = 220 + (index % 4) * 85;
       const initX = Math.cos(angle) * radius;
       const initY = Math.sin(angle) * radius;
-
-      const primaryTag = (m.tags && m.tags[0]) || 'General';
-      const palette = THEME_PALETTE[primaryTag] || THEME_PALETTE.Default;
 
       return {
         id: m.id || `node-${index}`,
@@ -189,17 +172,15 @@ export function initScene(canvas) {
         y: initY,
         targetX: initX,
         targetY: initY,
-        vx: (Math.random() - 0.5) * 0.28,
-        vy: (Math.random() - 0.5) * 0.28,
-        w: CARD_W,
-        h: CARD_H,
-        radius: CARD_R,
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        w: THUMB_W,
+        h: THUMB_H,
+        radius: THUMB_R,
         scale: 0.2,
         targetScale: 1.0,
         alpha: 1.0,
-        primaryTag,
-        color: palette.primary,
-        tint: palette.tint,
+        primaryTag: (m.tags && m.tags[0]) || 'Generale',
       };
     });
 
@@ -216,28 +197,22 @@ export function initScene(canvas) {
       img.onload = () => imageCache.set(newMem.media_url, img);
     }
 
-    const primaryTag = (newMem.tags && newMem.tags[0]) || 'General';
-    const palette = THEME_PALETTE[primaryTag] || THEME_PALETTE.Default;
-
     const newNode = {
       id: newMem.id || `node-${Date.now()}`,
       memory: newMem,
-      x: camera.x + (Math.random() - 0.5) * 80,
-      y: camera.y + (Math.random() - 0.5) * 80,
+      x: camera.x + (Math.random() - 0.5) * 70,
+      y: camera.y + (Math.random() - 0.5) * 70,
       targetX: 0,
       targetY: 0,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      w: CARD_W,
-      h: CARD_H,
-      radius: CARD_R,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      w: THUMB_W,
+      h: THUMB_H,
+      radius: THUMB_R,
       scale: 0.1,
       targetScale: 1.15,
       alpha: 1.0,
-      primaryTag,
-      color: palette.primary,
-      tint: palette.tint,
-      isBrandNew: true,
+      primaryTag: (newMem.tags && newMem.tags[0]) || 'Generale',
     };
 
     nodes.unshift(newNode);
@@ -245,7 +220,7 @@ export function initScene(canvas) {
     triggerFabricWave(newNode.x, newNode.y);
   }
 
-  // ── Calculate Layout Target Positions ────────────────────────
+  // ── Calculate Target Positions for Layouts ───────────────────
   function recalculateLayoutTargets() {
     if (!nodes.length) return;
 
@@ -254,7 +229,7 @@ export function initScene(canvas) {
         const count = nodes.length;
         nodes.forEach((node, i) => {
           const phi = (i / count) * Math.PI * 2;
-          const dist = 240 + ((i * 53) % 360);
+          const dist = 230 + ((i * 59) % 360);
           node.targetX = Math.cos(phi) * dist;
           node.targetY = Math.sin(phi) * dist * 0.72;
           node.targetScale = 1.0;
@@ -275,13 +250,13 @@ export function initScene(canvas) {
 
         tagGroups.forEach((groupNodes) => {
           const clusterAngle = (clusterIdx / numClusters) * Math.PI * 2;
-          const clusterDist = 440;
+          const clusterDist = 430;
           const cx = Math.cos(clusterAngle) * clusterDist;
-          const cy = Math.sin(clusterAngle) * clusterDist * 0.8;
+          const cy = Math.sin(clusterAngle) * clusterDist * 0.78;
 
           groupNodes.forEach((node, ni) => {
             const subAngle = (ni / groupNodes.length) * Math.PI * 2;
-            const subDist = 70 + Math.floor(ni / 5) * 80;
+            const subDist = 65 + Math.floor(ni / 5) * 75;
             node.targetX = cx + Math.cos(subAngle) * subDist;
             node.targetY = cy + Math.sin(subAngle) * subDist;
             node.targetScale = 1.0;
@@ -302,7 +277,7 @@ export function initScene(canvas) {
           roomCounts[loc] = count + 1;
 
           const spiralAngle = count * 1.5;
-          const spiralDist = Math.min(room.w, room.h) * 0.26 * Math.sqrt(count + 1);
+          const spiralDist = Math.min(room.w, room.h) * 0.25 * Math.sqrt(count + 1);
           node.targetX = room.x + Math.cos(spiralAngle) * spiralDist;
           node.targetY = room.y + Math.sin(spiralAngle) * spiralDist;
           node.targetScale = 0.95;
@@ -317,14 +292,14 @@ export function initScene(canvas) {
           return tA.localeCompare(tB);
         });
 
-        const spacingX = 180;
+        const spacingX = 140;
         const totalW = sorted.length * spacingX;
         const startX = -totalW / 2;
 
         sorted.forEach((node, i) => {
           node.targetX = startX + i * spacingX;
           const sign = i % 2 === 0 ? 1 : -1;
-          const stemLength = 110 + ((i * 37) % 85);
+          const stemLength = 100 + ((i * 37) % 80);
           node.targetY = sign * stemLength;
           node.targetScale = 1.0;
         });
@@ -332,8 +307,8 @@ export function initScene(canvas) {
       }
 
       case 'griglia': {
-        const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.6)));
-        const cellW = 190;
+        const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.5)));
+        const cellW = 120;
         const cellH = 90;
         const rows = Math.ceil(nodes.length / cols);
         const startX = -((cols - 1) * cellW) / 2;
@@ -388,7 +363,7 @@ export function initScene(canvas) {
     pointerScreen.y = sy;
   }
 
-  // ── Hit-Testing (Micro-Card Bounds) ──────────────────────────
+  // ── Hit-Testing (Thumbnail Bounds) ───────────────────────────
   function hitTest(screenX, screenY) {
     const worldP = screenToWorld(screenX, screenY);
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -396,12 +371,11 @@ export function initScene(canvas) {
       const halfW = (n.w * n.scale) / 2;
       const halfH = (n.h * n.scale) / 2;
 
-      // Card bounding box hit test with generous buffer
       if (
-        worldP.x >= n.x - halfW - 10 &&
-        worldP.x <= n.x + halfW + 10 &&
-        worldP.y >= n.y - halfH - 10 &&
-        worldP.y <= n.y + halfH + 10
+        worldP.x >= n.x - halfW - 8 &&
+        worldP.x <= n.x + halfW + 8 &&
+        worldP.y >= n.y - halfH - 8 &&
+        worldP.y <= n.y + halfH + 8
       ) {
         return n;
       }
@@ -426,7 +400,7 @@ export function initScene(canvas) {
       node.x += (node.targetX - node.x) * 0.085;
       node.y += (node.targetY - node.y) * 0.085;
 
-      const targetS = (hoveredNode === node) ? node.targetScale * 1.25 : node.targetScale;
+      const targetS = (hoveredNode === node) ? node.targetScale * 1.20 : node.targetScale;
       node.scale += (targetS - node.scale) * 0.16;
 
       const matches = isNodeMatchingFilter(node);
@@ -449,8 +423,8 @@ export function initScene(canvas) {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
-    // Deep Dark Slate background fill (#0B0D10)
-    ctx.fillStyle = '#0B0D10';
+    // Deep clean solid dark background (#08080A)
+    ctx.fillStyle = '#08080A';
     ctx.fillRect(0, 0, width, height);
 
     // Camera transform
@@ -458,130 +432,69 @@ export function initScene(canvas) {
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
-    // 1. Technical Exhibition Coordinates & Ambient Grid
-    drawExhibitionGrid(now);
-
-    // 2. Layout-specific structures
+    // 1. Layout-specific subtle guides
     if (currentLayout === 'planimetria') {
-      drawPlanimetriaBlueprint();
+      drawPlanimetriaGuides();
     } else if (currentLayout === 'timeline') {
-      drawTimelineRibbon();
+      drawTimelineGuides();
     } else if (currentLayout === 'cluster') {
-      drawClusterBlobs(now);
+      drawClusterGuides();
     }
 
-    // 3. Ultra-fine Glowing Filaments with Traveling Particles
+    // 2. Ultra-thin clean neutral filaments
     drawFilaments(now);
 
-    // 4. Render Micro-Cards (Nodes)
-    drawMicroCards(now);
+    // 3. Clean rectangular photo/audio thumbnails
+    drawThumbnails(now);
 
     ctx.restore();
     requestAnimationFrame(render);
   }
 
-  // ── Exhibition Blueprint Grid ────────────────────────────────
-  function drawExhibitionGrid(now) {
-    const gridSize = 120;
-    const halfSpan = 1600;
-
-    ctx.save();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.022)';
-
-    for (let x = -halfSpan; x <= halfSpan; x += gridSize) {
-      ctx.beginPath();
-      for (let y = -halfSpan; y <= halfSpan; y += 45) {
-        const offset = getWaveOffset(x, y, now);
-        const px = x + offset.dx;
-        const py = y + offset.dy;
-        if (y === -halfSpan) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    }
-
-    // Wave ripple concentric rings
-    if (fabricWave.active) {
-      const elapsed = now - fabricWave.startTime;
-      const progress = elapsed / fabricWave.duration;
-      const rippleRadius = elapsed * (fabricWave.speed / 1000);
-      const alpha = Math.sin(progress * Math.PI) * 0.35;
-
-      ctx.beginPath();
-      ctx.arc(fabricWave.centerX, fabricWave.centerY, rippleRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(180, 212, 192, ${alpha})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }
-
-  // ── Planimetria Architectural Floorplan ───────────────────────
-  function drawPlanimetriaBlueprint() {
+  // ── Planimetria Minimal Guides ───────────────────────────────
+  function drawPlanimetriaGuides() {
     ctx.save();
     Object.entries(HOUSE_ROOMS).forEach(([key, room]) => {
       const rx = room.x - room.w / 2;
       const ry = room.y - room.h / 2;
 
-      // Soft slate glass fill
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.018)';
-      ctx.beginPath();
-      ctx.roundRect(rx, ry, room.w, room.h, 16);
-      ctx.fill();
-
-      // Technical boundary line
-      ctx.strokeStyle = 'rgba(203, 227, 214, 0.20)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
-      ctx.stroke();
+      ctx.strokeRect(rx, ry, room.w, room.h);
       ctx.setLineDash([]);
 
-      // Room Tag & Label (Space Grotesk style)
-      ctx.fillStyle = '#B4D4C0';
-      ctx.font = '600 10px "Space Grotesk", monospace';
-      ctx.fillText(`// ROOM ${room.tag}`, rx + 18, ry + 24);
-
-      ctx.fillStyle = '#F2F4F7';
-      ctx.font = '500 12px "Space Grotesk", sans-serif';
-      ctx.fillText(room.label, rx + 18, ry + 42);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.font = '500 11px "Inter", sans-serif';
+      ctx.fillText(room.label, rx + 14, ry + 22);
     });
     ctx.restore();
   }
 
-  // ── Timeline Ribbon ──────────────────────────────────────────
-  function drawTimelineRibbon() {
+  // ── Timeline Minimal Guides ──────────────────────────────────
+  function drawTimelineGuides() {
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(-1400, 0);
     ctx.lineTo(1400, 0);
-    ctx.strokeStyle = 'rgba(203, 227, 214, 0.3)';
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1;
     ctx.stroke();
-
-    // Ticks & stems
-    for (let x = -1300; x <= 1300; x += 180) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.fillRect(x - 1, -6, 2, 12);
-    }
 
     nodes.forEach((n) => {
       ctx.beginPath();
       ctx.moveTo(n.x, 0);
       ctx.lineTo(n.x, n.y);
-      ctx.strokeStyle = 'rgba(203, 227, 214, 0.18)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.setLineDash([2, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
     });
-
     ctx.restore();
   }
 
-  // ── Cluster Organic Boundary Blobs ───────────────────────────
-  function drawClusterBlobs(now) {
+  // ── Cluster Minimal Guides ───────────────────────────────────
+  function drawClusterGuides() {
     const tagGroups = new Map();
     nodes.forEach((n) => {
       const t = n.primaryTag;
@@ -597,41 +510,26 @@ export function initScene(canvas) {
       avgX /= groupNodes.length;
       avgY /= groupNodes.length;
 
-      const palette = THEME_PALETTE[tag] || THEME_PALETTE.Default;
-      const baseRadius = 140 + groupNodes.length * 15;
+      const radius = 130 + groupNodes.length * 12;
 
-      // Draw multi-layered organic blob with harmonic oscillation
       ctx.beginPath();
-      const points = 12;
-      for (let i = 0; i < points; i++) {
-        const theta = (i / points) * Math.PI * 2;
-        const wobble = Math.sin(theta * 3 + now * 0.001) * 12 + Math.cos(theta * 2 - now * 0.0008) * 8;
-        const r = baseRadius + wobble;
-        const px = avgX + Math.cos(theta) * r;
-        const py = avgY + Math.sin(theta) * r;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-
-      ctx.fillStyle = palette.tint;
-      ctx.fill();
-      ctx.strokeStyle = `${palette.primary}44`;
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([6, 6]);
+      ctx.arc(avgX, avgY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Cluster Tag Title
-      ctx.fillStyle = palette.primary;
-      ctx.font = '600 12px "Space Grotesk", sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.font = '500 11px "Inter", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`✦ ${tag.toUpperCase()} ARCHIVE`, avgX, avgY - baseRadius - 16);
+      ctx.fillText(tag, avgX, avgY - radius - 10);
     });
     ctx.restore();
   }
 
-  // ── Ultra-Thin Glowing Filaments & Traveling Particles ───────
+  // ── Ultra-Thin Clean Neutral Filaments ───────────────────────
+  // Exactly as in 'images_connection.jpg' — fine, minimal, elegant lines
   function drawFilaments(now) {
     if (nodes.length < 2) return;
 
@@ -659,28 +557,15 @@ export function initScene(canvas) {
             const x2 = n2.x + wave2.dx;
             const y2 = n2.y + wave2.dy;
 
-            const midX = (x1 + x2) / 2 + Math.sin(now * 0.0018 + i) * 14;
-            const midY = (y1 + y2) / 2 + Math.cos(now * 0.0018 + j) * 14;
-
             const baseAlpha = Math.min(n1.alpha, n2.alpha) * (1 - Math.min(1, dist / 520));
 
-            // Ultra-fine filament line
+            // Ultra-fine neutral line
             ctx.beginPath();
             ctx.moveTo(x1, y1);
-            ctx.quadraticCurveTo(midX, midY, x2, y2);
-            ctx.strokeStyle = `rgba(180, 212, 192, ${baseAlpha * 0.24})`;
-            ctx.lineWidth = 1.0;
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha * 0.14})`;
+            ctx.lineWidth = 0.9;
             ctx.stroke();
-
-            // Traveling micro-particle
-            const t = ((now * 0.00045 + i * 0.25) % 1);
-            const px = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * midX + t * t * x2;
-            const py = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * midY + t * t * y2;
-
-            ctx.beginPath();
-            ctx.arc(px, py, 2.0, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(203, 227, 214, ${baseAlpha * 0.85})`;
-            ctx.fill();
           }
         }
       }
@@ -688,8 +573,8 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Render Micro-Cards (Nodes) ───────────────────────────────
-  function drawMicroCards(now) {
+  // ── Rectangular Thumbnails (Nodes) ───────────────────────────
+  function drawThumbnails(now) {
     nodes.forEach((node) => {
       ctx.save();
       ctx.globalAlpha = node.alpha;
@@ -706,128 +591,81 @@ export function initScene(canvas) {
       const x0 = nx - w / 2;
       const y0 = ny - h / 2;
 
-      // 1. Soft Glow on Hover
-      if (isHover) {
-        const glowPad = 16;
-        const grad = ctx.createRadialGradient(nx, ny, h * 0.5, nx, ny, w * 0.8);
-        grad.addColorStop(0, 'rgba(180, 212, 192, 0.35)');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(x0 - glowPad, y0 - glowPad, w + glowPad * 2, h + glowPad * 2, r + glowPad);
-        ctx.fill();
-      }
-
-      // 2. Translucent Glassmorphic Card Body
-      ctx.beginPath();
-      ctx.roundRect(x0, y0, w, h, r);
-      ctx.fillStyle = isHover ? 'rgba(20, 24, 30, 0.94)' : 'rgba(15, 18, 24, 0.82)';
-      ctx.fill();
-
-      // Card border (Sage on hover, subtle translucent otherwise)
-      ctx.strokeStyle = isHover ? '#B4D4C0' : 'rgba(255, 255, 255, 0.09)';
-      ctx.lineWidth = isHover ? 1.8 : 1.0;
-      ctx.stroke();
-
-      // 3. Media Thumbnail (Left Slot)
-      const thumbSize = 32 * node.scale;
-      const thumbPad = 7 * node.scale;
-      const tx = x0 + thumbPad;
-      const ty = y0 + (h - thumbSize) / 2;
-      const tr = 8 * node.scale;
-
+      // Draw rectangular thumbnail content
       if (node.memory.media_type === 'image' && node.memory.media_url && imageCache.has(node.memory.media_url)) {
         const img = imageCache.get(node.memory.media_url);
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(tx, ty, thumbSize, thumbSize, tr);
+        ctx.roundRect(x0, y0, w, h, r);
         ctx.clip();
-        ctx.drawImage(img, tx, ty, thumbSize, thumbSize);
+        ctx.drawImage(img, x0, y0, w, h);
         ctx.restore();
       } else {
-        // Audio glyph slot
-        ctx.save();
+        // Audio node: clean dark slate tile with musical glyph
         ctx.beginPath();
-        ctx.roundRect(tx, ty, thumbSize, thumbSize, tr);
-        ctx.fillStyle = 'rgba(180, 212, 192, 0.15)';
+        ctx.roundRect(x0, y0, w, h, r);
+        ctx.fillStyle = '#14161B';
         ctx.fill();
 
-        ctx.fillStyle = '#B4D4C0';
-        ctx.font = `600 ${Math.round(14 * node.scale)}px sans-serif`;
+        ctx.fillStyle = '#8E929B';
+        ctx.font = `500 ${Math.round(18 * node.scale)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('♪', tx + thumbSize / 2, ty + thumbSize / 2);
-        ctx.restore();
+        ctx.fillText('♪', nx, ny);
       }
 
-      // 4. Title & Meta Text (Right Slot)
-      const textX = tx + thumbSize + 8 * node.scale;
-      const titleY = y0 + h * 0.42;
+      // Thin neat border
+      ctx.beginPath();
+      ctx.roundRect(x0, y0, w, h, r);
+      ctx.strokeStyle = isHover ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = isHover ? 1.5 : 1.0;
+      ctx.stroke();
 
-      ctx.fillStyle = '#F2F4F7';
-      ctx.font = `500 ${Math.round(11 * node.scale)}px "Space Grotesk", sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-
-      // Truncate title cleanly
-      const rawTitle = node.memory.title || 'Memoria Stoà';
-      const maxChars = isHover ? 18 : 13;
-      const displayTitle = rawTitle.length > maxChars ? `${rawTitle.slice(0, maxChars)}…` : rawTitle;
-      ctx.fillText(displayTitle, textX, titleY);
-
-      // Sub-tag or Location
-      const subY = y0 + h * 0.72;
-      ctx.fillStyle = node.color;
-      ctx.font = `500 ${Math.round(9 * node.scale)}px "Inter", sans-serif`;
-      const subText = isHover && node.memory.location_tag
-        ? `📍 ${node.memory.location_tag}`
-        : `✦ ${node.primaryTag}`;
-      ctx.fillText(subText, textX, subY);
-
-      // 5. Extended Metadata Pill on Hover
+      // Hover: Clean minimal tooltip showing title
       if (isHover) {
-        drawHoverMetadataPill(node, nx, y0 + h + 8 * node.scale);
+        drawMinimalHoverTitle(node, nx, y0 + h + 10 * node.scale);
       }
 
       ctx.restore();
     });
   }
 
-  // ── Hover Secondary Metadata Tag ─────────────────────────────
-  function drawHoverMetadataPill(node, cx, topY) {
-    const loc = node.memory.location_tag ? `📍 ${node.memory.location_tag}` : '📍 Stoà';
-    const time = node.memory.time_event ? `⏱️ ${node.memory.time_event}` : '';
-    const label = time ? `${loc}  ·  ${time}` : loc;
+  // ── Minimal Hover Tooltip ────────────────────────────────────
+  function drawMinimalHoverTitle(node, cx, topY) {
+    const title = node.memory.title || 'Ricordo';
+    const loc = node.memory.location_tag ? ` · ${node.memory.location_tag}` : '';
+    const text = `${title}${loc}`;
 
     ctx.save();
-    ctx.font = '500 10px "Inter", sans-serif';
-    const textW = ctx.measureText(label).width;
-    const pillW = textW + 16;
-    const pillH = 22;
+    ctx.font = '500 11px "Inter", sans-serif';
+    const textW = ctx.measureText(text).width;
+    const boxW = textW + 16;
+    const boxH = 24;
 
-    const px = cx - pillW / 2;
-    const py = topY;
+    const bx = cx - boxW / 2;
+    const by = topY;
 
-    ctx.fillStyle = 'rgba(11, 13, 16, 0.94)';
+    // Dark solid pill
+    ctx.fillStyle = 'rgba(8, 8, 10, 0.92)';
     ctx.beginPath();
-    ctx.roundRect(px, py, pillW, pillH, 6);
+    ctx.roundRect(bx, by, boxW, boxH, 4);
     ctx.fill();
 
-    ctx.strokeStyle = '#B4D4C0';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#CBE3D6';
+    ctx.fillStyle = '#EDEDED';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, cx, py + pillH / 2);
+    ctx.fillText(text, cx, by + boxH / 2);
+
     ctx.restore();
   }
 
   // Start rendering loop
   requestAnimationFrame(render);
 
-  // Return public API
   return {
     setLayout,
     setFilter,
