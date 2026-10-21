@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Memory Mesh — Condividi un ricordo per l'installazione interattiva del centro giovanile." />
+  <title>Memory Mesh · Invia un ricordo</title>
+
+  <!-- Google Fonts — Inter (geometric sans-serif) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════════════════
+       STEP 1 — Overview: progetto & tipologie di ricordi
+       ════════════════════════════════════════════════════════════ -->
+  <section id="step-overview" class="step step--active" aria-label="Panoramica progetto">
+    <div class="step__inner">
+
+      <!-- Header -->
+      <header class="header">
+        <div class="logo" aria-label="Memory Mesh">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <path d="M18 3L33 18L18 33L3 18Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M18 10L26 18L18 26L10 18Z" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="18" cy="18" r="2" fill="currentColor"/>
+            <line x1="18" y1="3" x2="18" y2="10" stroke="currentColor" stroke-width="1"/>
+            <line x1="18" y1="26" x2="18" y2="33" stroke="currentColor" stroke-width="1"/>
+            <line x1="3" y1="18" x2="10" y2="18" stroke="currentColor" stroke-width="1"/>
+            <line x1="26" y1="18" x2="33" y2="18" stroke="currentColor" stroke-width="1"/>
+          </svg>
+        </div>
+        <button class="header__menu" aria-label="Menu" type="button">
+          <span></span><span></span><span></span>
+        </button>
+      </header>
+
+      <!-- Hero Typography -->
+      <section class="hero">
+        <h1 class="hero__title">
+          Memory Mesh è un
+          <span class="text-accent">archivio relazionale e generativo</span>
+          che raccoglie le tracce e le memorie del centro giovanile in una
+          <span class="text-accent">costellazione interattiva</span>
+          esplorabile a mezz'aria.
+        </h1>
+      </section>
+
+      <!-- Bento Cards -->
+      <section class="cards" aria-label="Informazioni">
+
+        <!-- Card 1 — Ricordi ammessi -->
+        <article class="card card--lime">
+          <div class="card__badge">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M10 2v16M2 10h16M4.2 4.2l11.6 11.6M15.8 4.2L4.2 15.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h2 class="card__title">Ricordi ammessi</h2>
+          <p class="card__desc">
+            Puoi condividere <strong>immagini</strong> (JPEG, PNG, WebP) e
+            <strong>registrazioni vocali</strong> o note audio.
+            I file vengono ottimizzati automaticamente per garantire
+            la migliore qualità nell'installazione.
+          </p>
+        </article>
+
+        <!-- Card 2 — La rete visiva -->
+        <article class="card card--sage">
+          <div class="card__badge">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M3 15L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M9 3h6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 15H3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2 class="card__title">La rete visiva</h2>
+          <p class="card__desc">
+            I contenuti inviati entrano a far parte della rete visiva pubblica
+            dell'installazione, collegati fra loro attraverso tag tematici
+            ed echi temporali.
+          </p>
+        </article>
+
+        <!-- Card 3 — Privacy & etica -->
+        <article class="card card--dark">
+          <div class="card__badge">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>
+              <rect x="7" y="7" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <h2 class="card__title">Privacy & etica</h2>
+          <p class="card__desc">
+            I ricordi saranno visibili pubblicamente sull'installazione
+            a scopo culturale e comunitario, senza alcun fine commerciale.
+          </p>
+        </article>
+      </section>
+
+      <!-- CTA -->
+      <button class="cta" id="btn-start" type="button">
+        <span>Aggiungi la tua memoria</span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M4 10h12M12 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       STEP 2 — Form di inserimento & caricamento
+       ════════════════════════════════════════════════════════════ -->
+  <section id="step-form" class="step step--next" aria-label="Inserisci ricordo">
+    <div class="step__inner">
+
+      <!-- Header con back -->
+      <header class="header header--form">
+        <button class="header__back" id="btn-back" type="button" aria-label="Torna indietro">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M16 10H4M9 5L4 10l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span class="header__title">Nuovo ricordo</span>
+        <div class="header__spacer"></div>
+      </header>
+
+      <form id="memory-form" class="form" novalidate>
+
+        <!-- 1. Upload multimediale -->
+        <div class="field" id="field-file">
+          <label class="field__label">File multimediale</label>
+          <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Carica un file">
+            <div class="dropzone__empty" id="dropzone-empty">
+              <svg class="dropzone__icon" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <rect x="4" y="4" width="32" height="32" rx="8" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <path d="M20 14v12M14 20h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <p class="dropzone__text">Tocca per caricare</p>
+              <p class="dropzone__hint">Immagine o audio · Max 10 MB</p>
+            </div>
+            <div class="dropzone__preview" id="dropzone-preview" hidden>
+              <img id="preview-img" class="dropzone__img" alt="Anteprima" />
+              <div id="preview-audio-wrap" class="dropzone__audio" hidden>
+                <div class="dropzone__audio-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+                </div>
+                <p id="preview-audio-name" class="dropzone__audio-name"></p>
+                <audio id="preview-audio" controls></audio>
+              </div>
+              <button type="button" class="dropzone__remove" id="btn-remove-file">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Rimuovi
+              </button>
+            </div>
+          </div>
+          <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4" hidden />
+          <p class="field__error" id="error-file" hidden>Seleziona un file da caricare.</p>
+        </div>
+
+        <!-- 2. Titolo -->
+        <div class="field" id="field-title">
+          <label class="field__label" for="memory-title">Titolo della memoria</label>
+          <div class="field__wrap">
+            <input type="text" id="memory-title" class="field__input" placeholder="Es. Tramonto sul terrazzo" autocomplete="off" />
+            <span class="field__counter" id="title-counter">0 / 5</span>
+          </div>
+          <p class="field__error" id="error-title" hidden>Il titolo può avere al massimo 5 parole.</p>
+        </div>
+
+        <!-- 3. Descrizione -->
+        <div class="field">
+          <label class="field__label" for="memory-desc">Descrizione breve</label>
+          <textarea id="memory-desc" class="field__textarea" rows="3" placeholder="Racconta brevemente questo ricordo…"></textarea>
+        </div>
+
+        <!-- 4. Tag tematici -->
+        <div class="field">
+          <label class="field__label">Tag tematici <small class="field__hint">(max 3)</small></label>
+          <div class="chips" id="theme-chips">
+            <button type="button" class="chip" data-tag="Design">Design</button>
+            <button type="button" class="chip" data-tag="Musica">Musica</button>
+            <button type="button" class="chip" data-tag="Laboratorio">Laboratorio</button>
+            <button type="button" class="chip" data-tag="Sport">Sport</button>
+            <button type="button" class="chip" data-tag="Talk">Talk</button>
+            <button type="button" class="chip" data-tag="Social">Social</button>
+            <button type="button" class="chip" data-tag="Relax">Relax</button>
+          </div>
+        </div>
+
+        <!-- 5. Luogo -->
+        <div class="field">
+          <label class="field__label">Luogo della casa</label>
+          <div class="chips chips--single" id="location-chips">
+            <button type="button" class="chip" data-location="Salone">Salone</button>
+            <button type="button" class="chip" data-location="Giardino">Giardino</button>
+            <button type="button" class="chip" data-location="Cucina">Cucina</button>
+            <button type="button" class="chip" data-location="Terrazza">Terrazza</button>
+            <button type="button" class="chip" data-location="Portico">Portico</button>
+            <button type="button" class="chip" data-location="Sala Studio">Sala Studio</button>
+          </div>
+        </div>
+
+        <!-- 6. Orario -->
+        <div class="field">
+          <label class="field__label" for="memory-time">Orario del ricordo</label>
+          <input type="text" id="memory-time" class="field__input" placeholder="Es. 18:30, Tramonto, Notte…" autocomplete="off" />
+        </div>
+
+        <!-- 7. Consenso privacy -->
+        <div class="field consent">
+          <label class="consent__label" for="privacy-consent">
+            <input type="checkbox" id="privacy-consent" class="consent__input" />
+            <span class="consent__box" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="consent__text">
+              Dichiaro di avere il consenso delle persone ritratte e autorizzo
+              la proiezione pubblica nell'installazione Memory Mesh.
+            </span>
+          </label>
+        </div>
+
+        <!-- 8. Submit -->
+        <button type="submit" class="cta cta--submit" id="btn-submit" disabled>
+          <span class="cta__label" id="submit-label">Invia il ricordo</span>
+          <span class="cta__loading" id="submit-loading" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            Compressione e trasmissione in corso…
+          </span>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SUCCESS OVERLAY
+       ════════════════════════════════════════════════════════════ -->
+  <div id="success-overlay" class="overlay" hidden aria-live="polite">
+    <div class="overlay__content">
+      <div class="overlay__icon">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2"/>
+          <path d="M14 24.5l7 7 13-15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2 class="overlay__title">La tua memoria è entrata nella rete!</h2>
+      <p class="overlay__desc">Il tuo ricordo è ora parte della costellazione di Memory Mesh.</p>
+      <button class="cta cta--outline" id="btn-new" type="button">Invia un altro ricordo</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

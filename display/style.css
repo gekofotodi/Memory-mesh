@@ -1,0 +1,24 @@
+/* ── Display App · Base Styles ─────────────────────────────── */
+
+/* Reset */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  cursor: none;         /* kiosk mode — nasconde il cursore */
+}
+
+#scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
