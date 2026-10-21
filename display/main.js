@@ -13,6 +13,7 @@
 import { supabase } from '../shared/supabase-config.js';
 import { initTracking } from './tracking.js';
 import { initScene } from './scene.js';
+import { initWheelMenu } from './wheelMenu.js';
 
 // ── Fallback Memories (Centro Giovanile Stoà) ───────────────────
 // Displayed when database is empty or offline so the kiosk is vibrant
@@ -178,6 +179,8 @@ const state = {
   memories: [],
   scene: null,
   tracking: null,
+  leftWheel: null,
+  rightWheel: null,
   activeModal: null, // 'info' | 'detail' | null
   cursorX: window.innerWidth / 2,
   cursorY: window.innerHeight / 2,
@@ -197,10 +200,27 @@ async function init() {
   // 3. Bind UI interactions (Wheel menus, modals, click fallbacks)
   bindUIEvents();
 
-  // 4. Fetch initial memories from Supabase
+  // 4. Initialise 2D Semicircle Wheel Menus
+  state.leftWheel = initWheelMenu({
+    container: els.wheelLeft,
+    itemsSelector: '.wheel-btn',
+    valueAttr: 'data-layout',
+    side: 'left',
+    onSelect: (layout) => activateLayout(layout, false),
+  });
+
+  state.rightWheel = initWheelMenu({
+    container: els.wheelRight,
+    itemsSelector: '.wheel-btn',
+    valueAttr: 'data-filter',
+    side: 'right',
+    onSelect: (filter) => activateFilter(filter, false),
+  });
+
+  // 5. Fetch initial memories from Supabase
   await loadMemories();
 
-  // 5. Subscribe to Real-Time Supabase INSERT events
+  // 6. Subscribe to Real-Time Supabase INSERT events
   setupRealtimeSubscription();
 
   console.log('[display] Ready and listening.');
@@ -504,15 +524,21 @@ function bindUIEvents() {
 }
 
 // ── Layout & Filter Switching ──────────────────────────────────
-function activateLayout(layoutName) {
+function activateLayout(layoutName, syncWheel = true) {
   els.wheelLeftBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.layout === layoutName));
   state.scene.setLayout(layoutName);
+  if (syncWheel && state.leftWheel) {
+    state.leftWheel.setActiveByValue(layoutName);
+  }
   console.log('[display] Layout switched to:', layoutName);
 }
 
-function activateFilter(filterName) {
+function activateFilter(filterName, syncWheel = true) {
   els.wheelRightBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.filter === filterName));
   state.scene.setFilter(filterName);
+  if (syncWheel && state.rightWheel) {
+    state.rightWheel.setActiveByValue(filterName);
+  }
   console.log('[display] Filter switched to:', filterName);
 }
 
