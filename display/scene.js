@@ -158,7 +158,7 @@ export function initScene(canvas) {
     memories = memoriesList || [];
 
     memories.forEach((m) => {
-      if (m.media_type === 'image' && m.media_url && !imageCache.has(m.media_url)) {
+      if ((m.media_type === 'image' || m.media_type === 'text') && m.media_url && !imageCache.has(m.media_url)) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.src = m.media_url;
@@ -207,7 +207,7 @@ export function initScene(canvas) {
   function addMemory(newMem) {
     memories.unshift(newMem);
 
-    if (newMem.media_type === 'image' && newMem.media_url) {
+    if ((newMem.media_type === 'image' || newMem.media_type === 'text') && newMem.media_url) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = newMem.media_url;
@@ -360,8 +360,10 @@ export function initScene(canvas) {
 
   function isNodeMatchingFilter(node) {
     if (currentFilter === 'all') return true;
-    if (currentFilter === 'type-image') return node.memory.media_type === 'image';
-    if (currentFilter === 'type-audio') return node.memory.media_type === 'audio';
+    if (currentFilter === 'foto' || currentFilter === 'type-image') return node.memory.media_type === 'image';
+    if (currentFilter === 'audio' || currentFilter === 'type-audio') return node.memory.media_type === 'audio';
+    if (currentFilter === 'video') return node.memory.media_type === 'video';
+    if (currentFilter === 'testo') return node.memory.media_type === 'text';
     if (currentFilter.startsWith('tag-')) {
       const tag = currentFilter.replace('tag-', '');
       return Array.isArray(node.memory.tags) && node.memory.tags.includes(tag);
@@ -650,7 +652,7 @@ export function initScene(canvas) {
       ctx.shadowColor = 'transparent';
 
       // Draw media thumbnail
-      if (node.memory.media_type === 'image' && node.memory.media_url && imageCache.has(node.memory.media_url)) {
+      if ((node.memory.media_type === 'image' || node.memory.media_type === 'text') && node.memory.media_url && imageCache.has(node.memory.media_url)) {
         const img = imageCache.get(node.memory.media_url);
         ctx.save();
         ctx.beginPath();
@@ -659,12 +661,12 @@ export function initScene(canvas) {
         ctx.drawImage(img, x0 + 1.5, y0 + 1.5, w - 3, h - 3);
         ctx.restore();
       } else {
-        // Audio node: clean white card with charcoal glyph
+        const glyph = node.memory.media_type === 'audio' ? '♪' : node.memory.media_type === 'video' ? '▶' : '“';
         ctx.fillStyle = '#111111';
         ctx.font = `600 ${Math.round(18 * node.scale)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('♪', nx, ny);
+        ctx.fillText(glyph, nx, ny);
       }
 
       // Crisp White Border + Hairline

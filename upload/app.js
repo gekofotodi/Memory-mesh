@@ -19,18 +19,16 @@ const IMAGE_QUALITY_START = 0.8;
 const IMAGE_QUALITY_MIN = 0.3;
 const IMAGE_QUALITY_STEP = 0.1;
 const MAX_FILE_BYTES = 1024 * 1024;        // 1 MB target for images
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB raw input limit
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB strict limit for video, audio, 3D
 const MAX_TITLE_WORDS = 5;
 const MAX_THEME_TAGS = 3;
 
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4'];
-
 // ── State ──────────────────────────────────────────────────────
 const state = {
+  mode: 'file',         // 'file' | 'text'
   file: null,           // processed File ready for upload
   originalFile: null,   // original File from input
-  mediaType: null,      // 'image' | 'audio'
+  mediaType: null,      // 'image' | 'video' | 'audio' | 'model3d' | 'text'
   themeTags: [],        // string[]  (max 3)
   locationTag: null,    // string | null
 };
@@ -48,17 +46,30 @@ const els = {
   btnStart: $('#btn-start'),
   btnBack:  $('#btn-back'),
 
-  // Dropzone
+  // Media Mode Switcher
+  tabModeFile: $('#tab-mode-file'),
+  tabModeText: $('#tab-mode-text'),
+  panelFile:   $('#panel-file'),
+  panelText:   $('#panel-text'),
+
+  // Dropzone (File mode)
   dropzone:         $('#dropzone'),
   dropzoneEmpty:    $('#dropzone-empty'),
   dropzonePreview:  $('#dropzone-preview'),
   fileInput:        $('#file-input'),
   previewImg:       $('#preview-img'),
+  previewVideo:     $('#preview-video'),
   previewAudioWrap: $('#preview-audio-wrap'),
   previewAudio:     $('#preview-audio'),
   previewAudioName: $('#preview-audio-name'),
+  previewModelWrap: $('#preview-model-wrap'),
+  previewModelName: $('#preview-model-name'),
   btnRemoveFile:    $('#btn-remove-file'),
   errorFile:        $('#error-file'),
+
+  // Text Card Editor (Text mode)
+  memoryQuote:   $('#memory-quote'),
+  quoteCounter:  $('#quote-counter'),
 
   // Form fields
   form:           $('#memory-form'),
@@ -66,15 +77,29 @@ const els = {
   titleCounter:   $('#title-counter'),
   errorTitle:     $('#error-title'),
   desc:           $('#memory-desc'),
+  fieldTheme:     $('#field-theme'),
   themeChips:     $('#theme-chips'),
+  errorTheme:     $('#error-theme'),
+  fieldLocation:  $('#field-location'),
   locationChips:  $('#location-chips'),
-  timeEvent:      $('#memory-time'),
+  errorLocation:  $('#error-location'),
+
+  // Date Segmented
+  fieldDate:      $('#field-date'),
+  dateSegmented:  $('#date-segmented'),
+  dateYear:       $('#date-year'),
+  dateMonth:      $('#date-month'),
+  dateDay:        $('#date-day'),
+  errorDate:      $('#error-date'),
+
+  // Consent
+  fieldConsent:   $('#field-consent'),
   privacyConsent: $('#privacy-consent'),
+  errorConsent:   $('#error-consent'),
 
   // Submit
   btnSubmit:    $('#btn-submit'),
   submitLabel:  $('#submit-label'),
-  submitLoading:$('#submit-loading'),
 
   // Success
   overlay:    $('#success-overlay'),
@@ -84,7 +109,9 @@ const els = {
 // ── Initialise ─────────────────────────────────────────────────
 function init() {
   bindNavigation();
+  bindMediaSwitcher();
   bindDropzone();
+  bindDateInput();
   bindFormFields();
   bindSubmit();
   bindSuccess();
@@ -109,7 +136,70 @@ function goToStep(target) {
   }
 }
 
-// ── Dropzone ───────────────────────────────────────────────────
+// ── Media Switcher (File vs Text) ──────────────────────────────
+function bindMediaSwitcher() {
+  els.tabModeFile.addEventListener('click', () => setMediaMode('file'));
+  els.tabModeText.addEventListener('click', () => setMediaMode('text'));
+
+  // Text card quote counter
+  els.memoryQuote.addEventListener('input', () => {
+    const len = els.memoryQuote.value.length;
+    els.quoteCounter.textContent = `${len} / 280`;
+    if (len > 0) hideFieldError('file');
+  });
+}
+
+function setMediaMode(mode) {
+  state.mode = mode;
+  hideFieldError('file');
+
+  if (mode === 'file') {
+    els.tabModeFile.classList.add('is-active');
+    els.tabModeText.classList.remove('is-active');
+    els.panelFile.hidden = false;
+    els.panelText.hidden = true;
+
+    // Restore mediaType if a file was previously loaded
+    if (state.originalFile) {
+      state.mediaType = detectMediaType(state.originalFile);
+    } else {
+      state.mediaType = null;
+    }
+  } else {
+    els.tabModeText.classList.add('is-active');
+    els.tabModeFile.classList.remove('is-active');
+    els.panelText.hidden = false;
+    els.panelFile.hidden = true;
+    state.mediaType = 'text';
+
+    // Requirement 2: Strictly hide any audio HUD when not in audio mode
+    hideAudioPlayer();
+  }
+}
+
+function hideAudioPlayer() {
+  if (els.previewAudioWrap) {
+    els.previewAudioWrap.hidden = true;
+    els.previewAudioWrap.style.display = 'none';
+  }
+  if (els.previewAudio) {
+    els.previewAudio.pause();
+    els.previewAudio.removeAttribute('src');
+    els.previewAudio.load();
+  }
+}
+
+// ── File Format Detection ──────────────────────────────────────
+function detectMediaType(file) {
+  const ext = (file.name || '').split('.').pop().toLowerCase();
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('audio/')) return 'audio';
+  if (ext === 'glb' || ext === 'gltf' || file.type.includes('gltf')) return 'model3d';
+  return null;
+}
+
+// ── Dropzone & File Selection ──────────────────────────────────
 function bindDropzone() {
   const dz = els.dropzone;
 
@@ -151,25 +241,27 @@ function bindDropzone() {
 }
 
 async function handleFileSelect(file) {
-  // Validate size
-  if (file.size > MAX_UPLOAD_BYTES) {
-    showFieldError('file', `Il file supera il limite di ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB.`);
+  hideFieldError('file');
+
+  const type = detectMediaType(file);
+  if (!type) {
+    showFieldError('file', 'Formato non supportato. Usa foto, video, audio o 3D (.glb).');
     return;
   }
 
-  hideFieldError('file');
-  const isImage = IMAGE_TYPES.includes(file.type);
-  const isAudio = AUDIO_TYPES.includes(file.type);
-
-  if (!isImage && !isAudio) {
-    showFieldError('file', 'Formato non supportato. Usa JPEG, PNG, WebP o un file audio.');
+  // Strict limit of 10 MB for video, audio, 3D
+  if (file.size > MAX_UPLOAD_BYTES) {
+    showFieldError('file', `Il file supera il limite massimo di ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB.`);
     return;
   }
 
   state.originalFile = file;
-  state.mediaType = isImage ? 'image' : 'audio';
+  state.mediaType = type;
 
-  if (isImage) {
+  // Reset previews
+  hideAllPreviews();
+
+  if (type === 'image') {
     try {
       state.file = await compressImage(file);
       showImagePreview(state.file);
@@ -178,9 +270,15 @@ async function handleFileSelect(file) {
       showFieldError('file', 'Errore nella compressione dell\'immagine.');
       return;
     }
-  } else {
+  } else if (type === 'video') {
+    state.file = file;
+    showVideoPreview(file);
+  } else if (type === 'audio') {
     state.file = file;
     showAudioPreview(file);
+  } else if (type === 'model3d') {
+    state.file = file;
+    showModelPreview(file);
   }
 
   // Update dropzone appearance
@@ -189,39 +287,209 @@ async function handleFileSelect(file) {
   els.dropzonePreview.hidden = false;
 }
 
+function hideAllPreviews() {
+  if (els.previewImg) {
+    els.previewImg.hidden = true;
+    els.previewImg.style.display = 'none';
+    els.previewImg.removeAttribute('src');
+  }
+  if (els.previewVideo) {
+    els.previewVideo.hidden = true;
+    els.previewVideo.style.display = 'none';
+    els.previewVideo.pause();
+    els.previewVideo.removeAttribute('src');
+    els.previewVideo.load();
+  }
+  hideAudioPlayer();
+  if (els.previewModelWrap) {
+    els.previewModelWrap.hidden = true;
+    els.previewModelWrap.style.display = 'none';
+  }
+  if (els.dropzonePreview) {
+    delete els.dropzonePreview.dataset.mediaType;
+  }
+}
+
 function clearFile() {
   state.file = null;
   state.originalFile = null;
-  state.mediaType = null;
+  state.mediaType = (state.mode === 'text') ? 'text' : null;
 
   els.fileInput.value = '';
   els.dropzone.classList.remove('has-file');
   els.dropzoneEmpty.hidden = false;
   els.dropzonePreview.hidden = true;
-  els.previewImg.src = '';
-  els.previewImg.hidden = true;
-  els.previewAudioWrap.hidden = true;
-  els.previewAudio.src = '';
-  els.previewAudioName.textContent = '';
+  hideAllPreviews();
   hideFieldError('file');
 }
 
 function showImagePreview(file) {
+  hideAllPreviews();
   const url = URL.createObjectURL(file);
   els.previewImg.src = url;
   els.previewImg.hidden = false;
-  els.previewAudioWrap.hidden = true;
+  els.previewImg.style.display = 'block';
+  if (els.dropzonePreview) {
+    els.dropzonePreview.dataset.mediaType = 'image';
+    els.dropzonePreview.hidden = false;
+  }
+}
+
+function showVideoPreview(file) {
+  hideAllPreviews();
+  const url = URL.createObjectURL(file);
+  els.previewVideo.src = url;
+  els.previewVideo.hidden = false;
+  els.previewVideo.style.display = 'block';
+  if (els.dropzonePreview) {
+    els.dropzonePreview.dataset.mediaType = 'video';
+    els.dropzonePreview.hidden = false;
+  }
 }
 
 function showAudioPreview(file) {
+  hideAllPreviews();
   const url = URL.createObjectURL(file);
   els.previewAudio.src = url;
   els.previewAudioName.textContent = file.name;
   els.previewAudioWrap.hidden = false;
-  els.previewImg.hidden = true;
+  els.previewAudioWrap.style.display = 'flex';
+  if (els.dropzonePreview) {
+    els.dropzonePreview.dataset.mediaType = 'audio';
+    els.dropzonePreview.hidden = false;
+  }
 }
 
-// ── Image Compression ──────────────────────────────────────────
+function showModelPreview(file) {
+  hideAllPreviews();
+  els.previewModelName.textContent = file.name;
+  els.previewModelWrap.hidden = false;
+  els.previewModelWrap.style.display = 'flex';
+  if (els.dropzonePreview) {
+    els.dropzonePreview.dataset.mediaType = 'model3d';
+    els.dropzonePreview.hidden = false;
+  }
+}
+
+// ── Segmented Date Input (AAAA - MM - GG) ─────────────────────
+function bindDateInput() {
+  const y = els.dateYear;
+  const m = els.dateMonth;
+  const d = els.dateDay;
+  const container = els.dateSegmented;
+
+  if (!y || !m || !d || !container) return;
+
+  const segments = [y, m, d];
+
+  // Common input sanitization & auto-advance
+  segments.forEach((input, idx) => {
+    input.addEventListener('input', () => {
+      // Keep only digits
+      input.value = input.value.replace(/\D/g, '');
+      hideFieldError('date');
+      container.classList.remove('is-invalid');
+
+      // Auto-advance if max length reached
+      if (input.value.length >= input.maxLength && idx < segments.length - 1) {
+        segments[idx + 1].focus();
+        segments[idx + 1].select();
+      }
+    });
+
+    // Backspace & Arrow keys navigation
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && input.value.length === 0 && idx > 0) {
+        e.preventDefault();
+        segments[idx - 1].focus();
+      } else if (e.key === 'ArrowLeft' && input.selectionStart === 0 && idx > 0) {
+        e.preventDefault();
+        segments[idx - 1].focus();
+      } else if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && idx < segments.length - 1) {
+        e.preventDefault();
+        segments[idx + 1].focus();
+      }
+    });
+
+    // Paste handling
+    input.addEventListener('paste', handleDatePaste);
+  });
+
+  // Also catch paste on the segmented container
+  container.addEventListener('paste', handleDatePaste);
+}
+
+function handleDatePaste(e) {
+  const pasteData = (e.clipboardData || window.clipboardData)?.getData('text');
+  if (!pasteData) return;
+
+  const digits = pasteData.replace(/\D/g, '');
+  if (digits.length >= 8) {
+    e.preventDefault();
+    const first4 = parseInt(digits.slice(0, 4), 10);
+    const last4 = parseInt(digits.slice(4, 8), 10);
+
+    if (first4 >= 1900 && first4 <= 2100) {
+      // Format AAAA-MM-GG
+      els.dateYear.value = digits.slice(0, 4);
+      els.dateMonth.value = digits.slice(4, 6);
+      els.dateDay.value = digits.slice(6, 8);
+    } else if (last4 >= 1900 && last4 <= 2100) {
+      // Italian format: GG-MM-AAAA
+      els.dateDay.value = digits.slice(0, 2);
+      els.dateMonth.value = digits.slice(2, 4);
+      els.dateYear.value = digits.slice(4, 8);
+    } else {
+      els.dateYear.value = digits.slice(0, 4);
+      els.dateMonth.value = digits.slice(4, 6);
+      els.dateDay.value = digits.slice(6, 8);
+    }
+
+    hideFieldError('date');
+    els.dateSegmented.classList.remove('is-invalid');
+  }
+}
+
+function getDateValue() {
+  const y = els.dateYear.value.trim();
+  const m = els.dateMonth.value.trim();
+  const d = els.dateDay.value.trim();
+
+  // If all empty, it's valid (date is optional)
+  if (!y && !m && !d) {
+    return { valid: true, value: null };
+  }
+
+  // If partially entered
+  if (y.length < 4 || m.length < 1 || d.length < 1) {
+    return { valid: false, message: 'Completa tutti i campi della data (AAAA-MM-GG).' };
+  }
+
+  const yearNum = parseInt(y, 10);
+  const monthNum = parseInt(m, 10);
+  const dayNum = parseInt(d, 10);
+
+  if (yearNum < 1900 || yearNum > 2100) {
+    return { valid: false, message: 'Inserisci un anno valido tra il 1900 e il 2100.' };
+  }
+  if (monthNum < 1 || monthNum > 12) {
+    return { valid: false, message: 'Inserisci un mese valido (01-12).' };
+  }
+  if (dayNum < 1 || dayNum > 31) {
+    return { valid: false, message: 'Inserisci un giorno valido (01-31).' };
+  }
+
+  // Validate real calendar day (e.g. Feb 30th is invalid)
+  const dt = new Date(yearNum, monthNum - 1, dayNum);
+  if (dt.getFullYear() !== yearNum || dt.getMonth() !== monthNum - 1 || dt.getDate() !== dayNum) {
+    return { valid: false, message: 'Data non valida per il calendario.' };
+  }
+
+  const formatted = `${String(yearNum).padStart(4, '0')}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+  return { valid: true, value: formatted };
+}
+
+// ── Image Compression (Canvas WebP) ────────────────────────────
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -260,11 +528,10 @@ function compressImage(file) {
             if (blob.size > MAX_FILE_BYTES && quality > IMAGE_QUALITY_MIN) {
               tryCompress(quality - IMAGE_QUALITY_STEP);
             } else {
-              const ext = blob.type === 'image/webp' ? 'webp' : 'jpeg';
               const compressed = new File(
                 [blob],
-                file.name.replace(/\.[^.]+$/, `.${ext}`),
-                { type: blob.type }
+                file.name.replace(/\.[^.]+$/, '.webp'),
+                { type: 'image/webp' }
               );
               resolve(compressed);
             }
@@ -282,6 +549,93 @@ function compressImage(file) {
       reject(new Error('Failed to load image'));
     };
     img.src = url;
+  });
+}
+
+// ── Canvas Text Card Image Generator ───────────────────────────
+function generateTextCardImage(text, title = '') {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 800;
+    const ctx = canvas.getContext('2d');
+
+    // Background: architectural off-white
+    ctx.fillStyle = '#F8F8F7';
+    ctx.fillRect(0, 0, 1200, 800);
+
+    // Outer border
+    ctx.strokeStyle = '#E2E2DF';
+    ctx.lineWidth = 14;
+    ctx.strokeRect(20, 20, 1160, 760);
+
+    // Inner subtle hairline
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(38, 38, 1124, 724);
+
+    // Header badge
+    ctx.fillStyle = '#111111';
+    ctx.font = '700 24px "Space Mono", monospace, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('// MEMORIA TESTUALE · STOÀ', 72, 72);
+
+    // Decorative quote mark
+    ctx.fillStyle = 'rgba(0, 230, 118, 0.55)'; // Stoà vibrant green accent
+    ctx.font = '900 120px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillText('“', 70, 120);
+
+    // Main quote text wrapping
+    ctx.fillStyle = '#111111';
+    ctx.font = '600 44px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    const maxWidth = 1040;
+    const lineHeight = 64;
+    const x = 72;
+    let y = 230;
+
+    const words = text.split(/\s+/);
+    let line = '';
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + (line ? ' ' : '') + words[i];
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && i > 0) {
+        ctx.fillText(line, x, y);
+        line = words[i];
+        y += lineHeight;
+        if (y > 640) {
+          line += '…';
+          break;
+        }
+      } else {
+        line = testLine;
+      }
+    }
+    if (line && y <= 640) {
+      ctx.fillText(line, x, y);
+    }
+
+    // Title footer
+    if (title) {
+      ctx.fillStyle = '#666666';
+      ctx.font = '500 24px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.fillText(title.toUpperCase(), 72, 715);
+    }
+
+    // Export to WebP blob
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Canvas toBlob failed'));
+          return;
+        }
+        const file = new File([blob], `text_card_${Date.now()}.webp`, { type: 'image/webp' });
+        resolve(file);
+      },
+      'image/webp',
+      0.92
+    );
   });
 }
 
@@ -320,6 +674,11 @@ function bindFormFields() {
       chip.classList.add('is-selected');
     }
 
+    if (state.themeTags.length > 0) {
+      hideFieldError('theme');
+      els.themeChips.classList.remove('is-invalid');
+    }
+
     // Disable remaining chips when at max
     els.themeChips.querySelectorAll('.chip').forEach((c) => {
       if (!c.classList.contains('is-selected')) {
@@ -346,12 +705,17 @@ function bindFormFields() {
         c.classList.remove('is-selected')
       );
       chip.classList.add('is-selected');
+      hideFieldError('location');
+      els.locationChips.classList.remove('is-invalid');
     }
   });
 
-  // Privacy consent → enable/disable submit
+  // Privacy consent
   els.privacyConsent.addEventListener('change', () => {
-    els.btnSubmit.disabled = !els.privacyConsent.checked;
+    if (els.privacyConsent.checked) {
+      hideFieldError('consent');
+      els.fieldConsent.classList.remove('is-invalid');
+    }
   });
 }
 
@@ -367,13 +731,21 @@ function bindSubmit() {
 function validate() {
   let valid = true;
 
-  // File required
-  if (!state.file) {
-    showFieldError('file', 'Seleziona un file da caricare.');
-    valid = false;
+  // 1. Media validation
+  if (state.mode === 'file') {
+    if (!state.file) {
+      showFieldError('file', 'Seleziona un file multimediale da caricare.');
+      valid = false;
+    }
+  } else if (state.mode === 'text') {
+    const quote = els.memoryQuote.value.trim();
+    if (!quote) {
+      showFieldError('file', 'Inserisci il testo della memoria prima di inviare.');
+      valid = false;
+    }
   }
 
-  // Title required & max words
+  // 2. Title required & max words
   const titleWords = getWords(els.title.value);
   if (titleWords.length === 0) {
     showFieldError('title', 'Inserisci un titolo per la memoria.');
@@ -383,11 +755,58 @@ function validate() {
     showFieldError('title', `Il titolo può avere al massimo ${MAX_TITLE_WORDS} parole.`);
     els.title.classList.add('is-invalid');
     valid = false;
+  } else {
+    hideFieldError('title');
+    els.title.classList.remove('is-invalid');
   }
 
-  // Privacy consent
-  if (!els.privacyConsent.checked) {
+  // 3. Theme tags required (1 to 3)
+  if (state.themeTags.length === 0) {
+    showFieldError('theme', 'Seleziona almeno un tag tematico (obbligatorio).');
+    els.themeChips.classList.add('is-invalid');
     valid = false;
+  } else {
+    hideFieldError('theme');
+    els.themeChips.classList.remove('is-invalid');
+  }
+
+  // 4. Location tag required (single select)
+  if (!state.locationTag) {
+    showFieldError('location', 'Seleziona il luogo della casa (obbligatorio).');
+    els.locationChips.classList.add('is-invalid');
+    valid = false;
+  } else {
+    hideFieldError('location');
+    els.locationChips.classList.remove('is-invalid');
+  }
+
+  // 5. Date validation (optional, but must be valid if entered)
+  const dateResult = getDateValue();
+  if (!dateResult.valid) {
+    showFieldError('date', dateResult.message);
+    els.dateSegmented.classList.add('is-invalid');
+    valid = false;
+  } else {
+    hideFieldError('date');
+    els.dateSegmented.classList.remove('is-invalid');
+  }
+
+  // 6. Privacy consent required
+  if (!els.privacyConsent.checked) {
+    showFieldError('consent', 'Conferma il consenso per poter inviare il ricordo.');
+    els.fieldConsent.classList.add('is-invalid');
+    valid = false;
+  } else {
+    hideFieldError('consent');
+    els.fieldConsent.classList.remove('is-invalid');
+  }
+
+  if (!valid) {
+    // Scroll to the first error
+    const firstError = els.form.querySelector('.field__error:not([hidden])');
+    if (firstError) {
+      firstError.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   return valid;
@@ -397,18 +816,28 @@ async function submitMemory() {
   setLoading(true);
 
   try {
+    let fileToUpload = state.file;
+
+    // In text mode, generate high-res text card image
+    if (state.mode === 'text') {
+      const quoteText = els.memoryQuote.value.trim();
+      const cardTitle = els.title.value.trim();
+      fileToUpload = await generateTextCardImage(quoteText, cardTitle);
+    }
+
     // 1. Upload file to Supabase Storage
-    const mediaUrl = await uploadFile(state.file);
+    const mediaUrl = await uploadFile(fileToUpload);
 
     // 2. Insert record into 'memories' table
+    const dateResult = getDateValue();
     const record = {
       title: els.title.value.trim(),
       description: els.desc.value.trim() || null,
       tags: state.themeTags.length > 0 ? state.themeTags : null,
       location_tag: state.locationTag,
-      time_event: els.timeEvent.value.trim() || null,
+      time_event: dateResult.value,
       media_url: mediaUrl,
-      media_type: state.mediaType,
+      media_type: state.mode === 'text' ? 'text' : state.mediaType,
       privacy_consent: true,
     };
 
@@ -437,7 +866,7 @@ async function uploadFile(file) {
     .upload(filePath, file, {
       cacheControl: '3600',
       upsert: false,
-      contentType: file.type,
+      contentType: file.type || 'application/octet-stream',
     });
 
   if (error) throw error;
@@ -450,10 +879,9 @@ async function uploadFile(file) {
   return urlData.publicUrl;
 }
 
+// Requirement 6: Simply disable button without spinners or text oscillations
 function setLoading(loading) {
   els.btnSubmit.disabled = loading;
-  els.submitLabel.hidden = loading;
-  els.submitLoading.hidden = !loading;
 
   // Disable form interaction during upload
   const fields = els.form.querySelectorAll('input, textarea, button:not(#btn-submit)');
@@ -471,7 +899,6 @@ function bindSuccess() {
 
 function showSuccess() {
   els.overlay.hidden = false;
-  // Trigger CSS transition (need a frame for hidden→visible)
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       els.overlay.classList.add('is-visible');
@@ -483,20 +910,30 @@ function hideSuccess() {
   els.overlay.classList.remove('is-visible');
   setTimeout(() => {
     els.overlay.hidden = true;
-  }, 450); // match CSS transition
+  }, 450);
 }
 
 function resetForm() {
-  // Clear file
+  // Clear file & previews
   clearFile();
 
+  // Reset media mode to 'file'
+  setMediaMode('file');
+
   // Clear text fields
+  els.memoryQuote.value = '';
+  els.quoteCounter.textContent = '0 / 280';
   els.title.value = '';
   els.titleCounter.textContent = `0 / ${MAX_TITLE_WORDS}`;
   els.titleCounter.classList.remove('is-over');
   els.title.classList.remove('is-invalid');
   els.desc.value = '';
-  els.timeEvent.value = '';
+
+  // Clear segmented date
+  els.dateYear.value = '';
+  els.dateMonth.value = '';
+  els.dateDay.value = '';
+  els.dateSegmented.classList.remove('is-invalid');
 
   // Clear tags
   state.themeTags = [];
@@ -507,14 +944,21 @@ function resetForm() {
   $$('#location-chips .chip').forEach((c) => {
     c.classList.remove('is-selected');
   });
+  els.themeChips.classList.remove('is-invalid');
+  els.locationChips.classList.remove('is-invalid');
 
   // Clear consent
   els.privacyConsent.checked = false;
-  els.btnSubmit.disabled = true;
+  els.fieldConsent.classList.remove('is-invalid');
+  els.btnSubmit.disabled = false;
 
   // Clear errors
   hideFieldError('file');
   hideFieldError('title');
+  hideFieldError('theme');
+  hideFieldError('location');
+  hideFieldError('date');
+  hideFieldError('consent');
 }
 
 // ── Helpers ────────────────────────────────────────────────────

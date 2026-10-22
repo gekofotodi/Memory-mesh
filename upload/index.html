@@ -131,42 +131,79 @@
 
       <form id="memory-form" class="form" novalidate>
 
-        <!-- 1. Upload multimediale -->
+        <!-- 1. Upload multimediale o Testo -->
         <div class="field" id="field-file">
-          <label class="field__label">File multimediale</label>
-          <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Carica un file">
-            <div class="dropzone__empty" id="dropzone-empty">
-              <svg class="dropzone__icon" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                <rect x="4" y="4" width="32" height="32" rx="8" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
-                <path d="M20 14v12M14 20h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              <p class="dropzone__text">Tocca per caricare</p>
-              <p class="dropzone__hint">Immagine o audio · Max 10 MB</p>
-            </div>
-            <div class="dropzone__preview" id="dropzone-preview" hidden>
-              <img id="preview-img" class="dropzone__img" alt="Anteprima" />
-              <div id="preview-audio-wrap" class="dropzone__audio" hidden>
-                <div class="dropzone__audio-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
-                </div>
-                <p id="preview-audio-name" class="dropzone__audio-name"></p>
-                <audio id="preview-audio" controls></audio>
-              </div>
-              <button type="button" class="dropzone__remove" id="btn-remove-file">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                Rimuovi
-              </button>
+          <div class="field__header-row">
+            <label class="field__label">Contenuto del ricordo</label>
+            <div class="media-tabs" role="tablist">
+              <button type="button" class="media-tab is-active" id="tab-mode-file" data-mode="file">File</button>
+              <button type="button" class="media-tab" id="tab-mode-text" data-mode="text">Testo</button>
             </div>
           </div>
-          <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4" hidden />
-          <p class="field__error" id="error-file" hidden>Seleziona un file da caricare.</p>
+
+          <!-- Pannello File: Foto, Video, Audio, 3D -->
+          <div class="media-panel" id="panel-file">
+            <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Carica un file">
+              <div class="dropzone__empty" id="dropzone-empty">
+                <svg class="dropzone__icon" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <rect x="4" y="4" width="32" height="32" rx="8" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                  <path d="M20 14v12M14 20h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <p class="dropzone__text">Tocca per caricare</p>
+                <p class="dropzone__hint">Foto, audio, video · Max 10 MB</p>
+              </div>
+              <div class="dropzone__preview" id="dropzone-preview" hidden>
+                <img id="preview-img" class="dropzone__img" alt="Anteprima immagine" hidden />
+                <video id="preview-video" class="dropzone__video" controls playsinline hidden></video>
+                <div id="preview-audio-wrap" class="dropzone__audio" hidden>
+                  <div class="dropzone__audio-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </div>
+                  <p id="preview-audio-name" class="dropzone__audio-name"></p>
+                  <audio id="preview-audio" controls></audio>
+                </div>
+                <div id="preview-model-wrap" class="dropzone__model" hidden>
+                  <div class="dropzone__model-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 22V12M3 7l9 5 9-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                  </div>
+                  <p id="preview-model-name" class="dropzone__model-name"></p>
+                  <span class="dropzone__model-badge">Modello 3D</span>
+                </div>
+                <button type="button" class="dropzone__remove" id="btn-remove-file">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Rimuovi
+                </button>
+              </div>
+            </div>
+            <input type="file" id="file-input" accept="image/*,audio/*,video/*,.glb,.gltf,model/gltf-binary,model/gltf+json" hidden />
+          </div>
+
+          <!-- Pannello Testo: Card Editoriale -->
+          <div class="media-panel" id="panel-text" hidden>
+            <div class="text-card-editor" id="text-card-editor">
+              <div class="text-card-editor__badge">MEMORIA TESTUALE</div>
+              <textarea 
+                id="memory-quote" 
+                class="text-card-editor__textarea" 
+                rows="4" 
+                maxlength="280" 
+                placeholder="Scrivi qui il pensiero o la frase da mostrare sulla card…"
+              ></textarea>
+              <div class="text-card-editor__footer">
+                <span class="text-card-editor__hint">Apparirà come card nell'installazione</span>
+                <span class="text-card-editor__counter" id="quote-counter">0 / 280</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="field__error" id="error-file" hidden>Seleziona un file da caricare o inserisci il testo del ricordo.</p>
         </div>
 
         <!-- 2. Titolo -->
         <div class="field" id="field-title">
           <label class="field__label" for="memory-title">Titolo della memoria</label>
           <div class="field__wrap">
-            <input type="text" id="memory-title" class="field__input" placeholder="Es. Tramonto sul terrazzo" autocomplete="off" />
+            <input type="text" id="memory-title" class="field__input" placeholder="Max. 5 parole" autocomplete="off" />
             <span class="field__counter" id="title-counter">0 / 5</span>
           </div>
           <p class="field__error" id="error-title" hidden>Il titolo può avere al massimo 5 parole.</p>
@@ -179,59 +216,99 @@
         </div>
 
         <!-- 4. Tag tematici -->
-        <div class="field">
-          <label class="field__label">Tag tematici <small class="field__hint">(max 3)</small></label>
+        <div class="field" id="field-theme">
+          <label class="field__label">Tag tematici <small class="field__hint">(da 1 a 3)</small></label>
           <div class="chips" id="theme-chips">
-            <button type="button" class="chip" data-tag="Design">Design</button>
-            <button type="button" class="chip" data-tag="Musica">Musica</button>
-            <button type="button" class="chip" data-tag="Laboratorio">Laboratorio</button>
-            <button type="button" class="chip" data-tag="Sport">Sport</button>
-            <button type="button" class="chip" data-tag="Talk">Talk</button>
-            <button type="button" class="chip" data-tag="Social">Social</button>
-            <button type="button" class="chip" data-tag="Relax">Relax</button>
+            <button type="button" class="chip" data-tag="studio">Studio</button>
+            <button type="button" class="chip" data-tag="evento">Evento</button>
+            <button type="button" class="chip" data-tag="vita comune">Vita comune</button>
+            <button type="button" class="chip" data-tag="fede">Fede</button>
+            <button type="button" class="chip" data-tag="musica">Musica</button>
+            <button type="button" class="chip" data-tag="amici">Amici</button>
+            <button type="button" class="chip" data-tag="relax">Relax</button>
+            <button type="button" class="chip" data-tag="cibo">Cibo</button>
+            <button type="button" class="chip" data-tag="arte">Arte</button>
+            <button type="button" class="chip" data-tag="festa">Festa</button>
+            <button type="button" class="chip" data-tag="carità">Carità</button>
           </div>
+          <p class="field__error" id="error-theme" hidden>Seleziona almeno un tag tematico.</p>
         </div>
 
         <!-- 5. Luogo -->
-        <div class="field">
+        <div class="field" id="field-location">
           <label class="field__label">Luogo della casa</label>
           <div class="chips chips--single" id="location-chips">
-            <button type="button" class="chip" data-location="Salone">Salone</button>
-            <button type="button" class="chip" data-location="Giardino">Giardino</button>
-            <button type="button" class="chip" data-location="Cucina">Cucina</button>
-            <button type="button" class="chip" data-location="Terrazza">Terrazza</button>
-            <button type="button" class="chip" data-location="Portico">Portico</button>
-            <button type="button" class="chip" data-location="Sala Studio">Sala Studio</button>
+            <button type="button" class="chip" data-location="cucina">Cucina</button>
+            <button type="button" class="chip" data-location="sala del re">Sala del Re</button>
+            <button type="button" class="chip" data-location="studio">Studio</button>
+            <button type="button" class="chip" data-location="ghiacciaia">Ghiacciaia</button>
+            <button type="button" class="chip" data-location="giardino">Giardino</button>
+            <button type="button" class="chip" data-location="cappellina">Cappellina</button>
+            <button type="button" class="chip" data-location="sala conferenze">Sala Conferenze</button>
+            <button type="button" class="chip" data-location="camere">Camere</button>
+            <button type="button" class="chip" data-location="mansarda">Mansarda</button>
+            <button type="button" class="chip" data-location="esterno">Esterno</button>
           </div>
+          <p class="field__error" id="error-location" hidden>Seleziona il luogo della casa.</p>
         </div>
 
-        <!-- 6. Orario -->
-        <div class="field">
-          <label class="field__label" for="memory-time">Orario del ricordo</label>
-          <input type="text" id="memory-time" class="field__input" placeholder="Es. 18:30, Tramonto, Notte…" autocomplete="off" />
+        <!-- 6. Data del ricordo (Segmentata con trattini preimpostati) -->
+        <div class="field" id="field-date">
+          <label class="field__label" for="date-year">Data del ricordo <small class="field__hint">(opzionale)</small></label>
+          <div class="date-segmented" id="date-segmented">
+            <input 
+              type="text" 
+              id="date-year" 
+              class="date-segment date-segment--year" 
+              placeholder="AAAA" 
+              inputmode="numeric" 
+              maxlength="4" 
+              autocomplete="off" 
+              aria-label="Anno a 4 cifre"
+            />
+            <span class="date-separator" aria-hidden="true">-</span>
+            <input 
+              type="text" 
+              id="date-month" 
+              class="date-segment date-segment--month" 
+              placeholder="MM" 
+              inputmode="numeric" 
+              maxlength="2" 
+              autocomplete="off" 
+              aria-label="Mese a 2 cifre"
+            />
+            <span class="date-separator" aria-hidden="true">-</span>
+            <input 
+              type="text" 
+              id="date-day" 
+              class="date-segment date-segment--day" 
+              placeholder="GG" 
+              inputmode="numeric" 
+              maxlength="2" 
+              autocomplete="off" 
+              aria-label="Giorno a 2 cifre"
+            />
+          </div>
+          <p class="field__error" id="error-date" hidden>Inserisci una data valida (AAAA-MM-GG).</p>
         </div>
 
         <!-- 7. Consenso privacy -->
-        <div class="field consent">
+        <div class="field consent" id="field-consent">
           <label class="consent__label" for="privacy-consent">
             <input type="checkbox" id="privacy-consent" class="consent__input" />
             <span class="consent__box" aria-hidden="true">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
             <span class="consent__text">
-              Dichiaro di avere il consenso delle persone ritratte e autorizzo
-              la proiezione pubblica nell'installazione Memory Mesh.
+             Autorizzo la proiezione pubblica nell'installazione Memory Mesh.
             </span>
           </label>
+          <p class="field__error" id="error-consent" hidden>Conferma il consenso per poter inviare il ricordo.</p>
         </div>
 
         <!-- 8. Submit -->
-        <button type="submit" class="cta cta--submit" id="btn-submit" disabled>
+        <button type="submit" class="cta cta--submit" id="btn-submit">
           <span class="cta__label" id="submit-label">Invia il ricordo</span>
-          <span class="cta__loading" id="submit-loading" hidden>
-            <span class="spinner" aria-hidden="true"></span>
-            Compressione e trasmissione in corso…
-          </span>
         </button>
       </form>
     </div>
@@ -249,7 +326,7 @@
         </svg>
       </div>
       <h2 class="overlay__title">La tua memoria è entrata nella rete!</h2>
-      <p class="overlay__desc">Il tuo ricordo è ora parte della costellazione di Memory Mesh.</p>
+      <p class="overlay__desc">Il tuo ricordo è ora parte di Memory Mesh.</p>
       <button class="cta cta--outline" id="btn-new" type="button">Invia un altro ricordo</button>
     </div>
   </div>

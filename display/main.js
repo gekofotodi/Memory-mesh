@@ -610,16 +610,20 @@ function openDetailModal(memory) {
   });
 
   // Media
-  if (memory.media_type === 'image' && memory.media_url) {
+  if ((memory.media_type === 'image' || memory.media_type === 'text') && memory.media_url) {
     els.detailImg.src = memory.media_url;
     els.detailImg.hidden = false;
     els.detailAudioWrap.hidden = true;
     stopAudioVisualizer();
-  } else {
+  } else if (memory.media_type === 'audio' && memory.media_url) {
     els.detailImg.hidden = true;
     els.detailAudioWrap.hidden = false;
-    els.detailAudioEl.src = memory.media_url || '';
+    els.detailAudioEl.src = memory.media_url;
     startAudioVisualizer();
+  } else {
+    els.detailImg.hidden = true;
+    els.detailAudioWrap.hidden = true;
+    stopAudioVisualizer();
   }
 
   // Related memories (sharing tags)
