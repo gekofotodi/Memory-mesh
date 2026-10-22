@@ -30,9 +30,9 @@ export class WheelMenu2D {
     if (this.itemCount === 0) return;
 
     // Angle step between consecutive items along the arc (in radians)
-    this.angleStep = 0.32; // ~18.3 degrees per item
-    this.arcRadius = 80;    // Horizontal arc protrusion in px
-    this.verticalSpacing = 42; // Vertical pitch in px
+    this.angleStep = 0.28; // ~16 degrees per item
+    this.arcRadius = 240;   // Horizontal arc protrusion in px (300% enlarged: 80 * 3)
+    this.verticalSpacing = 115; // Vertical pitch in px (300% enlarged: 42 * ~2.75)
 
     this.currentIndex = 0;
     this.targetOffset = 0;

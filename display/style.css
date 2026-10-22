@@ -5,12 +5,11 @@
   /* Editorial Light Mode Palette */
   --bg-page: #F4F4F6;
   --bg-white: #FFFFFF;
-  --bg-pill-dark: #18191B;
 
   /* Typography Colors */
-  --text-dark: #111111;
-  --text-body: #444444;
-  --text-muted: #7E828A;
+  --text-dark: #000000;
+  --text-body: #333333;
+  --text-muted: #707075;
   --text-light: #F4F4F6;
 
   /* Curated Accent Colors */
@@ -23,16 +22,15 @@
   /* Borders & Dividers */
   --border-card: #E0E0E0;
   --border-light: #EBEBEB;
-  --border-dark-pill: rgba(255, 255, 255, 0.12);
 
-  /* Fonts */
-  --font-mono: 'Space Mono', monospace;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Fonts: Rigorosamente Helvetica Everywhere */
+  --font-mono: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 
-  /* Geometry */
+  /* Geometry (Nessun contenitore a pillola) */
   --radius-bento: 24px;
   --radius-card: 16px;
-  --radius-pill: 100px;
+  --radius-badge: 4px;
 
   /* Animation */
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -51,7 +49,7 @@ html, body.kiosk-body {
   overflow: hidden;
   background-color: var(--bg-page);
   color: var(--text-dark);
-  font-family: var(--font-sans);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
@@ -68,10 +66,10 @@ html, body.kiosk-body {
   z-index: 1;
 }
 
-/* ── 1. HUD Superiore: Titolo Editoriale MĒNĒM Style ───────────── */
+/* ── 1. HUD Superiore: Titolo Editoriale MĒNĒM Style (Senza Contenitore Pillola) ── */
 .kiosk-header {
   position: fixed;
-  top: 24px;
+  top: 28px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -80,82 +78,99 @@ html, body.kiosk-body {
 
 .header-capsule {
   position: relative;
-  background: var(--bg-white);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .header-accent-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2.5px;
-  background: var(--accent-red);
+  display: none;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 24px;
-  font-family: var(--font-mono);
+  gap: 12px;
+  padding: 0;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .header-title {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--text-dark);
+  color: #000000;
 }
 
 .header-sep {
-  color: #CCCCCC;
-  font-size: 0.8rem;
+  color: #B5B5BA;
+  font-size: 0.85rem;
 }
 
 .header-tag {
-  font-size: 0.72rem;
-  letter-spacing: 0.10em;
-  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: #555555;
 }
 
 .header-counter {
-  font-size: 0.72rem;
-  letter-spacing: 0.10em;
-  color: var(--text-dark);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: #555555;
 }
 
 .header-counter span {
-  color: var(--accent-red);
+  color: #000000;
   font-weight: 700;
 }
 
-/* ── 2. Menu a Ruota Laterali 2D (Semicerchio Pulito) ───────────── */
-/* Nessun contenitore, nessun box a pillola, testi in nero con font Helvetica */
+/* ── 2. Menu a Ruota Laterali 2D (Ingranditi 300% & Reveal su Prossimità Cursore) ── */
+/* Totalmente nascosti dai lati dello schermo, appaiono fluidamente all'avvicinarsi del cursore */
 .wheel-dock {
   position: fixed;
   top: 50%;
-  transform: translateY(-50%);
   z-index: 20;
   display: flex;
   align-items: center;
-  pointer-events: auto;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  width: 140px;
-  height: 320px;
+  pointer-events: none; /* Disabilitato al puntamento quando nascosto */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: 540px;
+  height: 85vh;
+  opacity: 0;
+  transition: transform 0.45s var(--ease-expo), opacity 0.38s ease;
 }
 
 .wheel-dock--left {
   left: 0;
+  transform: translateY(-50%) translateX(-110%);
 }
 
 .wheel-dock--right {
   right: 0;
+  transform: translateY(-50%) translateX(110%);
+}
+
+/* Stato Visibile: compare dal bordo quando il cursore si avvicina al lato */
+.wheel-dock--left.is-visible,
+.wheel-dock--left.is-expanded,
+.wheel-dock--left:hover {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wheel-dock--right.is-visible,
+.wheel-dock--right.is-expanded,
+.wheel-dock--right:hover {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .wheel-arc {
@@ -167,23 +182,24 @@ html, body.kiosk-body {
   justify-content: center;
 }
 
-/* Pulsanti Voci a Ruota (Senza Contenitore o Box Pillola) */
+/* Pulsanti Voci a Ruota (Ingranditi del 300%, Senza Contenitore o Box Pillola) */
 .wheel-btn {
   position: absolute;
   left: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 22px;
+  padding: 12px 28px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   outline: none;
   color: #000000 !important;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 0.98rem;
+  font-size: 2.85rem;
+  line-height: 1.1;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   cursor: pointer;
   white-space: nowrap;
   opacity: 0.35;
@@ -200,10 +216,10 @@ html, body.kiosk-body {
   /* Il pallino verde rimane sempre a sinistra del testo come nella reference */
 }
 
-/* Pallino verde acceso (#00E676) della voce attiva */
+/* Pallino verde acceso (#00E676) della voce attiva (Ingrandito del 300%) */
 .wheel-dot {
-  width: 7px;
-  height: 7px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background-color: var(--accent-green-bright);
   opacity: 0;
@@ -236,7 +252,7 @@ html, body.kiosk-body {
 .wheel-btn.is-active .wheel-dot {
   opacity: 1;
   transform: scale(1);
-  box-shadow: 0 0 8px rgba(0, 230, 118, 0.6);
+  box-shadow: 0 0 16px rgba(0, 230, 118, 0.7);
 }
 
 .wheel-btn:hover {
@@ -303,8 +319,9 @@ html, body.kiosk-body {
 }
 
 .hud-status-text {
-  font-family: var(--font-mono);
-  font-size: 0.60rem;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 500;
   letter-spacing: 0.08em;
   color: var(--text-muted);
   white-space: nowrap;
@@ -318,8 +335,9 @@ html, body.kiosk-body {
 }
 
 .hud-hand-tag {
-  font-family: var(--font-mono);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.58rem;
+  font-weight: 600;
   padding: 2px 5px;
   border-radius: 4px;
   background: #F4F4F6;
@@ -332,7 +350,7 @@ html, body.kiosk-body {
   border: 1px solid var(--accent-sage);
 }
 
-/* ── 4. Tasto INFO MĒNĒM Style (Bottom-Right) ──────────────────── */
+/* ── 4. Tasto INFO MĒNĒM Style (Bottom-Right, Senza Contenitore a Pillola) ── */
 .info-pill-btn {
   position: fixed;
   bottom: 28px;
@@ -342,17 +360,17 @@ html, body.kiosk-body {
   align-items: center;
   gap: 8px;
   height: 36px;
-  padding: 0 18px;
+  padding: 0 16px;
   background: var(--bg-white);
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-pill);
-  color: var(--text-dark);
-  font-family: var(--font-mono);
+  border-radius: 4px; /* Rettangolare minimale, NESSUNA pillola */
+  color: #000000;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   transition: all 0.25s var(--ease-expo);
   pointer-events: auto;
 }
@@ -470,7 +488,7 @@ html, body.kiosk-body {
 }
 
 .bento-card__eyebrow {
-  font-family: var(--font-mono);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.65rem;
   letter-spacing: 0.12em;
   color: var(--text-muted);
@@ -486,15 +504,15 @@ html, body.kiosk-body {
 }
 
 .bento-card__title {
-  font-family: var(--font-mono);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 1.45rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   color: var(--text-dark);
 }
 
 .bento-card__subtitle {
-  font-family: var(--font-mono);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-dark);
@@ -599,9 +617,10 @@ html, body.kiosk-body {
 
 .detail-pill {
   padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
+  border-radius: 4px; /* Nessuna pillola */
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 0.70rem;
+  font-weight: 600;
   background: #F4F4F6;
   color: var(--text-dark);
   border: 1px solid var(--border-card);
@@ -618,10 +637,10 @@ html, body.kiosk-body {
 }
 
 .detail-title {
-  font-family: var(--font-mono);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.01em;
   color: var(--text-dark);
   line-height: 1.25;
 }
@@ -639,9 +658,9 @@ html, body.kiosk-body {
 }
 
 .detail-section__header {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 0.64rem;
+  letter-spacing: 0.10em;
   color: var(--text-muted);
   font-weight: 700;
 }
@@ -654,12 +673,13 @@ html, body.kiosk-body {
 
 .tags-cluster .tag-badge {
   padding: 3px 10px;
-  border-radius: var(--radius-pill);
+  border-radius: 4px; /* Nessuna pillola */
   background: var(--bg-white);
   border: 1px solid var(--border-card);
   color: var(--text-dark);
-  font-family: var(--font-mono);
-  font-size: 0.70rem;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .related-chips-grid {
@@ -673,9 +693,10 @@ html, body.kiosk-body {
   padding: 4px 10px;
   background: var(--bg-white);
   border: 1px solid var(--border-card);
-  border-radius: 6px;
-  font-family: var(--font-mono);
+  border-radius: 4px; /* Nessuna pillola */
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.72rem;
+  font-weight: 600;
   color: var(--text-dark);
   cursor: pointer;
   white-space: nowrap;
@@ -688,7 +709,7 @@ html, body.kiosk-body {
   color: var(--accent-red);
 }
 
-/* ── 6. Toast Realtime Discreto ─────────────────────────────────── */
+/* ── 6. Toast Realtime Discreto (Senza Contenitore Pillola) ──────── */
 .live-toast {
   position: fixed;
   top: 80px;
@@ -701,12 +722,13 @@ html, body.kiosk-body {
   padding: 8px 18px;
   background: var(--bg-white);
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-pill);
+  border-radius: 6px; /* Rettangolare minimale */
   color: var(--text-dark);
-  font-family: var(--font-mono);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 0.74rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
   opacity: 0;
   pointer-events: none;
   transition: all 0.3s ease;

@@ -487,13 +487,13 @@ export function initScene(canvas) {
       ctx.strokeRect(rx, ry, room.w, room.h);
       ctx.setLineDash([]);
 
-      // Room Header MĒNĒM style (Space Mono)
+      // Room Header MĒNĒM style (Helvetica)
       ctx.fillStyle = '#8E8E93';
-      ctx.font = '600 10px "Space Mono", monospace';
+      ctx.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.fillText(`// ${room.code}`, rx + 16, ry + 22);
 
       ctx.fillStyle = '#111111';
-      ctx.font = '600 11px "Space Mono", monospace';
+      ctx.font = '600 11px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.fillText(room.label, rx + 16, ry + 38);
     });
     ctx.restore();
@@ -564,9 +564,9 @@ export function initScene(canvas) {
       ctx.lineWidth = 1.6;
       ctx.stroke();
 
-      // Section Tag Pill in Space Mono
+      // Section Tag in Helvetica
       ctx.fillStyle = '#111111';
-      ctx.font = '700 10px "Space Mono", monospace';
+      ctx.font = '700 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`SEZIONE // ${tag.toUpperCase()}`, avgX, avgY - radius - 12);
     });
@@ -661,7 +661,7 @@ export function initScene(canvas) {
       } else {
         // Audio node: clean white card with charcoal glyph
         ctx.fillStyle = '#111111';
-        ctx.font = `600 ${Math.round(18 * node.scale)}px sans-serif`;
+        ctx.font = `600 ${Math.round(18 * node.scale)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('♪', nx, ny);
@@ -699,7 +699,7 @@ export function initScene(canvas) {
     const text = `${rawTitle}${loc}`;
 
     ctx.save();
-    ctx.font = '600 10px "Space Mono", monospace';
+    ctx.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     const textW = ctx.measureText(text).width;
     const boxW = textW + 20;
     const boxH = 26;

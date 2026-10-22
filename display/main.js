@@ -181,6 +181,8 @@ const state = {
   tracking: null,
   leftWheel: null,
   rightWheel: null,
+  leftWheelVisible: false,
+  rightWheelVisible: false,
   activeModal: null, // 'info' | 'detail' | null
   cursorX: window.innerWidth / 2,
   cursorY: window.innerHeight / 2,
@@ -323,17 +325,29 @@ function handlePointerMove(x, y) {
     els.virtualCursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
-  // 2. Proximity check for Wheel Menus
-  const proximityThreshold = 180;
-  if (x < proximityThreshold) {
+  // 2. Proximity check for 300% Enlarged Wheel Menus (Hidden by default, reveal on edge proximity)
+  const enterThreshold = 300; // Trigger slide-in when cursor approaches within 300px of screen border
+  const leaveThreshold = 580; // Keep visible while interacting within 580px, then slide out
+
+  // Left Wheel Proximity (Layouts)
+  if (!state.leftWheelVisible && x < enterThreshold) {
+    state.leftWheelVisible = true;
+    els.wheelLeft.classList.add('is-visible');
     els.wheelLeft.classList.add('is-expanded');
-  } else {
+  } else if (state.leftWheelVisible && x > leaveThreshold) {
+    state.leftWheelVisible = false;
+    els.wheelLeft.classList.remove('is-visible');
     els.wheelLeft.classList.remove('is-expanded');
   }
 
-  if (x > window.innerWidth - proximityThreshold) {
+  // Right Wheel Proximity (Filters)
+  if (!state.rightWheelVisible && x > window.innerWidth - enterThreshold) {
+    state.rightWheelVisible = true;
+    els.wheelRight.classList.add('is-visible');
     els.wheelRight.classList.add('is-expanded');
-  } else {
+  } else if (state.rightWheelVisible && x < window.innerWidth - leaveThreshold) {
+    state.rightWheelVisible = false;
+    els.wheelRight.classList.remove('is-visible');
     els.wheelRight.classList.remove('is-expanded');
   }
 
@@ -520,6 +534,11 @@ function bindUIEvents() {
     if (e.key === '5') activateLayout('griglia');
     if (e.key === 'i' || e.key === 'I') openInfoModal();
     if (e.key === 'w' || e.key === 'W') state.scene.triggerFabricWave();
+  });
+
+  // Mouse cursor proximity listener (reveals 300% wheel menus seamlessly on mouse approach)
+  window.addEventListener('mousemove', (e) => {
+    handlePointerMove(e.clientX, e.clientY);
   });
 }
 
