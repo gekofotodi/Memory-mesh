@@ -140,8 +140,8 @@ html, body.kiosk-body {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  width: 540px;
-  height: 85vh;
+  width: 440px;
+  height: 75vh;
   opacity: 0;
   transition: transform 0.45s var(--ease-expo), opacity 0.38s ease;
 }
@@ -182,44 +182,47 @@ html, body.kiosk-body {
   justify-content: center;
 }
 
-/* Pulsanti Voci a Ruota (Ingranditi del 300%, Senza Contenitore o Box Pillola) */
+/* Pulsanti Voci a Ruota (Ridotti del 30% per proporzioni ottimali) */
 .wheel-btn {
   position: absolute;
   left: 0;
   display: flex;
   align-items: center;
-  gap: 22px;
-  padding: 12px 28px;
+  gap: 14px;
+  padding: 6px 12px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   outline: none;
   color: #000000 !important;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 2.85rem;
+  font-size: 2.0rem;
   line-height: 1.1;
   font-weight: 400;
   letter-spacing: -0.02em;
   cursor: pointer;
   white-space: nowrap;
   opacity: 0.35;
-  transform-origin: left center;
-  transition: transform 0.22s var(--ease-expo), opacity 0.22s ease, font-weight 0.2s ease;
+  transform-origin: 0% 50%;
+  transition: opacity 0.25s ease, font-weight 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
+  will-change: transform, opacity;
 }
 
 .wheel-dock--right .wheel-btn {
   left: auto;
   right: 0;
-  transform-origin: right center;
-  /* Il pallino verde rimane sempre a sinistra del testo come nella reference */
+  transform-origin: 100% 50%;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  text-align: right;
 }
 
-/* Pallino verde acceso (#00E676) della voce attiva (Ingrandito del 300%) */
+/* Pallino verde acceso (#00E676) della voce attiva (Ridotto del 30%: 14px) */
 .wheel-dot {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background-color: var(--accent-green-bright);
   opacity: 0;
@@ -252,7 +255,7 @@ html, body.kiosk-body {
 .wheel-btn.is-active .wheel-dot {
   opacity: 1;
   transform: scale(1);
-  box-shadow: 0 0 16px rgba(0, 230, 118, 0.7);
+  box-shadow: 0 0 11px rgba(0, 230, 118, 0.65);
 }
 
 .wheel-btn:hover {

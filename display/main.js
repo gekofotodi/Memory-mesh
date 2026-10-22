@@ -338,6 +338,11 @@ function handlePointerMove(x, y) {
     state.leftWheelVisible = false;
     els.wheelLeft.classList.remove('is-visible');
     els.wheelLeft.classList.remove('is-expanded');
+    if (state.leftWheel) state.leftWheel.stopAutoSpin();
+  }
+
+  if (state.leftWheelVisible && state.leftWheel) {
+    state.leftWheel.handlePointerProximity(x, y);
   }
 
   // Right Wheel Proximity (Filters)
@@ -349,6 +354,11 @@ function handlePointerMove(x, y) {
     state.rightWheelVisible = false;
     els.wheelRight.classList.remove('is-visible');
     els.wheelRight.classList.remove('is-expanded');
+    if (state.rightWheel) state.rightWheel.stopAutoSpin();
+  }
+
+  if (state.rightWheelVisible && state.rightWheel) {
+    state.rightWheel.handlePointerProximity(x, y);
   }
 
   // 3. Test element hover (UI buttons or Scene Nodes)
@@ -421,16 +431,24 @@ function handleSelect() {
     // Wheel Left (Layouts)
     const layoutBtn = el.closest('#wheel-left .wheel-btn');
     if (layoutBtn) {
-      const layout = layoutBtn.dataset.layout;
-      activateLayout(layout);
+      if (state.leftWheel && layoutBtn._value) {
+        state.leftWheel.stopAutoSpin();
+        state.leftWheel.selectValue(layoutBtn._value, layoutBtn._basePos);
+      } else {
+        activateLayout(layoutBtn.dataset.layout);
+      }
       return;
     }
 
     // Wheel Right (Filters)
     const filterBtn = el.closest('#wheel-right .wheel-btn');
     if (filterBtn) {
-      const filter = filterBtn.dataset.filter;
-      activateFilter(filter);
+      if (state.rightWheel && filterBtn._value) {
+        state.rightWheel.stopAutoSpin();
+        state.rightWheel.selectValue(filterBtn._value, filterBtn._basePos);
+      } else {
+        activateFilter(filterBtn.dataset.filter);
+      }
       return;
     }
 
@@ -544,7 +562,9 @@ function bindUIEvents() {
 
 // ── Layout & Filter Switching ──────────────────────────────────
 function activateLayout(layoutName, syncWheel = true) {
-  els.wheelLeftBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.layout === layoutName));
+  document.querySelectorAll('#wheel-left .wheel-btn').forEach((b) => {
+    b.classList.toggle('is-active', b.getAttribute('data-layout') === layoutName);
+  });
   state.scene.setLayout(layoutName);
   if (syncWheel && state.leftWheel) {
     state.leftWheel.setActiveByValue(layoutName);
@@ -553,7 +573,9 @@ function activateLayout(layoutName, syncWheel = true) {
 }
 
 function activateFilter(filterName, syncWheel = true) {
-  els.wheelRightBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.filter === filterName));
+  document.querySelectorAll('#wheel-right .wheel-btn').forEach((b) => {
+    b.classList.toggle('is-active', b.getAttribute('data-filter') === filterName);
+  });
   state.scene.setFilter(filterName);
   if (syncWheel && state.rightWheel) {
     state.rightWheel.setActiveByValue(filterName);
