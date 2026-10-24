@@ -5,22 +5,22 @@
 
 /* ── Design Tokens ──────────────────────────────────────────── */
 :root {
-  /* Palette */
-  --c-bg:              #f5f5f0;
-  --c-surface:         #ffffff;
-  --c-card-lime:       #dce8b4;
-  --c-card-lime-badge: #c5d49c;
-  --c-card-sage:       #c5d1bb;
-  --c-card-sage-badge: #adbda3;
-  --c-card-dark:       #1a1a1e;
-  --c-card-dark-badge: #2e2e34;
-  --c-text:            #1a1a1e;
-  --c-text-secondary:  #6e6e72;
-  --c-text-accent:     #7d9b5a;
-  --c-text-on-dark:    #e8e8e4;
-  --c-border:          #dcdcd6;
-  --c-error:           #c94444;
-  --c-success:         #4a8c50;
+  /* Palette — Bordeaux (Pantone 99251c) & Panna Chiaro */
+  --c-bg:              #F9F6F0;              /* Panna chiaro per lo sfondo */
+  --c-surface:         #FFFDF9;              /* Panna chiaro puro per le card */
+  --c-card-lime:       #F3E9E2;              /* Bento 1: Panna caldo rosato */
+  --c-card-lime-badge: #E8D5CA;
+  --c-card-sage:       #ECE4DA;              /* Bento 2: Panna caldo biscotto */
+  --c-card-sage-badge: #DDCFBF;
+  --c-card-dark:       #99251C;              /* Bento 3: Bordeaux Pantone 99251c */
+  --c-card-dark-badge: #7F1E17;
+  --c-text:            #99251C;              /* Bordeaux al posto del nero */
+  --c-text-secondary:  rgba(153, 37, 28, 0.70); /* Bordeaux ammorbidito */
+  --c-text-accent:     #99251C;              /* Bordeaux d'accento */
+  --c-text-on-dark:    #FFFDF9;              /* Panna chiaro su bordeaux */
+  --c-border:          #EADBCE;              /* Bordo caldo panna/bordeaux */
+  --c-error:           #C93030;
+  --c-success:         #4A8C50;
 
   /* Spacing */
   --s-xs:  0.25rem;
@@ -37,8 +37,10 @@
   --r-xl:   28px;
   --r-full: 9999px;
 
-  /* Typography */
-  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Typography: Instrument Serif per i titoli & Instrument Sans Bold per i testi */
+  --font-sans:  'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font:       var(--font-sans);
 
   /* Motion */
   --ease:     cubic-bezier(0.4, 0, 0.2, 1);
@@ -64,6 +66,7 @@ html {
 
 body {
   font-family: var(--font);
+  font-weight: 700;
   background: var(--c-bg);
   color: var(--c-text);
   line-height: 1.5;
@@ -120,6 +123,10 @@ a { color: inherit; text-decoration: none; }
   padding-bottom: calc(var(--s-2xl) + env(safe-area-inset-bottom, 0px));
 }
 
+#step-overview .step__inner {
+  padding-top: calc(var(--s-xl) + env(safe-area-inset-top, 0px));
+}
+
 /* ── Header ─────────────────────────────────────────────────── */
 .header {
   display: flex;
@@ -169,24 +176,37 @@ a { color: inherit; text-decoration: none; }
 .header__back:hover { background: rgba(0,0,0,0.05); }
 
 .header__title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 400;
   flex: 1;
   text-align: center;
+  letter-spacing: -0.01em;
+}
+.header__title em,
+.header__title i {
+  font-style: italic;
 }
 .header__spacer { width: 40px; }
 
-/* ── Hero Typography ────────────────────────────────────────── */
+/* ── Hero Typography (ridotta del 30%) ──────────────────────── */
 .hero {
-  margin-bottom: var(--s-2xl);
+  margin-top: var(--s-xs);
+  margin-bottom: var(--s-xl);
 }
 
 .hero__title {
-  font-size: clamp(1.625rem, 5vw + 0.5rem, 2.5rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-size: clamp(1.45rem, 3.8vw + 0.35rem, 2.25rem);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--c-text);
+}
+
+.hero__title .text-accent {
+  font-style: italic;
+  color: var(--c-text-accent);
 }
 
 .text-accent {
@@ -231,10 +251,16 @@ a { color: inherit; text-decoration: none; }
 }
 
 .card__title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 400;
   margin-bottom: var(--s-sm);
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.card__title em,
+.card__title i {
+  font-style: italic;
 }
 
 .card__desc {
@@ -308,6 +334,10 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 
+.cta--start {
+  margin-bottom: var(--s-2xl);
+}
+
 .cta--submit {
   margin-top: var(--s-lg);
 }
@@ -344,7 +374,7 @@ a { color: inherit; text-decoration: none; }
 .media-tabs {
   display: inline-flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(153, 37, 28, 0.05);
   padding: 3px;
   border-radius: var(--r-full);
   border: 1px solid var(--c-border);
@@ -363,7 +393,7 @@ a { color: inherit; text-decoration: none; }
 .media-tab.is-active {
   background: var(--c-surface);
   color: var(--c-text);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(153, 37, 28, 0.12);
 }
 
 .field__label {
@@ -406,7 +436,7 @@ a { color: inherit; text-decoration: none; }
 .field__input:focus,
 .field__textarea:focus {
   border-color: var(--c-text-accent);
-  box-shadow: 0 0 0 3px rgba(125, 155, 90, 0.12);
+  box-shadow: 0 0 0 3px rgba(153, 37, 28, 0.12);
 }
 .field__input.is-invalid,
 .field__textarea.is-invalid {
@@ -458,7 +488,7 @@ a { color: inherit; text-decoration: none; }
 }
 .date-segmented:focus-within {
   border-color: var(--c-text-accent);
-  box-shadow: 0 0 0 3px rgba(125, 155, 90, 0.12);
+  box-shadow: 0 0 0 3px rgba(153, 37, 28, 0.12);
 }
 .date-segmented.is-invalid {
   border-color: var(--c-error);
@@ -525,11 +555,11 @@ a { color: inherit; text-decoration: none; }
 .dropzone:hover,
 .dropzone:focus-visible {
   border-color: var(--c-text-accent);
-  background: rgba(125, 155, 90, 0.04);
+  background: rgba(153, 37, 28, 0.04);
 }
 .dropzone.is-dragover {
   border-color: var(--c-text-accent);
-  background: rgba(125, 155, 90, 0.08);
+  background: rgba(153, 37, 28, 0.08);
   transform: scale(1.02);
 }
 .dropzone.has-file {
@@ -567,7 +597,7 @@ a { color: inherit; text-decoration: none; }
   max-height: 280px;
   border-radius: var(--r-md);
   margin-bottom: var(--s-md);
-  background: #000000;
+  background: #2D0A08;
 }
 
 .dropzone__model {
@@ -576,7 +606,7 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: var(--s-xs);
   padding: var(--s-md);
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(153, 37, 28, 0.03);
   border-radius: var(--r-md);
   margin-bottom: var(--s-md);
 }
@@ -598,7 +628,7 @@ a { color: inherit; text-decoration: none; }
   text-transform: uppercase;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(125, 155, 90, 0.12);
+  background: rgba(153, 37, 28, 0.12);
   color: var(--c-text-accent);
 }
 
@@ -608,7 +638,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--r-lg);
   background: var(--c-surface);
   padding: var(--s-lg);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 20px rgba(153, 37, 28, 0.04);
   display: flex;
   flex-direction: column;
   gap: var(--s-sm);
@@ -616,7 +646,7 @@ a { color: inherit; text-decoration: none; }
 }
 .text-card-editor:focus-within {
   border-color: var(--c-text-accent);
-  box-shadow: 0 0 0 3px rgba(125, 155, 90, 0.12);
+  box-shadow: 0 0 0 3px rgba(153, 37, 28, 0.12);
 }
 .text-card-editor__badge {
   align-self: flex-start;
@@ -626,8 +656,8 @@ a { color: inherit; text-decoration: none; }
   text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 4px;
-  background: #111111;
-  color: #FFFFFF;
+  background: #99251C;
+  color: #FFFDF9;
 }
 .text-card-editor__textarea {
   width: 100%;
@@ -652,7 +682,7 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   justify-content: space-between;
   padding-top: var(--s-xs);
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid rgba(153, 37, 28, 0.08);
   font-size: 0.75rem;
   color: var(--c-text-secondary);
 }
@@ -698,7 +728,7 @@ a { color: inherit; text-decoration: none; }
 }
 .dropzone__remove:hover {
   background: var(--c-error);
-  color: #fff;
+  color: var(--c-text-on-dark);
 }
 
 /* ── Dropzone Preview Strict Isolation per Media Type ───────── */
@@ -831,7 +861,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--c-bg);
 }
 .consent__input:focus-visible + .consent__box {
-  box-shadow: 0 0 0 3px rgba(125, 155, 90, 0.2);
+  box-shadow: 0 0 0 3px rgba(153, 37, 28, 0.2);
 }
 .consent__label:active .consent__box {
   transform: scale(0.9);
@@ -856,7 +886,7 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(245, 245, 240, 0.92);
+  background: rgba(249, 246, 240, 0.94);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   opacity: 0;
@@ -893,11 +923,16 @@ a { color: inherit; text-decoration: none; }
 }
 
 .overlay__title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-size: 2.2rem;
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
   margin-bottom: var(--s-md);
+}
+.overlay__title em,
+.overlay__title i {
+  font-style: italic;
 }
 
 .overlay__desc {
@@ -931,13 +966,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 @media (min-width: 640px) {
+  /* Le caselle bento rimangono sempre posizionate in colonna verticale */
   .cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--s-md);
-  }
-  .card--dark {
-    grid-column: 1 / -1;
   }
 }
 

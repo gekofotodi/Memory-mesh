@@ -2,30 +2,31 @@
 /* References: MĒNĒM, visualizzazione_sezioni.png, images_connection.jpg, menu_wheel_laterale_.jpg */
 
 :root {
-  /* Editorial Light Mode Palette */
-  --bg-page: #F4F4F6;
-  --bg-white: #FFFFFF;
+  /* Editorial Palette — Bordeaux (Pantone 99251c) & Panna Chiaro */
+  --bg-page: #F9F6F0;              /* Panna chiaro per lo sfondo pagina */
+  --bg-white: #FFFDF9;             /* Panna chiaro puro per le card */
 
   /* Typography Colors */
-  --text-dark: #000000;
-  --text-body: #333333;
-  --text-muted: #707075;
-  --text-light: #F4F4F6;
+  --text-dark: #99251C;            /* Bordeaux Pantone 99251c per il nero */
+  --text-body: #99251C;            /* Bordeaux per il testo */
+  --text-muted: rgba(153, 37, 28, 0.65); /* Bordeaux ammorbidito */
+  --text-light: #FFFDF9;           /* Panna chiaro su bordeaux */
 
   /* Curated Accent Colors */
-  --accent-red: #FF2E2E;
-  --accent-red-soft: rgba(255, 46, 46, 0.10);
-  --accent-sage: #A8C3A0;
-  --accent-sage-soft: rgba(168, 195, 160, 0.15);
-  --accent-green-bright: #00E676;
+  --accent-red: #99251C;
+  --accent-red-soft: rgba(153, 37, 28, 0.10);
+  --accent-sage: #99251C;
+  --accent-sage-soft: rgba(153, 37, 28, 0.08);
+  --accent-green-bright: #00E676;  /* Puntatore e tracking attivo */
 
   /* Borders & Dividers */
-  --border-card: #E0E0E0;
-  --border-light: #EBEBEB;
+  --border-card: #EADBCE;          /* Bordo caldo panna/bordeaux */
+  --border-light: #F0E8DF;
 
-  /* Fonts: Rigorosamente Helvetica Everywhere */
-  --font-mono: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Fonts: Instrument Serif per i titoli & Instrument Sans Bold per i testi */
+  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-sans:  'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:  'Instrument Sans', monospace, sans-serif;
 
   /* Geometry (Nessun contenitore a pillola) */
   --radius-bento: 24px;
@@ -49,7 +50,8 @@ html, body.kiosk-body {
   overflow: hidden;
   background-color: var(--bg-page);
   color: var(--text-dark);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
+  font-weight: 700;
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
@@ -94,18 +96,23 @@ html, body.kiosk-body {
   align-items: center;
   gap: 12px;
   padding: 0;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .header-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #000000;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #99251C;
+}
+.header-title em,
+.header-title i {
+  font-style: italic;
 }
 
 .header-sep {
-  color: #B5B5BA;
+  color: rgba(153, 37, 28, 0.35);
   font-size: 0.85rem;
 }
 
@@ -113,52 +120,50 @@ html, body.kiosk-body {
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.08em;
-  color: #555555;
+  color: rgba(153, 37, 28, 0.70);
 }
 
 .header-counter {
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.08em;
-  color: #555555;
+  color: rgba(153, 37, 28, 0.70);
 }
 
 .header-counter span {
-  color: #000000;
+  color: #99251C;
   font-weight: 700;
 }
 
-/* ── 2. Menu a Ruota Laterali 2D (Ingranditi 300% & Reveal su Prossimità Cursore) ── */
-/* Totalmente nascosti dai lati dello schermo, appaiono fluidamente all'avvicinarsi del cursore */
+/* ── 2. Menu Laterali a Semicerchio (Reveal su avvicinamento ai bordi) ── */
 .wheel-dock {
   position: fixed;
   top: 50%;
   z-index: 20;
   display: flex;
   align-items: center;
-  pointer-events: none; /* Disabilitato al puntamento quando nascosto */
+  pointer-events: none;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  width: 440px;
-  height: 75vh;
+  width: auto;
+  height: auto;
   opacity: 0;
   transition: transform 0.45s var(--ease-expo), opacity 0.38s ease;
 }
 
 .wheel-dock--left {
   left: 0;
-  transform: translateY(-50%) translateX(-110%);
+  transform: translateY(-50%) translateX(-140%);
 }
 
 .wheel-dock--right {
   right: 0;
-  transform: translateY(-50%) translateX(110%);
+  transform: translateY(-50%) translateX(140%);
 }
 
-/* Stato Visibile: compare dal bordo quando il cursore si avvicina al lato */
+/* Mostra il menu quando il cursore/mano si avvicina al lato dello schermo */
 .wheel-dock--left.is-visible,
-.wheel-dock--left.is-expanded,
 .wheel-dock--left:hover {
   transform: translateY(-50%) translateX(0);
   opacity: 1;
@@ -166,7 +171,6 @@ html, body.kiosk-body {
 }
 
 .wheel-dock--right.is-visible,
-.wheel-dock--right.is-expanded,
 .wheel-dock--right:hover {
   transform: translateY(-50%) translateX(0);
   opacity: 1;
@@ -175,91 +179,98 @@ html, body.kiosk-body {
 
 .wheel-arc {
   position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 300px;
+  height: 340px;
 }
 
-/* Pulsanti Voci a Ruota (Ridotti del 30% per proporzioni ottimali) */
+/* Pulsanti Voci Menu: raggi che fuoriescono dal centro di un cerchio */
 .wheel-btn {
   position: absolute;
   left: 0;
+  top: 50%;
+  margin-top: -16px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 4px 8px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   outline: none;
-  color: #000000 !important;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 2.0rem;
-  line-height: 1.1;
+  color: #99251C !important;
+  font-family: var(--font-serif);
+  font-size: 1.32rem; /* Rimpicciolito del 40% da 2.2rem */
+  line-height: 1.2;
   font-weight: 400;
-  letter-spacing: -0.02em;
+  font-style: normal;
+  letter-spacing: -0.01em;
   cursor: pointer;
   white-space: nowrap;
-  opacity: 0.35;
-  transform-origin: 0% 50%;
-  transition: opacity 0.25s ease, font-weight 0.2s ease;
+  opacity: 0.38;
+  transform-origin: 0% 50%; /* Perno sul centro del bordo sinistro */
+  transition: opacity 0.2s ease, font-weight 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
-  will-change: transform, opacity;
 }
 
 .wheel-dock--right .wheel-btn {
   left: auto;
   right: 0;
-  transform-origin: 100% 50%;
   flex-direction: row-reverse;
   justify-content: flex-start;
   text-align: right;
+  transform-origin: 100% 50%; /* Perno sul centro del bordo destro */
 }
 
-/* Pallino verde acceso (#00E676) della voce attiva (Ridotto del 30%: 14px) */
+/* Cerchio indicatore rosso, senza gradiente né glow */
 .wheel-dot {
-  width: 14px;
-  height: 14px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background-color: var(--accent-green-bright);
+  background: #99251C !important;
+  background-image: none !important;
+  box-shadow: none !important;
   opacity: 0;
-  transform: scale(0.3);
-  transition: all 0.22s var(--ease-expo);
+  transition: opacity 0.2s ease;
   flex-shrink: 0;
 }
 
 .wheel-btn__text {
-  color: #000000 !important;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  transition: color 0.2s ease, transform 0.2s ease, font-weight 0.2s ease;
+  color: #99251C !important;
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 400;
+  transition: opacity 0.2s ease, font-weight 0.2s ease;
 }
 
-/* Voce attiva: testo nero nitido, font bold, pallino verde, NESSUN sfondo pillola */
+.wheel-btn:hover {
+  opacity: 0.85 !important;
+}
+
+.wheel-btn:hover .wheel-btn__text {
+  font-style: normal;
+}
+
+/* Voce attiva: fissa nella sua posizione sull'arco, testo in grassetto, pallino rosso pieno senza gradiente */
 .wheel-btn.is-active {
   opacity: 1.0 !important;
-  font-weight: 700 !important;
-  color: #000000 !important;
+  color: #99251C !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
 .wheel-btn.is-active .wheel-btn__text {
-  color: #000000 !important;
+  color: #99251C !important;
   font-weight: 700 !important;
+  font-style: normal;
 }
 
 .wheel-btn.is-active .wheel-dot {
-  opacity: 1;
-  transform: scale(1);
-  box-shadow: 0 0 11px rgba(0, 230, 118, 0.65);
-}
-
-.wheel-btn:hover {
-  opacity: 0.85 !important;
+  opacity: 1 !important;
+  background: #99251C !important;
+  background-image: none !important;
+  box-shadow: none !important;
 }
 
 /* ── 3. Feed Webcam Pulito (Bottom-Left) ────────────────────────── */
@@ -277,13 +288,13 @@ html, body.kiosk-body {
   border-radius: 20px;
   overflow: hidden;
   border: 1px solid var(--border-card);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 30px rgba(153, 37, 28, 0.08);
 }
 
 .camera-hud__viewport {
   width: 100%;
   height: 115px;
-  background: #111111;
+  background: #2D0A08;
 }
 
 #camera-canvas {
@@ -322,9 +333,9 @@ html, body.kiosk-body {
 }
 
 .hud-status-text {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.62rem;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--text-muted);
   white-space: nowrap;
@@ -338,19 +349,19 @@ html, body.kiosk-body {
 }
 
 .hud-hand-tag {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.58rem;
   font-weight: 600;
   padding: 2px 5px;
   border-radius: 4px;
-  background: #F4F4F6;
-  color: #666666;
+  background: #F4EBE2;
+  color: #99251C;
 }
 
 .hud-hand-tag.is-active {
-  color: var(--accent-dark);
-  background: var(--accent-sage-soft);
-  border: 1px solid var(--accent-sage);
+  color: var(--accent-red);
+  background: var(--accent-red-soft);
+  border: 1px solid var(--accent-red);
 }
 
 /* ── 4. Tasto INFO MĒNĒM Style (Bottom-Right, Senza Contenitore a Pillola) ── */
@@ -367,13 +378,13 @@ html, body.kiosk-body {
   background: var(--bg-white);
   border: 1px solid var(--border-card);
   border-radius: 4px; /* Rettangolare minimale, NESSUNA pillola */
-  color: #000000;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #99251C;
+  font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(153, 37, 28, 0.06);
   transition: all 0.25s var(--ease-expo);
   pointer-events: auto;
 }
@@ -388,7 +399,7 @@ html, body.kiosk-body {
 .info-pill-btn:hover {
   transform: translateY(-2px);
   border-color: var(--text-dark);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 12px 30px rgba(153, 37, 28, 0.12);
 }
 
 /* ── 5. Modali Bento Grid (Light Mode & Accent Line Rossa) ──────── */
@@ -399,7 +410,7 @@ html, body.kiosk-body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(45, 10, 8, 0.40);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   opacity: 0;
@@ -417,7 +428,7 @@ html, body.kiosk-body {
   background: var(--bg-white);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-bento);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 70px rgba(153, 37, 28, 0.16);
   transform: scale(0.96) translateY(14px);
   transition: transform 0.35s var(--ease-expo);
   max-height: 86vh;
@@ -446,7 +457,7 @@ html, body.kiosk-body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #F4F4F6;
+  background: #F4EBE2;
   border: 1px solid var(--border-card);
   color: var(--text-dark);
   display: flex;
@@ -459,7 +470,7 @@ html, body.kiosk-body {
 
 .bento-close-btn:hover {
   background: var(--accent-red);
-  color: #FFFFFF;
+  color: #FFFDF9;
   border-color: var(--accent-red);
 }
 
@@ -474,7 +485,7 @@ html, body.kiosk-body {
 }
 
 .bento-card {
-  background: #FAFAFC;
+  background: #FAF5ED;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-card);
   padding: 18px;
@@ -491,7 +502,7 @@ html, body.kiosk-body {
 }
 
 .bento-card__eyebrow {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.65rem;
   letter-spacing: 0.12em;
   color: var(--text-muted);
@@ -507,18 +518,28 @@ html, body.kiosk-body {
 }
 
 .bento-card__title {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 1.45rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-family: var(--font-serif);
+  font-size: 2.2rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   color: var(--text-dark);
+  line-height: 1.15;
+}
+.bento-card__title em,
+.bento-card__title i {
+  font-style: italic;
 }
 
 .bento-card__subtitle {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 400;
   color: var(--text-dark);
+  letter-spacing: -0.01em;
+}
+.bento-card__subtitle em,
+.bento-card__subtitle i {
+  font-style: italic;
 }
 
 .bento-card__body {
@@ -553,7 +574,7 @@ html, body.kiosk-body {
 
 .detail-media-wrap {
   position: relative;
-  background: #F4F4F6;
+  background: #FAF5ED;
   border-radius: var(--radius-card);
   overflow: hidden;
   display: flex;
@@ -586,13 +607,13 @@ html, body.kiosk-body {
   height: 56px;
   border-radius: 50%;
   background: var(--bg-white);
-  border: 1.5px solid var(--accent-sage);
-  color: var(--accent-dark);
+  border: 1.5px solid var(--accent-red);
+  color: var(--accent-red);
   font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(153, 37, 28, 0.08);
 }
 
 #audio-waveform-canvas {
@@ -621,31 +642,35 @@ html, body.kiosk-body {
 .detail-pill {
   padding: 3px 9px;
   border-radius: 4px; /* Nessuna pillola */
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.70rem;
   font-weight: 600;
-  background: #F4F4F6;
+  background: #FAF5ED;
   color: var(--text-dark);
   border: 1px solid var(--border-card);
 }
 
 .detail-pill--location {
-  border-color: var(--accent-sage);
-  color: #2F5233;
-  background: var(--accent-sage-soft);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  background: var(--accent-red-soft);
 }
 
 .detail-pill--time {
-  border-color: #D8D8DC;
+  border-color: var(--border-card);
 }
 
 .detail-title {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: 1.95rem;
+  font-weight: 400;
   letter-spacing: -0.01em;
   color: var(--text-dark);
-  line-height: 1.25;
+  line-height: 1.2;
+}
+.detail-title em,
+.detail-title i {
+  font-style: italic;
 }
 
 .detail-desc {
@@ -661,7 +686,7 @@ html, body.kiosk-body {
 }
 
 .detail-section__header {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.64rem;
   letter-spacing: 0.10em;
   color: var(--text-muted);
@@ -680,7 +705,7 @@ html, body.kiosk-body {
   background: var(--bg-white);
   border: 1px solid var(--border-card);
   color: var(--text-dark);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 600;
 }
@@ -697,7 +722,7 @@ html, body.kiosk-body {
   background: var(--bg-white);
   border: 1px solid var(--border-card);
   border-radius: 4px; /* Nessuna pillola */
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-dark);
@@ -727,11 +752,11 @@ html, body.kiosk-body {
   border: 1px solid var(--border-card);
   border-radius: 6px; /* Rettangolare minimale */
   color: var(--text-dark);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 20px rgba(153, 37, 28, 0.08);
   opacity: 0;
   pointer-events: none;
   transition: all 0.3s ease;
@@ -779,7 +804,7 @@ html, body.kiosk-body {
   margin-left: -3px;
   border-radius: 50%;
   background-color: var(--accent-red);
-  box-shadow: 0 0 8px rgba(255, 46, 46, 0.5);
+  box-shadow: 0 0 8px rgba(153, 37, 28, 0.45);
   transition: transform 0.2s ease;
 }
 
@@ -791,7 +816,7 @@ html, body.kiosk-body {
 
 .cursor-bg {
   fill: none;
-  stroke: rgba(0, 0, 0, 0.15);
+  stroke: rgba(153, 37, 28, 0.20);
   stroke-width: 1.5;
 }
 

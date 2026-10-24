@@ -560,37 +560,37 @@ function generateTextCardImage(text, title = '') {
     canvas.height = 800;
     const ctx = canvas.getContext('2d');
 
-    // Background: architectural off-white
-    ctx.fillStyle = '#F8F8F7';
+    // Background: light cream (panna chiaro)
+    ctx.fillStyle = '#F9F6F0';
     ctx.fillRect(0, 0, 1200, 800);
 
     // Outer border
-    ctx.strokeStyle = '#E2E2DF';
+    ctx.strokeStyle = '#EADBCE';
     ctx.lineWidth = 14;
     ctx.strokeRect(20, 20, 1160, 760);
 
     // Inner subtle hairline
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.strokeStyle = 'rgba(153, 37, 28, 0.08)';
     ctx.lineWidth = 2;
     ctx.strokeRect(38, 38, 1124, 724);
 
     // Header badge
-    ctx.fillStyle = '#111111';
-    ctx.font = '700 24px "Space Mono", monospace, sans-serif';
+    ctx.fillStyle = '#99251C';
+    ctx.font = '700 20px "Instrument Sans", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText('// MEMORIA TESTUALE · STOÀ', 72, 72);
 
     // Decorative quote mark
-    ctx.fillStyle = 'rgba(0, 230, 118, 0.55)'; // Stoà vibrant green accent
-    ctx.font = '900 120px "Helvetica Neue", Helvetica, Arial, sans-serif';
-    ctx.fillText('“', 70, 120);
+    ctx.fillStyle = 'rgba(153, 37, 28, 0.25)';
+    ctx.font = 'italic 400 140px "Instrument Serif", Georgia, serif';
+    ctx.fillText('“', 70, 115);
 
-    // Main quote text wrapping
-    ctx.fillStyle = '#111111';
-    ctx.font = '600 44px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    // Main quote text wrapping in Instrument Serif (italic editorial)
+    ctx.fillStyle = '#99251C';
+    ctx.font = 'italic 400 52px "Instrument Serif", Georgia, serif';
     const maxWidth = 1040;
-    const lineHeight = 64;
+    const lineHeight = 66;
     const x = 72;
     let y = 230;
 
@@ -616,10 +616,10 @@ function generateTextCardImage(text, title = '') {
       ctx.fillText(line, x, y);
     }
 
-    // Title footer
+    // Title footer in Instrument Sans Bold
     if (title) {
-      ctx.fillStyle = '#666666';
-      ctx.font = '500 24px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.fillStyle = 'rgba(153, 37, 28, 0.70)';
+      ctx.font = '700 22px "Instrument Sans", sans-serif';
       ctx.fillText(title.toUpperCase(), 72, 715);
     }
 

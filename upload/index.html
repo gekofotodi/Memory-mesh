@@ -6,10 +6,10 @@
   <meta name="description" content="Memory Mesh — Condividi un ricordo per l'installazione interattiva del centro giovanile." />
   <title>Memory Mesh · Invia un ricordo</title>
 
-  <!-- Google Fonts — Inter (geometric sans-serif) -->
+  <!-- Google Fonts — Instrument Serif (Titoli) & Instrument Sans (Testi) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="./style.css" />
 </head>
@@ -21,36 +21,28 @@
   <section id="step-overview" class="step step--active" aria-label="Panoramica progetto">
     <div class="step__inner">
 
-      <!-- Header -->
-      <header class="header">
-        <div class="logo" aria-label="Memory Mesh">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-            <path d="M18 3L33 18L18 33L3 18Z" stroke="currentColor" stroke-width="2"/>
-            <path d="M18 10L26 18L18 26L10 18Z" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="18" cy="18" r="2" fill="currentColor"/>
-            <line x1="18" y1="3" x2="18" y2="10" stroke="currentColor" stroke-width="1"/>
-            <line x1="18" y1="26" x2="18" y2="33" stroke="currentColor" stroke-width="1"/>
-            <line x1="3" y1="18" x2="10" y2="18" stroke="currentColor" stroke-width="1"/>
-            <line x1="26" y1="18" x2="33" y2="18" stroke="currentColor" stroke-width="1"/>
-          </svg>
-        </div>
-        <button class="header__menu" aria-label="Menu" type="button">
-          <span></span><span></span><span></span>
-        </button>
-      </header>
-
-      <!-- Hero Typography -->
+      <!-- Hero Typography: Instrument Serif con mix di regular e italic -->
       <section class="hero">
         <h1 class="hero__title">
-          Memory Mesh è un
-          <span class="text-accent">archivio relazionale e generativo</span>
-          che raccoglie le tracce e le memorie del centro giovanile in una
-          <span class="text-accent">costellazione interattiva</span>
-          esplorabile a mezz'aria.
+          <strong>Memory 
+          <span class="text-accent">Mesh</span> </strong>
+          è un
+          <span class="text-accent">archivio relazionale</span>
+          che raccoglie i ricordi nati all'interno del Centro Giovanile 
+          <span class="text-accent">Stoà</span>
+          e li rende esplorabili grazie ad un'installazione permanente interattiva.
         </h1>
       </section>
 
-      <!-- Bento Cards -->
+      <!-- CTA Principale prima delle caselle bento -->
+      <button class="cta cta--start" id="btn-start" type="button">
+        <span>Aggiungi la tua memoria</span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M4 10h12M12 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <!-- Bento Cards in verticale -->
       <section class="cards" aria-label="Informazioni">
 
         <!-- Card 1 — Ricordi ammessi -->
@@ -60,12 +52,10 @@
               <path d="M10 2v16M2 10h16M4.2 4.2l11.6 11.6M15.8 4.2L4.2 15.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </div>
-          <h2 class="card__title">Ricordi ammessi</h2>
+          <h2 class="card__title">Ricordi <em>possibili</em></h2>
           <p class="card__desc">
-            Puoi condividere <strong>immagini</strong> (JPEG, PNG, WebP) e
-            <strong>registrazioni vocali</strong> o note audio.
-            I file vengono ottimizzati automaticamente per garantire
-            la migliore qualità nell'installazione.
+            Puoi condividere <strong>foto, video, testi o audio</strong>
+            assegnando un titolo e una descrizione.
           </p>
         </article>
 
@@ -78,11 +68,10 @@
               <path d="M9 15H3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <h2 class="card__title">La rete visiva</h2>
+          <h2 class="card__title"> Rete <em>visiva</em></h2>
           <p class="card__desc">
-            I contenuti inviati entrano a far parte della rete visiva pubblica
-            dell'installazione, collegati fra loro attraverso tag tematici
-            ed echi temporali.
+            Quando condividi un ricordo puoi aggiungere alcune informazioni,
+            come luogo o data, per arricchirlo e renderlo parte della trama già esistente.
           </p>
         </article>
 
@@ -94,21 +83,12 @@
               <rect x="7" y="7" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
             </svg>
           </div>
-          <h2 class="card__title">Privacy & etica</h2>
+          <h2 class="card__title">Obiettivo <em>finale</em></h2>
           <p class="card__desc">
-            I ricordi saranno visibili pubblicamente sull'installazione
-            a scopo culturale e comunitario, senza alcun fine commerciale.
+            La trama che verrà intessuta diventerà un archivio dei ricordi nati a Stoà.
           </p>
         </article>
       </section>
-
-      <!-- CTA -->
-      <button class="cta" id="btn-start" type="button">
-        <span>Aggiungi la tua memoria</span>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d="M4 10h12M12 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </div>
   </section>
 
@@ -125,7 +105,7 @@
             <path d="M16 10H4M9 5L4 10l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <span class="header__title">Nuovo ricordo</span>
+        <span class="header__title">Nuovo <em>ricordo</em></span>
         <div class="header__spacer"></div>
       </header>
 
@@ -325,7 +305,7 @@
           <path d="M14 24.5l7 7 13-15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <h2 class="overlay__title">La tua memoria è entrata nella rete!</h2>
+      <h2 class="overlay__title">La tua memoria è entrata <em>nella rete!</em></h2>
       <p class="overlay__desc">Il tuo ricordo è ora parte di Memory Mesh.</p>
       <button class="cta cta--outline" id="btn-new" type="button">Invia un altro ricordo</button>
     </div>

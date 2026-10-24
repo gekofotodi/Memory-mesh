@@ -446,8 +446,8 @@ export function initScene(canvas) {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
-    // Light Mode Exhibition Gallery Background (#F4F4F6)
-    ctx.fillStyle = '#F4F4F6';
+    // Light Mode Exhibition Gallery Background (#F9F6F0)
+    ctx.fillStyle = '#F9F6F0';
     ctx.fillRect(0, 0, width, height);
 
     // Camera transform
@@ -465,7 +465,7 @@ export function initScene(canvas) {
       drawClusterSectionRings(now);
     }
 
-    // 3. Thin Gray Filaments (#B0B0B0, 1px) (images_connection.jpg)
+    // 3. Thin Filaments
     drawFilaments(now);
 
     // 4. Clean Rectangular Photo Thumbnails
@@ -483,19 +483,19 @@ export function initScene(canvas) {
       const ry = room.y - room.h / 2;
 
       // Architectural outline
-      ctx.strokeStyle = '#D8D8DC';
+      ctx.strokeStyle = '#EADBCE';
       ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(rx, ry, room.w, room.h);
       ctx.setLineDash([]);
 
-      // Room Header MĒNĒM style (Helvetica)
-      ctx.fillStyle = '#8E8E93';
-      ctx.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      // Room Header: Instrument Sans Bold & Instrument Serif
+      ctx.fillStyle = 'rgba(153, 37, 28, 0.60)';
+      ctx.font = '700 9px "Instrument Sans", sans-serif';
       ctx.fillText(`// ${room.code}`, rx + 16, ry + 22);
 
-      ctx.fillStyle = '#111111';
-      ctx.font = '600 11px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.fillStyle = '#99251C';
+      ctx.font = 'italic 16px "Instrument Serif", Georgia, serif';
       ctx.fillText(room.label, rx + 16, ry + 38);
     });
     ctx.restore();
@@ -507,7 +507,7 @@ export function initScene(canvas) {
     ctx.beginPath();
     ctx.moveTo(-1400, 0);
     ctx.lineTo(1400, 0);
-    ctx.strokeStyle = '#D0D0D5';
+    ctx.strokeStyle = '#EADBCE';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
@@ -515,7 +515,7 @@ export function initScene(canvas) {
       ctx.beginPath();
       ctx.moveTo(n.x, 0);
       ctx.lineTo(n.x, n.y);
-      ctx.strokeStyle = '#D8D8DE';
+      ctx.strokeStyle = '#EADBCE';
       ctx.setLineDash([2, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -566,16 +566,16 @@ export function initScene(canvas) {
       ctx.lineWidth = 1.6;
       ctx.stroke();
 
-      // Section Tag in Helvetica
-      ctx.fillStyle = '#111111';
-      ctx.font = '700 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      // Section Tag in Instrument Serif Italic
+      ctx.fillStyle = '#99251C';
+      ctx.font = 'italic 16px "Instrument Serif", Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`SEZIONE // ${tag.toUpperCase()}`, avgX, avgY - radius - 12);
+      ctx.fillText(`Sezione // ${tag}`, avgX, avgY - radius - 12);
     });
     ctx.restore();
   }
 
-  // ── Thin Gray Filaments (#B0B0B0, 1px) (images_connection.jpg) ─
+  // ── Thin Warm Filaments ─
   function drawFilaments(now) {
     if (nodes.length < 2) return;
 
@@ -605,11 +605,11 @@ export function initScene(canvas) {
 
             const baseAlpha = Math.min(n1.alpha, n2.alpha) * (1 - Math.min(1, dist / 520));
 
-            // Fine clean gray line exactly as in images_connection.jpg
+            // Fine clean bordeaux filament line
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
-            ctx.strokeStyle = `rgba(176, 176, 176, ${baseAlpha * 0.85})`;
+            ctx.strokeStyle = `rgba(153, 37, 28, ${baseAlpha * 0.35})`;
             ctx.lineWidth = 1.0;
             ctx.stroke();
           }
@@ -638,14 +638,14 @@ export function initScene(canvas) {
       const y0 = ny - h / 2;
 
       // Soft light-gallery shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+      ctx.shadowColor = 'rgba(153, 37, 28, 0.08)';
       ctx.shadowBlur = isHover ? 12 : 6;
       ctx.shadowOffsetY = isHover ? 6 : 2;
 
-      // White solid backing
+      // Light cream solid backing
       ctx.beginPath();
       ctx.roundRect(x0, y0, w, h, r);
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#FFFDF9';
       ctx.fill();
 
       // Reset shadow for inner drawing
@@ -662,17 +662,17 @@ export function initScene(canvas) {
         ctx.restore();
       } else {
         const glyph = node.memory.media_type === 'audio' ? '♪' : node.memory.media_type === 'video' ? '▶' : '“';
-        ctx.fillStyle = '#111111';
-        ctx.font = `600 ${Math.round(18 * node.scale)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+        ctx.fillStyle = '#99251C';
+        ctx.font = `italic 400 ${Math.round(22 * node.scale)}px "Instrument Serif", Georgia, serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(glyph, nx, ny);
       }
 
-      // Crisp White Border + Hairline
+      // Crisp Light Cream Border + Hairline
       ctx.beginPath();
       ctx.roundRect(x0, y0, w, h, r);
-      ctx.strokeStyle = isHover ? '#FF2E2E' : '#FFFFFF';
+      ctx.strokeStyle = isHover ? '#99251C' : '#FFFDF9';
       ctx.lineWidth = isHover ? 2.5 : 2.0;
       ctx.stroke();
 
@@ -680,12 +680,12 @@ export function initScene(canvas) {
       if (!isHover) {
         ctx.beginPath();
         ctx.roundRect(x0 - 0.5, y0 - 0.5, w + 1, h + 1, r + 0.5);
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.strokeStyle = 'rgba(153, 37, 28, 0.15)';
         ctx.lineWidth = 1.0;
         ctx.stroke();
       }
 
-      // Hover: Clean White Tooltip Card with Space Mono typography
+      // Hover: Clean Light Cream Tooltip Card with Instrument Serif typography
       if (isHover) {
         drawHoverTooltip(node, nx, y0 + h + 12 * node.scale);
       }
@@ -694,45 +694,46 @@ export function initScene(canvas) {
     });
   }
 
-  // ── Hover Tooltip (Space Mono Typography) ────────────────────
+  // ── Hover Tooltip (Instrument Serif & Instrument Sans Bold) ─────────────
   function drawHoverTooltip(node, cx, topY) {
-    const rawTitle = (node.memory.title || 'MEMORIA').toUpperCase();
-    const loc = node.memory.location_tag ? ` // ${node.memory.location_tag.toUpperCase()}` : '';
+    const rawTitle = node.memory.title || 'Memoria';
+    const loc = node.memory.location_tag ? ` // ${node.memory.location_tag}` : '';
     const text = `${rawTitle}${loc}`;
 
     ctx.save();
-    ctx.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.font = 'italic 15px "Instrument Serif", Georgia, serif';
     const textW = ctx.measureText(text).width;
-    const boxW = textW + 20;
-    const boxH = 26;
+    const boxW = Math.max(textW + 24, 70);
+    const boxH = 28;
 
     const bx = cx - boxW / 2;
     const by = topY;
 
-    // Clean white card
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.10)';
+    // Clean light cream card
+    ctx.shadowColor = 'rgba(153, 37, 28, 0.10)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = 4;
 
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#FFFDF9';
     ctx.beginPath();
     ctx.roundRect(bx, by, boxW, boxH, 6);
     ctx.fill();
 
     ctx.shadowColor = 'transparent';
 
-    ctx.strokeStyle = '#E0E0E0';
+    ctx.strokeStyle = '#EADBCE';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Red left accent indicator
-    ctx.fillStyle = '#FF2E2E';
+    // Bordeaux left accent indicator
+    ctx.fillStyle = '#99251C';
     ctx.fillRect(bx, by + 4, 3, boxH - 8);
 
-    // Text in deep charcoal
-    ctx.fillStyle = '#111111';
+    // Text in Instrument Serif Italic
+    ctx.fillStyle = '#99251C';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.font = 'italic 15px "Instrument Serif", Georgia, serif';
     ctx.fillText(text, cx + 2, by + boxH / 2);
 
     ctx.restore();

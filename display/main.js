@@ -325,40 +325,26 @@ function handlePointerMove(x, y) {
     els.virtualCursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
-  // 2. Proximity check for 300% Enlarged Wheel Menus (Hidden by default, reveal on edge proximity)
-  const enterThreshold = 300; // Trigger slide-in when cursor approaches within 300px of screen border
-  const leaveThreshold = 580; // Keep visible while interacting within 580px, then slide out
+  // 2. Proximity check per i menu laterali (mostrati solo all'avvicinamento al lato dello schermo)
+  const enterThreshold = 240; // Mostra il menu quando il cursore si avvicina a 240px dal bordo
+  const leaveThreshold = 380; // Nasconde il menu quando il cursore si allontana oltre 380px
 
-  // Left Wheel Proximity (Layouts)
+  // Menu Sinistro (Layout)
   if (!state.leftWheelVisible && x < enterThreshold) {
     state.leftWheelVisible = true;
     els.wheelLeft.classList.add('is-visible');
-    els.wheelLeft.classList.add('is-expanded');
   } else if (state.leftWheelVisible && x > leaveThreshold) {
     state.leftWheelVisible = false;
     els.wheelLeft.classList.remove('is-visible');
-    els.wheelLeft.classList.remove('is-expanded');
-    if (state.leftWheel) state.leftWheel.stopAutoSpin();
   }
 
-  if (state.leftWheelVisible && state.leftWheel) {
-    state.leftWheel.handlePointerProximity(x, y);
-  }
-
-  // Right Wheel Proximity (Filters)
+  // Menu Destro (Filtri)
   if (!state.rightWheelVisible && x > window.innerWidth - enterThreshold) {
     state.rightWheelVisible = true;
     els.wheelRight.classList.add('is-visible');
-    els.wheelRight.classList.add('is-expanded');
   } else if (state.rightWheelVisible && x < window.innerWidth - leaveThreshold) {
     state.rightWheelVisible = false;
     els.wheelRight.classList.remove('is-visible');
-    els.wheelRight.classList.remove('is-expanded');
-    if (state.rightWheel) state.rightWheel.stopAutoSpin();
-  }
-
-  if (state.rightWheelVisible && state.rightWheel) {
-    state.rightWheel.handlePointerProximity(x, y);
   }
 
   // 3. Test element hover (UI buttons or Scene Nodes)
@@ -431,11 +417,11 @@ function handleSelect() {
     // Wheel Left (Layouts)
     const layoutBtn = el.closest('#wheel-left .wheel-btn');
     if (layoutBtn) {
-      if (state.leftWheel && layoutBtn._value) {
-        state.leftWheel.stopAutoSpin();
-        state.leftWheel.selectValue(layoutBtn._value, layoutBtn._basePos);
+      const val = layoutBtn.getAttribute('data-layout');
+      if (state.leftWheel) {
+        state.leftWheel.selectValue(val);
       } else {
-        activateLayout(layoutBtn.dataset.layout);
+        activateLayout(val);
       }
       return;
     }
@@ -443,11 +429,11 @@ function handleSelect() {
     // Wheel Right (Filters)
     const filterBtn = el.closest('#wheel-right .wheel-btn');
     if (filterBtn) {
-      if (state.rightWheel && filterBtn._value) {
-        state.rightWheel.stopAutoSpin();
-        state.rightWheel.selectValue(filterBtn._value, filterBtn._basePos);
+      const val = filterBtn.getAttribute('data-filter');
+      if (state.rightWheel) {
+        state.rightWheel.selectValue(val);
       } else {
-        activateFilter(filterBtn.dataset.filter);
+        activateFilter(val);
       }
       return;
     }
@@ -554,9 +540,20 @@ function bindUIEvents() {
     if (e.key === 'w' || e.key === 'W') state.scene.triggerFabricWave();
   });
 
-  // Mouse cursor proximity listener (reveals 300% wheel menus seamlessly on mouse approach)
+  // Mouse cursor proximity listener (reveals side menus seamlessly on edge approach)
   window.addEventListener('mousemove', (e) => {
     handlePointerMove(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('pointerdown', (e) => {
+    handlePointerMove(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('mouseleave', () => {
+    state.leftWheelVisible = false;
+    state.rightWheelVisible = false;
+    els.wheelLeft.classList.remove('is-visible');
+    els.wheelRight.classList.remove('is-visible');
   });
 }
 
@@ -687,10 +684,10 @@ function startAudioVisualizer() {
     ctx.clearRect(0, 0, w, h);
     ctx.lineWidth = 2.5;
 
-    // Draw 3 harmonic waves
+    // Draw 3 harmonic waves in bordeaux tones
     for (let layer = 0; layer < 3; layer++) {
       ctx.beginPath();
-      ctx.strokeStyle = layer === 0 ? '#a7c957' : layer === 1 ? '#5bc0be' : '#84a98c';
+      ctx.strokeStyle = layer === 0 ? '#99251C' : layer === 1 ? 'rgba(153, 37, 28, 0.75)' : 'rgba(153, 37, 28, 0.45)';
       ctx.globalAlpha = 0.5 + layer * 0.2;
 
       for (let x = 0; x < w; x += 4) {
