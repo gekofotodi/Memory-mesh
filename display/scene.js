@@ -15,36 +15,33 @@
 const FLOORS = {
   terra: {
     id: 'terra',
-    label: 'PIANO TERRA',
-    code: 'LIV.00',
+    label: 'Piano Terra',
     elevation: 0,
     rooms: {
-      salone:      { x: -50,  y: 30,   w: 220, h: 160, label: 'SALONE CENTRALE', code: '0.1' },
-      cucina:      { x: -250, y: -80,  w: 160, h: 140, label: 'CUCINA', code: '0.2' },
-      studio:      { x: 150,  y: -70,  w: 170, h: 130, label: 'STUDIO', code: '0.3' },
-      ghiacciaia:  { x: -250, y: 110,  w: 150, h: 120, label: 'GHIACCIAIA', code: '0.4' },
-      giardino:    { x: 300,  y: 90,   w: 240, h: 190, label: 'GIARDINO', code: '0.5' },
-      esterno:     { x: -70,  y: 250,  w: 280, h: 130, label: 'ESTERNO // ACCESSO', code: '0.6' },
+      salone:      { x: -50,  y: 30,   w: 220, h: 160, label: 'Salone Centrale' },
+      cucina:      { x: -250, y: -80,  w: 160, h: 140, label: 'Cucina' },
+      studio:      { x: 150,  y: -70,  w: 170, h: 130, label: 'Studio' },
+      ghiacciaia:  { x: -250, y: 110,  w: 150, h: 120, label: 'Ghiacciaia' },
+      giardino:    { x: 300,  y: 90,   w: 240, h: 190, label: 'Giardino' },
+      esterno:     { x: -70,  y: 250,  w: 280, h: 130, label: 'Esterno' },
     }
   },
   primo: {
     id: 'primo',
-    label: 'PRIMO PIANO',
-    code: 'LIV.01',
+    label: 'Primo Piano',
     elevation: 1,
     rooms: {
-      'sala conferenze': { x: -80, y: 0, w: 290, h: 200, label: 'SALA CONFERENZE', code: '1.1' },
-      camere:            { x: 190, y: 0, w: 230, h: 200, label: 'CAMERE', code: '1.2' },
+      'sala conferenze': { x: -80, y: 0, w: 290, h: 200, label: 'Sala Conferenze' },
+      camere:            { x: 190, y: 0, w: 230, h: 200, label: 'Camere' },
     }
   },
   secondo: {
     id: 'secondo',
-    label: 'SECONDO PIANO',
-    code: 'LIV.02',
+    label: 'Secondo Piano',
     elevation: 2,
     rooms: {
-      mansarda:   { x: -80, y: 0, w: 270, h: 190, label: 'MANSARDA', code: '2.1' },
-      cappellina: { x: 180, y: 0, w: 190, h: 190, label: 'CAPPELLINA', code: '2.2' },
+      mansarda:   { x: -80, y: 0, w: 270, h: 190, label: 'Mansarda' },
+      cappellina: { x: 180, y: 0, w: 190, h: 190, label: 'Cappellina' },
     }
   }
 };
@@ -62,8 +59,33 @@ const CLUSTER_PALETTE = {
   arte:          { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.07)' },
   festa:         { stroke: '#D63031', fill: 'rgba(214, 48, 49, 0.08)' },
   carità:        { stroke: '#0984E3', fill: 'rgba(9, 132, 227, 0.07)' },
+  design:        { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.08)' },
+  social:        { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.08)' },
+  talk:          { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.07)' },
+  laboratorio:   { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.08)' },
+  sport:         { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.08)' },
   default:       { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.07)' },
 };
+
+function getTagPalette(tag) {
+  if (!tag) return CLUSTER_PALETTE.default;
+  const norm = String(tag).toLowerCase().trim();
+  if (CLUSTER_PALETTE[norm]) return CLUSTER_PALETTE[norm];
+
+  const PALETTES = [
+    { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.08)' },
+    { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.07)' },
+    { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.08)' },
+    { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.08)' },
+    { stroke: '#9B51E0', fill: 'rgba(155, 81, 224, 0.07)' },
+    { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.08)' },
+    { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.07)' },
+    { stroke: '#A8C3A0', fill: 'rgba(168, 195, 160, 0.08)' },
+  ];
+  let hash = 0;
+  for (let i = 0; i < norm.length; i++) hash = (hash * 31 + norm.charCodeAt(i)) & 0xffffffff;
+  return PALETTES[Math.abs(hash) % PALETTES.length];
+}
 
 const MONTH_NAMES = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
 
@@ -107,21 +129,21 @@ export function initScene(canvas) {
   // Image cache
   const imageCache = new Map();
 
-  // Dimensioni miniature fotografiche
+  // Dimensioni miniature fotografiche (spigoli retti, nessuna cornice)
   const THUMB_W = 78;
   const THUMB_H = 54;
-  const THUMB_R = 4;
+  const THUMB_R = 0;
 
   // ── Fabric Wave Distortion State ─────────────────────────────
   const fabricWave = {
     active: false,
     startTime: 0,
-    duration: 2800,
+    duration: 4600,
     centerX: 0,
     centerY: 0,
-    amplitude: 28,
-    frequency: 0.012,
-    speed: 500,
+    amplitude: 24,
+    frequency: 0.010,
+    speed: 300,
   };
 
   // ── Resize ───────────────────────────────────────────────────
@@ -217,11 +239,29 @@ export function initScene(canvas) {
   }
 
   function getDistinctTags() {
-    const tags = new Set();
+    const tagMap = new Map();
     memories.forEach((m) => {
-      if (Array.isArray(m.tags)) m.tags.forEach((t) => tags.add(t.toLowerCase().trim()));
+      if (Array.isArray(m.tags)) {
+        m.tags.forEach((rawT) => {
+          if (!rawT || typeof rawT !== 'string') return;
+          const trimmed = rawT.trim();
+          if (!trimmed) return;
+          const lower = trimmed.toLowerCase();
+          if (!tagMap.has(lower)) {
+            const display = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+            tagMap.set(lower, display);
+          }
+        });
+      }
     });
-    return Array.from(tags).filter(Boolean);
+
+    // Ritorna esclusivamente i tag che appartengono ad almeno un ricordo effettivo
+    return Array.from(tagMap.values()).filter((displayTag) => {
+      const lower = displayTag.toLowerCase();
+      return memories.some((m) =>
+        Array.isArray(m.tags) && m.tags.some((t) => String(t).trim().toLowerCase() === lower)
+      );
+    });
   }
 
   // ── Sync Memories ────────────────────────────────────────────
@@ -335,7 +375,7 @@ export function initScene(canvas) {
         break;
       }
 
-      // 2. Cluster — Isole a insiemi sovrapposti (Venn)
+      // 2. Cluster — Isole basate esclusivamente sui Tag (nessun luogo)
       case 'cluster': {
         const allTags = getDistinctTags();
         const tagCenters = new Map();
@@ -344,18 +384,20 @@ export function initScene(canvas) {
         allTags.forEach((tag, idx) => {
           const angle = (idx / countTags) * Math.PI * 2;
           const dist = 380;
-          tagCenters.set(tag, {
+          const pos = {
             x: Math.cos(angle) * dist,
             y: Math.sin(angle) * dist * 0.76,
-          });
+          };
+          tagCenters.set(tag, pos);
+          tagCenters.set(tag.toLowerCase(), pos);
         });
 
         nodes.forEach((node, ni) => {
-          const nodeTags = node.tags && node.tags.length ? node.tags : [node.primaryTag];
+          const nodeTags = Array.isArray(node.tags) && node.tags.length ? node.tags : [node.primaryTag];
           let avgX = 0, avgY = 0, validTags = 0;
 
           nodeTags.forEach((t) => {
-            const center = tagCenters.get(t);
+            const center = tagCenters.get(t) || tagCenters.get(String(t).toLowerCase());
             if (center) {
               avgX += center.x;
               avgY += center.y;
@@ -368,7 +410,7 @@ export function initScene(canvas) {
             avgY /= validTags;
           }
 
-          // Small dispersion hash so identical-tag nodes don't overlap exactly
+          // Dispersione controllata attorno al centroide dei tag del ricordo
           const dispAngle = (ni * 1.618) * Math.PI * 2;
           const dispDist = 28 + (ni % 5) * 26;
 
@@ -379,7 +421,7 @@ export function initScene(canvas) {
         break;
       }
 
-      // 3. Planimetria — Assonometria e stanze del piano attivo
+      // 3. Planimetria — Spaccato assonometrico e stanze del piano attivo
       case 'planimetria': {
         const currentFloorObj = FLOORS[activeFloor] || FLOORS.terra;
         const roomCounts = {};
@@ -390,7 +432,6 @@ export function initScene(canvas) {
 
           // Check if memory belongs to a room on the active floor
           if (!targetRoom) {
-            // If location matches a room on another floor, place it offscreen/fade
             node.targetAlpha = 0.0;
             node.targetScale = 0.3;
             node.targetX = 0;
@@ -404,11 +445,17 @@ export function initScene(canvas) {
           const count = roomCounts[loc] || 0;
           roomCounts[loc] = count + 1;
 
-          const spiralAngle = count * 1.5;
-          const spiralDist = Math.min(targetRoom.w, targetRoom.h) * 0.22 * Math.sqrt(count + 1);
+          // Dispersione controllata attorno al baricentro 2D della stanza
+          const angle = count * 1.6;
+          const maxDistX = Math.max(8, targetRoom.w * 0.24);
+          const maxDistY = Math.max(8, targetRoom.h * 0.24);
+          const rx = targetRoom.x + Math.cos(angle) * Math.min(maxDistX, 32);
+          const ry = targetRoom.y + Math.sin(angle) * Math.min(maxDistY, 24);
 
-          node.targetX = targetRoom.x + Math.cos(spiralAngle) * spiralDist;
-          node.targetY = targetRoom.y + Math.sin(spiralAngle) * spiralDist;
+          // Proiezione in assonometria (quota z = 0 poiché il piano attivo si colloca al centro)
+          const iso = toIso(rx, ry, 0);
+          node.targetX = iso.x;
+          node.targetY = iso.y - 18; // Fluttua sul pavimento della stanza
         });
         break;
       }
@@ -551,6 +598,8 @@ export function initScene(canvas) {
     activeFloor = floorKey;
     camera.targetX = 0;
     camera.targetY = 0;
+    // Transizione morbida di scorrimento verso il nuovo piano selezionato (2.4s)
+    planimetriaEntranceTime = performance.now() - 2400;
     recalculateLayoutTargets();
   }
 
@@ -563,14 +612,29 @@ export function initScene(canvas) {
   }
 
   function setClusterTag(tag) {
-    focusedClusterTag = tag.toLowerCase().trim();
-    const tagCenter = getDistinctTags();
-    const idx = tagCenter.indexOf(focusedClusterTag);
-    if (idx >= 0) {
-      const angle = (idx / Math.max(1, tagCenter.length)) * Math.PI * 2;
-      camera.targetX = Math.cos(angle) * 380;
-      camera.targetY = Math.sin(angle) * 380 * 0.76;
-      camera.targetZoom = 1.25;
+    if (!tag) {
+      focusedClusterTag = null;
+      camera.targetX = 0;
+      camera.targetY = 0;
+      camera.targetZoom = 1.0;
+      return;
+    }
+    const tagLower = tag.toLowerCase().trim();
+    focusedClusterTag = tagLower;
+
+    const matchingNodes = nodes.filter(
+      (n) => Array.isArray(n.tags) && n.tags.some((t) => String(t).toLowerCase().trim() === tagLower)
+    );
+
+    if (matchingNodes.length > 0) {
+      let cx = 0, cy = 0;
+      matchingNodes.forEach((n) => { cx += n.targetX; cy += n.targetY; });
+      cx /= matchingNodes.length;
+      cy /= matchingNodes.length;
+
+      camera.targetX = cx;
+      camera.targetY = cy;
+      camera.targetZoom = 1.35;
     }
   }
 
@@ -694,21 +758,21 @@ export function initScene(canvas) {
     }
   }
 
-  // ── Update Logic ─────────────────────────────────────────────
+  // ── Update Logic (Movimenti lenti, vellutati e organici) ────
   function update() {
-    camera.x += (camera.targetX - camera.x) * 0.12;
-    camera.y += (camera.targetY - camera.y) * 0.12;
-    camera.zoom += (camera.targetZoom - camera.zoom) * 0.14;
+    camera.x += (camera.targetX - camera.x) * 0.042;
+    camera.y += (camera.targetY - camera.y) * 0.042;
+    camera.zoom += (camera.targetZoom - camera.zoom) * 0.042;
 
     updateForces();
 
     nodes.forEach((node) => {
-      node.x += (node.targetX - node.x) * 0.09;
-      node.y += (node.targetY - node.y) * 0.09;
+      node.x += (node.targetX - node.x) * 0.032;
+      node.y += (node.targetY - node.y) * 0.032;
 
       const isHover = (hoveredNode === node);
       let targetS = isHover ? node.targetScale * 1.25 : node.targetScale;
-      node.scale += (targetS - node.scale) * 0.16;
+      node.scale += (targetS - node.scale) * 0.055;
 
       // Alpha computation: focus on hovered relations in Nodi mode
       let targetA = node.targetAlpha !== undefined ? node.targetAlpha : 1.0;
@@ -723,7 +787,7 @@ export function initScene(canvas) {
         }
       }
 
-      node.alpha += (targetA - node.alpha) * 0.14;
+      node.alpha += (targetA - node.alpha) * 0.045;
     });
 
     if (pointerScreen.x > 0 && pointerScreen.y > 0) {
@@ -776,78 +840,282 @@ export function initScene(canvas) {
     requestAnimationFrame(render);
   }
 
-  // ── Planimetria: Assonometria a 3 Piani ───────────────────────
+  // ── Proiezione Assonometrica Isometrica Architettonica ───────
+  function toIso(x, y, z = 0) {
+    const cos30 = 0.866025; // cos(30°)
+    const sin30 = 0.5;      // sin(30°)
+    const kVertical = 0.58; // Schiacciamento orizzontale proporzionato al kiosk
+    const sx = (x - y) * cos30;
+    const sy = (x + y) * sin30 * kVertical - z;
+    return { x: sx, y: sy };
+  }
+
+  // ── Planimetria: Spaccato Assonometrico Esploso a 3 Piani ────
   function drawPlanimetriaAssonometria(now) {
     const elapsed = now - planimetriaEntranceTime;
-    const entranceDuration = 1800;
-    const progress = Math.min(1.0, elapsed / entranceDuration);
-
     ctx.save();
 
+    // Dimensioni 2D della soletta del piano
+    const minX = -310;
+    const maxX = 310;
+    const minY = -180;
+    const maxY = 180;
+    const slabThickness = 8;
+
+    // Quote Z di default nell'esploso verticale (distanza di 220px tra i piani)
+    const floorBaseZ = {
+      secondo: 220,
+      primo: 0,
+      terra: -220,
+    };
+
+    const activeBaseZ = floorBaseZ[activeFloor] !== undefined ? floorBaseZ[activeFloor] : -220;
+
+    // ── Calcolo dinamico dell'esploso e transizione (tempi lenti e contemplativi) ──
+    // 0 -> 2400ms: tutti e tre i piani visibili nell'esploso verticale
+    // 2400ms -> 4800ms: i due piani non selezionati scivolano via e sfumano lentamente
+    // > 4800ms: rimane visibile al centro solo il piano selezionato
+    let guideOpacity = 0.0;
+    const floorStates = {};
+
     const floorOrder = ['terra', 'primo', 'secondo'];
-    floorOrder.forEach((fKey) => {
-      const fl = FLOORS[fKey];
-      const isActive = (fKey === activeFloor);
 
-      let floorOffsetY = 0;
-      let floorOpacity = 1.0;
+    if (elapsed <= 2400) {
+      // Fase 1: Esploso stabile a 3 piani (2.4s per apprezzare l'edificio nella sua interezza)
+      guideOpacity = 1.0;
+      floorOrder.forEach((fKey) => {
+        const isActive = (fKey === activeFloor);
+        floorStates[fKey] = {
+          z: floorBaseZ[fKey],
+          opacity: isActive ? 1.0 : 0.88,
+          isActive,
+        };
+      });
+    } else if (elapsed <= 4800) {
+      // Fase 2: Transizione lenta e maestosa (2.4s)
+      const t = (elapsed - 2400) / 2400;
+      const ease = 0.5 - 0.5 * Math.cos(t * Math.PI); // easeInOut
+      guideOpacity = Math.max(0, 1.0 - ease * 1.2);
 
-      if (progress < 0.4) {
-        // Initial stacked axonometric preview
-        const norm = progress / 0.4;
-        floorOffsetY = (fl.elevation - 1) * -160;
-        floorOpacity = 0.85;
-      } else {
-        // Upper floors slide upwards and disappear
-        const slideProgress = (progress - 0.4) / 0.6;
+      floorOrder.forEach((fKey) => {
+        const isActive = (fKey === activeFloor);
+        const bZ = floorBaseZ[fKey];
+
         if (isActive) {
-          floorOffsetY = 0;
-          floorOpacity = 1.0;
+          // Il piano attivo si porta verso il centro (z = 0)
+          floorStates[fKey] = {
+            z: bZ + (0 - bZ) * ease,
+            opacity: 1.0,
+            isActive: true,
+          };
         } else {
-          // Slide upwards away
-          floorOffsetY = (fl.elevation - 1) * -160 - slideProgress * 700;
-          floorOpacity = Math.max(0, 0.85 - slideProgress * 1.2);
+          // I piani non attivi scivolano via e sfumano dolcemente
+          const dir = bZ > activeBaseZ ? 1 : -1;
+          floorStates[fKey] = {
+            z: bZ + dir * ease * 300,
+            opacity: Math.max(0, (1 - ease) * 0.88),
+            isActive: false,
+          };
         }
-      }
+      });
+    } else {
+      // Fase 3: Solo piano attivo al centro
+      guideOpacity = 0.0;
+      floorOrder.forEach((fKey) => {
+        const isActive = (fKey === activeFloor);
+        floorStates[fKey] = {
+          z: 0,
+          opacity: isActive ? 1.0 : 0.0,
+          isActive,
+        };
+      });
+    }
 
-      if (floorOpacity <= 0.01) return;
+    // ── 1. Linee guida d'asse verticali tratteggiate dell'esploso ─
+    if (guideOpacity > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = guideOpacity * 0.40;
+      ctx.strokeStyle = '#99251C';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 5]);
+
+      const corners = [
+        [minX, minY],
+        [maxX, minY],
+        [maxX, maxY],
+        [minX, maxY],
+      ];
+
+      const zBottom = floorStates.terra ? floorStates.terra.z - slabThickness : -230;
+      const zTop = floorStates.secondo ? floorStates.secondo.z + 40 : 260;
+
+      corners.forEach(([cx, cy]) => {
+        const pBot = toIso(cx, cy, zBottom);
+        const pTop = toIso(cx, cy, zTop);
+        ctx.beginPath();
+        ctx.moveTo(pBot.x, pBot.y);
+        ctx.lineTo(pTop.x, pTop.y);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+    }
+
+    // ── 2. Render dei piani (dal basso verso l'alto per corretta sovrapposizione) ─
+    floorOrder.forEach((fKey) => {
+      const state = floorStates[fKey];
+      if (!state || state.opacity <= 0.01) return;
+
+      const fl = FLOORS[fKey];
+      const z = state.z;
+      const isActive = state.isActive;
 
       ctx.save();
-      ctx.translate(0, floorOffsetY);
-      ctx.globalAlpha = floorOpacity;
+      ctx.globalAlpha = state.opacity;
 
-      // Base axonometric floor plate
-      ctx.strokeStyle = isActive ? 'rgba(153, 37, 28, 0.40)' : 'rgba(153, 37, 28, 0.15)';
+      // Coordinate assonometriche dei 4 vertici del piano
+      const c0 = toIso(minX, minY, z); // Nord
+      const c1 = toIso(maxX, minY, z); // Est
+      const c2 = toIso(maxX, maxY, z); // Sud
+      const c3 = toIso(minX, maxY, z); // Ovest
+
+      // Vertici inferiori della soletta fisica estrusa
+      const c1_b = toIso(maxX, minY, z - slabThickness);
+      const c2_b = toIso(maxX, maxY, z - slabThickness);
+      const c3_b = toIso(minX, maxY, z - slabThickness);
+
+      // A) Faccia laterale destra della soletta
+      ctx.fillStyle = '#E8DDD0';
+      ctx.strokeStyle = '#D6C3AF';
       ctx.lineWidth = 1.0;
-      ctx.setLineDash([4, 6]);
-      ctx.strokeRect(-380, -200, 760, 480);
-      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(c1.x, c1.y);
+      ctx.lineTo(c2.x, c2.y);
+      ctx.lineTo(c2_b.x, c2_b.y);
+      ctx.lineTo(c1_b.x, c1_b.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-      // Floor tag
-      ctx.fillStyle = '#99251C';
-      ctx.font = 'italic 20px "Instrument Serif", Georgia, serif';
-      ctx.fillText(`${fl.label} // ${fl.code}`, -360, -215);
+      // B) Faccia frontale sinistra della soletta
+      ctx.fillStyle = '#DFD2C2';
+      ctx.beginPath();
+      ctx.moveTo(c2.x, c2.y);
+      ctx.lineTo(c3.x, c3.y);
+      ctx.lineTo(c3_b.x, c3_b.y);
+      ctx.lineTo(c2_b.x, c2_b.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-      // Draw Rooms of this floor
+      // C) Superficie calpestabile superiore della soletta (pavimento)
+      ctx.fillStyle = isActive ? '#FFFDF9' : '#F9F5EE';
+      ctx.strokeStyle = isActive ? 'rgba(153, 37, 28, 0.40)' : 'rgba(153, 37, 28, 0.18)';
+      ctx.lineWidth = isActive ? 1.4 : 1.0;
+      ctx.beginPath();
+      ctx.moveTo(c0.x, c0.y);
+      ctx.lineTo(c1.x, c1.y);
+      ctx.lineTo(c2.x, c2.y);
+      ctx.lineTo(c3.x, c3.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Griglia modulare architettonica interna leggera
+      ctx.save();
+      ctx.strokeStyle = 'rgba(153, 37, 28, 0.05)';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([2, 4]);
+      for (let gx = minX + 80; gx < maxX; gx += 80) {
+        const ga = toIso(gx, minY, z);
+        const gb = toIso(gx, maxY, z);
+        ctx.beginPath();
+        ctx.moveTo(ga.x, ga.y);
+        ctx.lineTo(gb.x, gb.y);
+        ctx.stroke();
+      }
+      for (let gy = minY + 60; gy < maxY; gy += 60) {
+        const ga = toIso(minX, gy, z);
+        const gb = toIso(maxX, gy, z);
+        ctx.beginPath();
+        ctx.moveTo(ga.x, ga.y);
+        ctx.lineTo(gb.x, gb.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // D) Stanze in spaccato assonometrico con pareti sezionate
       Object.entries(fl.rooms).forEach(([rk, room]) => {
-        const rx = room.x - room.w / 2;
-        const ry = room.y - room.h / 2;
+        const x1 = room.x - room.w / 2;
+        const x2 = room.x + room.w / 2;
+        const y1 = room.y - room.h / 2;
+        const y2 = room.y + room.h / 2;
 
-        ctx.strokeStyle = isActive ? 'rgba(153, 37, 28, 0.50)' : 'rgba(153, 37, 28, 0.20)';
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([3, 4]);
-        ctx.strokeRect(rx, ry, room.w, room.h);
-        ctx.setLineDash([]);
+        const p0 = toIso(x1, y1, z);
+        const p1 = toIso(x2, y1, z);
+        const p2 = toIso(x2, y2, z);
+        const p3 = toIso(x1, y2, z);
 
-        // Room label
-        ctx.fillStyle = 'rgba(153, 37, 28, 0.60)';
-        ctx.font = '700 8.5px "Instrument Sans", sans-serif';
-        ctx.fillText(`// ${room.code}`, rx + 12, ry + 18);
+        // 1. Pavimento stanza
+        ctx.fillStyle = isActive ? 'rgba(153, 37, 28, 0.035)' : 'rgba(153, 37, 28, 0.015)';
+        ctx.strokeStyle = isActive ? 'rgba(153, 37, 28, 0.35)' : 'rgba(153, 37, 28, 0.12)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 2. Muri sezionati in spaccato (Altezza = 14px sulle pareti nord ed est di sfondo)
+        const wallH = 14;
+        const t0 = toIso(x1, y1, z + wallH);
+        const t1 = toIso(x2, y1, z + wallH);
+        const t2 = toIso(x2, y2, z + wallH);
+
+        // Parete Nord (p0 -> p1 -> t1 -> t0)
+        ctx.fillStyle = isActive ? 'rgba(153, 37, 28, 0.12)' : 'rgba(153, 37, 28, 0.06)';
+        ctx.strokeStyle = isActive ? 'rgba(153, 37, 28, 0.45)' : 'rgba(153, 37, 28, 0.20)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(t1.x, t1.y);
+        ctx.lineTo(t0.x, t0.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Parete Est (p1 -> p2 -> t2 -> t1)
+        ctx.fillStyle = isActive ? 'rgba(153, 37, 28, 0.08)' : 'rgba(153, 37, 28, 0.04)';
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(t2.x, t2.y);
+        ctx.lineTo(t1.x, t1.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 3. Etichetta stanza (Solo Nome, nessun numero o livello)
+        const mid = toIso(room.x, room.y, z);
 
         ctx.fillStyle = '#99251C';
-        ctx.font = 'italic 14px "Instrument Serif", Georgia, serif';
-        ctx.fillText(room.label, rx + 12, ry + 34);
+        ctx.font = 'italic 13px "Instrument Serif", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(room.label, mid.x, mid.y);
       });
+
+      // E) Intestazione del piano a bordo soletta (Solo Nome Piano, nessun codice di livello)
+      const labelPos = toIso(minX, minY, z);
+      ctx.fillStyle = '#99251C';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = 'italic 18px "Instrument Serif", Georgia, serif';
+      ctx.fillText(fl.label, labelPos.x - 30, labelPos.y - 14);
 
       ctx.restore();
     });
@@ -855,14 +1123,18 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Cluster: Isole Organiche a Insiemi Sovrapposti (Venn) ──────
+  // ── Cluster: Isole Organiche basate unicamente sui Tag ──────
   function drawClusterVennIslands(now) {
     const allTags = getDistinctTags();
     ctx.save();
 
     allTags.forEach((tag) => {
-      const tagNodes = nodes.filter((n) => n.tags && n.tags.includes(tag));
-      if (!tagNodes.length) return;
+      // Crea il cluster SOLO se esiste almeno un ricordo effettivo con questo tag
+      const tagLower = tag.toLowerCase().trim();
+      const tagNodes = nodes.filter(
+        (n) => Array.isArray(n.tags) && n.tags.some((t) => String(t).toLowerCase().trim() === tagLower)
+      );
+      if (tagNodes.length === 0) return;
 
       let avgX = 0, avgY = 0;
       tagNodes.forEach((n) => { avgX += n.x; avgY += n.y; });
@@ -876,9 +1148,9 @@ export function initScene(canvas) {
       });
 
       const radius = maxDist + 65;
-      const palette = CLUSTER_PALETTE[tag] || CLUSTER_PALETTE.default;
+      const palette = getTagPalette(tag);
 
-      // Draw smooth organic wobbling perimeter
+      // Disegno perimetro organico fluttuante
       ctx.beginPath();
       const points = 18;
       for (let i = 0; i < points; i++) {
@@ -892,20 +1164,20 @@ export function initScene(canvas) {
       }
       ctx.closePath();
 
-      // Soft translucent fill (overlaps visually create Venn intersections!)
+      // Riempimento tenue sfumato (le sovrapposizioni creano insiemi di Venn)
       ctx.fillStyle = palette.fill;
       ctx.fill();
 
-      // Crisp subtle boundary line
+      // Contorno perimetrale sottile
       ctx.strokeStyle = palette.stroke;
       ctx.lineWidth = 1.4;
       ctx.stroke();
 
-      // Label in Instrument Serif Italic
+      // Nome del cluster: ESATTAMENTE il nome del tag (senza "Sezione // " o all-caps)
       ctx.fillStyle = '#99251C';
       ctx.font = 'italic 18px "Instrument Serif", Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`Sezione // ${tag.toUpperCase()}`, avgX, avgY - radius - 10);
+      ctx.fillText(tag, avgX, avgY - radius - 12);
     });
 
     ctx.restore();
@@ -1012,10 +1284,13 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Filamenti di connessione ──────────────────────────────────
+  // ── Filamenti di connessione (Ottimizzato con Path Batching) ──
   function drawFilaments(now) {
     if (nodes.length < 2) return;
     ctx.save();
+
+    const passiveLines = [];
+    const activeLines = [];
 
     for (let i = 0; i < nodes.length; i++) {
       const n1 = nodes[i];
@@ -1031,34 +1306,47 @@ export function initScene(canvas) {
           if (dist < 520 || currentLayout === 'nodi') {
             const isHoveredConnection = hoveredNode && (hoveredNode === n1 || hoveredNode === n2);
 
-            let strokeAlpha = Math.min(n1.alpha, n2.alpha) * 0.35;
-            let strokeWidth = 1.0;
-            let strokeColor = `rgba(153, 37, 28, ${strokeAlpha})`;
+            const wave1 = fabricWave.active ? getWaveOffset(n1.x, n1.y, now) : { dx: 0, dy: 0 };
+            const wave2 = fabricWave.active ? getWaveOffset(n2.x, n2.y, now) : { dx: 0, dy: 0 };
 
-            if (hoveredNode) {
-              if (isHoveredConnection) {
-                strokeColor = '#99251C';
-                strokeWidth = 2.4;
-                strokeAlpha = 1.0;
-              } else {
-                strokeAlpha = 0.05;
-                strokeColor = `rgba(153, 37, 28, ${strokeAlpha})`;
-              }
+            const lineData = [n1.x + wave1.dx, n1.y + wave1.dy, n2.x + wave2.dx, n2.y + wave2.dy];
+
+            if (isHoveredConnection) {
+              activeLines.push(lineData);
+            } else {
+              passiveLines.push(lineData);
             }
-
-            const wave1 = getWaveOffset(n1.x, n1.y, now);
-            const wave2 = getWaveOffset(n2.x, n2.y, now);
-
-            ctx.beginPath();
-            ctx.moveTo(n1.x + wave1.dx, n1.y + wave1.dy);
-            ctx.lineTo(n2.x + wave2.dx, n2.y + wave2.dy);
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = strokeWidth;
-            ctx.stroke();
           }
         }
       }
     }
+
+    // 1. Disegno in batch delle connessioni passive (1 sola draw call)
+    if (passiveLines.length > 0) {
+      ctx.beginPath();
+      for (let k = 0; k < passiveLines.length; k++) {
+        const l = passiveLines[k];
+        ctx.moveTo(l[0], l[1]);
+        ctx.lineTo(l[2], l[3]);
+      }
+      ctx.strokeStyle = hoveredNode ? 'rgba(153, 37, 28, 0.06)' : 'rgba(153, 37, 28, 0.22)';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+    }
+
+    // 2. Disegno in batch delle connessioni attive in evidenza
+    if (activeLines.length > 0) {
+      ctx.beginPath();
+      for (let k = 0; k < activeLines.length; k++) {
+        const l = activeLines[k];
+        ctx.moveTo(l[0], l[1]);
+        ctx.lineTo(l[2], l[3]);
+      }
+      ctx.strokeStyle = '#99251C';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
@@ -1070,7 +1358,7 @@ export function initScene(canvas) {
       ctx.save();
       ctx.globalAlpha = node.alpha;
 
-      const wave = getWaveOffset(node.x, node.y, now);
+      const wave = fabricWave.active ? getWaveOffset(node.x, node.y, now) : { dx: 0, dy: 0 };
       const nx = node.x + wave.dx;
       const ny = node.y + wave.dy;
 
@@ -1082,25 +1370,26 @@ export function initScene(canvas) {
       const x0 = nx - w / 2;
       const y0 = ny - h / 2;
 
-      // Soft ambient shadow
-      ctx.shadowColor = 'rgba(153, 37, 28, 0.12)';
-      ctx.shadowBlur = isHover ? 16 : 8;
-      ctx.shadowOffsetY = isHover ? 8 : 3;
-
-      // Clip rounded photo box
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(x0, y0, w, h, r);
-      ctx.clip();
+      // Ombra calcolata SOLO su hover
+      if (isHover) {
+        ctx.shadowColor = 'rgba(153, 37, 28, 0.20)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 6;
+      } else {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
 
       const mediaUrl = node.memory.media_url;
       const mediaType = node.memory.media_type;
 
+      // Disegno del media a spigoli vivi (nessun bordo stondato, nessuna cornice)
       if (mediaType === 'image' && imageCache.has(mediaUrl)) {
         const img = imageCache.get(mediaUrl);
         ctx.drawImage(img, x0, y0, w, h);
       } else if (mediaType === 'audio') {
-        // Minimal warm audio card
+        // Minimal warm audio card a spigoli vivi
         ctx.fillStyle = '#F8F3EC';
         ctx.fillRect(x0, y0, w, h);
 
@@ -1112,7 +1401,7 @@ export function initScene(canvas) {
         ctx.font = '700 8px "Instrument Sans", sans-serif';
         ctx.fillText('AUDIO', nx, ny + 12);
       } else {
-        // Text / Default memory
+        // Text / Default memory a spigoli vivi
         ctx.fillStyle = '#F8F3EC';
         ctx.fillRect(x0, y0, w, h);
 
@@ -1126,20 +1415,6 @@ export function initScene(canvas) {
       }
 
       ctx.restore();
-
-      // Solo bordo caldo (#EADBCE) — bordo bordeaux pieno su hover
-      ctx.beginPath();
-      ctx.roundRect(x0, y0, w, h, r);
-      ctx.strokeStyle = isHover ? '#99251C' : '#EADBCE';
-      ctx.lineWidth = isHover ? 2.2 : 1.2;
-      ctx.stroke();
-
-      ctx.restore();
-
-      // Tooltip on hover (outside Griglia)
-      if (isHover && currentLayout !== 'griglia') {
-        drawHoverCard(node, nx, y0);
-      }
     });
   }
 
@@ -1154,12 +1429,12 @@ export function initScene(canvas) {
       const x = node.x;
       const y = node.y + h / 2 + 14;
 
-      // Line 1: Titolo
+      // Line 1: Titolo (Instrument Serif: naturale, mai in caps lock)
       ctx.fillStyle = '#99251C';
       ctx.font = 'italic 13px "Instrument Serif", Georgia, serif';
       ctx.textAlign = 'center';
-      const title = (node.memory.title || 'Senza titolo').toUpperCase();
-      const truncTitle = title.length > 20 ? title.substring(0, 18) + '…' : title;
+      const title = node.memory.title || 'Senza titolo';
+      const truncTitle = title.length > 22 ? title.substring(0, 20) + '…' : title;
       ctx.fillText(truncTitle, x, y);
 
       // Line 2: Data
@@ -1168,43 +1443,6 @@ export function initScene(canvas) {
       const dateStr = node.memory.time_event || (node.dateInfo.year ? `${node.dateInfo.year}` : 'STOÀ');
       ctx.fillText(String(dateStr).toUpperCase(), x, y + 13);
     });
-    ctx.restore();
-  }
-
-  // ── Hover Card Tooltip ───────────────────────────────────────
-  function drawHoverCard(node, cx, topY) {
-    const rawTitle = node.memory.title || 'Ricordo';
-    const loc = node.memory.location_tag ? ` // ${node.memory.location_tag.toUpperCase()}` : '';
-    const text = `${rawTitle}${loc}`;
-
-    ctx.save();
-    ctx.font = 'italic 15px "Instrument Serif", Georgia, serif';
-    const textW = ctx.measureText(text).width;
-    const boxW = Math.max(textW + 24, 80);
-    const boxH = 28;
-
-    const bx = cx - boxW / 2;
-    const by = topY - boxH - 8;
-
-    ctx.shadowColor = 'rgba(153, 37, 28, 0.12)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 4;
-
-    ctx.fillStyle = '#FFFDF9';
-    ctx.beginPath();
-    ctx.roundRect(bx, by, boxW, boxH, 4);
-    ctx.fill();
-
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = '#99251C';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = '#99251C';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, cx, by + boxH / 2);
-
     ctx.restore();
   }
 

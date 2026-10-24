@@ -37,6 +37,18 @@
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ── Regola Tipografica Fondamentale ─────────────────────────────────
+   I testi in Instrument Serif non devono MAI essere completamente in caps lock */
+.header-title,
+.drawer-title,
+.magazine-title,
+.wheel-btn,
+.wheel-btn__text,
+[style*="font-family: var(--font-serif)"],
+[style*="Instrument Serif"] {
+  text-transform: none !important;
+}
+
 /* ── Reset & Exhibition Base ────────────────────────────────────── */
 *, *::before, *::after {
   margin: 0;
@@ -123,7 +135,7 @@ html, body.kiosk-body {
   width: auto;
   height: auto;
   opacity: 0;
-  transition: transform 0.45s var(--ease-expo), opacity 0.38s ease;
+  transition: transform 0.82s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.72s ease;
 }
 
 .wheel-dock--left {
@@ -184,11 +196,12 @@ html, body.kiosk-body {
   font-weight: 400;
   font-style: normal;
   letter-spacing: -0.01em;
+  text-transform: none !important;
   cursor: pointer;
   white-space: nowrap;
   opacity: 0.38;
   transform-origin: 0% 50%; /* Perno sul centro del bordo sinistro */
-  transition: opacity 0.2s ease, font-weight 0.2s ease;
+  transition: opacity 0.45s ease, font-weight 0.45s ease;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -211,7 +224,7 @@ html, body.kiosk-body {
   background-image: none !important;
   box-shadow: none !important;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.45s ease;
   flex-shrink: 0;
 }
 
@@ -220,7 +233,8 @@ html, body.kiosk-body {
   font-family: var(--font-serif);
   font-style: normal;
   font-weight: 400;
-  transition: opacity 0.2s ease, font-weight 0.2s ease;
+  text-transform: none !important;
+  transition: opacity 0.45s ease, font-weight 0.45s ease;
 }
 
 .wheel-btn:hover {
@@ -597,8 +611,8 @@ html, body.kiosk-body {
   width: 100%;
   min-height: 380px;
   background: #F8F3EC;
-  border-radius: 16px;
-  border: 1px solid var(--border-card);
+  border-radius: 0 !important;
+  border: none !important;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -609,6 +623,7 @@ html, body.kiosk-body {
   width: 100%;
   height: 100%;
   max-height: 520px;
+  border-radius: 0 !important;
   object-fit: contain;
   display: block;
 }

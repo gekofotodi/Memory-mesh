@@ -317,72 +317,83 @@ function initTrackingPipeline() {
 }
 
 // ── Decoupled Gesture Callbacks ────────────────────────────────
+let pointerRafId = null;
+
 function handlePointerMove(x, y) {
   state.cursorX = x;
   state.cursorY = y;
 
-  // 1. Move Virtual Cursor
+  // 1. Move Virtual Cursor immediatamente a 60/120fps senza lag
   if (els.virtualCursor) {
     els.virtualCursor.classList.add('is-active');
     els.virtualCursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
-  // 2. Proximity check per i menu laterali (mostrati solo all'avvicinamento al lato dello schermo)
-  const enterThreshold = 240; // Mostra il menu quando il cursore si avvicina a 240px dal bordo
-  const leaveThreshold = 380; // Nasconde il menu quando il cursore si allontana oltre 380px
+  // Se c'è già un frame schedulato per il check DOM, attendi il prossimo tick
+  if (pointerRafId) return;
 
-  // Menu Sinistro (Layout)
-  if (!state.leftWheelVisible && x < enterThreshold) {
-    state.leftWheelVisible = true;
-    els.wheelLeft.classList.add('is-visible');
-  } else if (state.leftWheelVisible && x > leaveThreshold) {
-    state.leftWheelVisible = false;
-    els.wheelLeft.classList.remove('is-visible');
-  }
+  pointerRafId = requestAnimationFrame(() => {
+    pointerRafId = null;
+    const px = state.cursorX;
+    const py = state.cursorY;
 
-  // Menu Destro (Filtri / Opzioni contestuali: nascosto in layout 'nodi')
-  if (state.currentLayout !== 'nodi') {
-    if (!state.rightWheelVisible && x > window.innerWidth - enterThreshold) {
-      state.rightWheelVisible = true;
-      els.wheelRight.classList.add('is-visible');
-    } else if (state.rightWheelVisible && x < window.innerWidth - leaveThreshold) {
+    // 2. Proximity check per i menu laterali (mostrati solo all'avvicinamento al lato dello schermo)
+    const enterThreshold = 240;
+    const leaveThreshold = 380;
+
+    // Menu Sinistro (Layout)
+    if (!state.leftWheelVisible && px < enterThreshold) {
+      state.leftWheelVisible = true;
+      els.wheelLeft.classList.add('is-visible');
+    } else if (state.leftWheelVisible && px > leaveThreshold) {
+      state.leftWheelVisible = false;
+      els.wheelLeft.classList.remove('is-visible');
+    }
+
+    // Menu Destro (Filtri / Opzioni contestuali: nascosto in layout 'nodi')
+    if (state.currentLayout !== 'nodi') {
+      if (!state.rightWheelVisible && px > window.innerWidth - enterThreshold) {
+        state.rightWheelVisible = true;
+        els.wheelRight.classList.add('is-visible');
+      } else if (state.rightWheelVisible && px < window.innerWidth - leaveThreshold) {
+        state.rightWheelVisible = false;
+        els.wheelRight.classList.remove('is-visible');
+      }
+    } else {
       state.rightWheelVisible = false;
       els.wheelRight.classList.remove('is-visible');
     }
-  } else {
-    state.rightWheelVisible = false;
-    els.wheelRight.classList.remove('is-visible');
-  }
 
-  // 3. Test element hover (UI buttons or Scene Nodes)
-  let isHoveringInteractive = false;
+    // 3. Test element hover (UI buttons or Scene Nodes)
+    let isHoveringInteractive = false;
 
-  // Check UI buttons
-  const elUnderCursor = document.elementFromPoint(x, y);
-  if (
-    elUnderCursor &&
-    (elUnderCursor.closest('.wheel-btn') ||
-      elUnderCursor.closest('.info-trigger-btn') ||
-      elUnderCursor.closest('.bento-close-btn') ||
-      elUnderCursor.closest('.related-chip'))
-  ) {
-    isHoveringInteractive = true;
-  }
-
-  // Update hover point in Scene Canvas
-  if (!state.activeModal) {
-    state.scene.setHoverPoint(x, y);
-    if (state.scene.getHoveredNode()) {
+    // Check UI buttons (eseguito solo 1 volta per frame RAF)
+    const elUnderCursor = document.elementFromPoint(px, py);
+    if (
+      elUnderCursor &&
+      (elUnderCursor.closest('.wheel-btn') ||
+        elUnderCursor.closest('.info-trigger-btn') ||
+        elUnderCursor.closest('.bento-close-btn') ||
+        elUnderCursor.closest('.related-chip'))
+    ) {
       isHoveringInteractive = true;
     }
-  } else {
-    state.scene.setHoverPoint(-9999, -9999);
-  }
 
-  // Set cursor visual state
-  if (els.virtualCursor) {
-    els.virtualCursor.classList.toggle('is-hovering', isHoveringInteractive);
-  }
+    // Update hover point in Scene Canvas
+    if (!state.activeModal) {
+      state.scene.setHoverPoint(px, py);
+      if (state.scene.getHoveredNode()) {
+        isHoveringInteractive = true;
+      }
+    } else {
+      state.scene.setHoverPoint(-9999, -9999);
+    }
+
+    // Set cursor visual state
+    if (els.virtualCursor) {
+      els.virtualCursor.classList.toggle('is-hovering', isHoveringInteractive);
+    }
+  });
 }
 
 function handleSelect() {
@@ -605,15 +616,18 @@ function activateLayout(layoutName, syncWheel = true) {
     } else if (layoutName === 'planimetria') {
       // Piani: Terra, Primo, Secondo
       state.rightWheel.setItems([
-        { value: 'terra', label: 'PIANO TERRA' },
-        { value: 'primo', label: 'PRIMO PIANO' },
-        { value: 'secondo', label: 'SECONDO PIANO' },
+        { value: 'terra', label: 'Piano Terra' },
+        { value: 'primo', label: 'Primo Piano' },
+        { value: 'secondo', label: 'Secondo Piano' },
       ], 'terra');
       state.scene.setFloor('terra');
     } else if (layoutName === 'cluster') {
-      // Mostra i tag
+      // Mostra i tag (Title Case per Instrument Serif)
       const tags = state.scene.getDistinctTags();
-      const items = tags.map((t) => ({ value: t, label: t.toUpperCase() }));
+      const items = tags.map((t) => ({
+        value: t,
+        label: t.charAt(0).toUpperCase() + t.slice(1).toLowerCase(),
+      }));
       const defaultTag = items.length > 0 ? items[0].value : null;
       state.rightWheel.setItems(items, defaultTag);
       if (defaultTag) state.scene.setClusterTag(defaultTag);
@@ -627,10 +641,10 @@ function activateLayout(layoutName, syncWheel = true) {
     } else if (layoutName === 'griglia') {
       // Riordinamento: Data, Media, Tag, Luogo (senza filtrare ricordi)
       state.rightWheel.setItems([
-        { value: 'data', label: 'DATA' },
-        { value: 'media', label: 'MEDIA' },
-        { value: 'tag', label: 'TAG' },
-        { value: 'luogo', label: 'LUOGO' },
+        { value: 'data', label: 'Data' },
+        { value: 'media', label: 'Media' },
+        { value: 'tag', label: 'Tag' },
+        { value: 'luogo', label: 'Luogo' },
       ], 'data');
       state.scene.setGridSort('data');
     }
