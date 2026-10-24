@@ -39,12 +39,17 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 const els = {
   // Steps
-  stepOverview: $('#step-overview'),
+  stepLanding:  $('#step-landing'),
+  stepLanding2: $('#step-landing2'),
+  stepInfo:     $('#step-info'),
   stepForm:     $('#step-form'),
 
   // Navigation
-  btnStart: $('#btn-start'),
-  btnBack:  $('#btn-back'),
+  btnGoInfo:   $('#btn-go-info'),
+  btnGoForm:   $('#btn-go-form'),
+  btnInfoHome: $('#btn-info-home'),
+  btnInfoForm: $('#btn-info-form'),
+  btnBack:     $('#btn-back'),
 
   // Media Mode Switcher
   tabModeFile: $('#tab-mode-file'),
@@ -118,22 +123,98 @@ function init() {
   console.log('[upload] app ready — supabase client loaded');
 }
 
-// ── Navigation ─────────────────────────────────────────────────
+// ── Navigation State & Logic ────────────────────────────────────
+let currentStep = 'landing';
+let previousStep = null;
+let landingTimer = null;
+
 function bindNavigation() {
-  els.btnStart.addEventListener('click', () => goToStep('form'));
-  els.btnBack.addEventListener('click', () => goToStep('overview'));
+  // 1. Landing -> Landing 2 automatic timer after 2 seconds (2000ms)
+  landingTimer = setTimeout(() => {
+    if (currentStep === 'landing') {
+      goToStep('landing2', { fade: true });
+    }
+  }, 2000);
+
+  // Skip landing immediately on tap / click
+  if (els.stepLanding) {
+    els.stepLanding.addEventListener('click', () => {
+      if (currentStep === 'landing') {
+        if (landingTimer) clearTimeout(landingTimer);
+        goToStep('landing2', { fade: true });
+      }
+    });
+  }
+
+  // 2. Landing 2 navigation
+  if (els.btnGoInfo) {
+    els.btnGoInfo.addEventListener('click', () => goToStep('info'));
+  }
+  if (els.btnGoForm) {
+    els.btnGoForm.addEventListener('click', () => goToStep('form'));
+  }
+
+  // 3. Info navigation
+  if (els.btnInfoHome) {
+    els.btnInfoHome.addEventListener('click', () => goToStep('landing2'));
+  }
+  if (els.btnInfoForm) {
+    els.btnInfoForm.addEventListener('click', () => goToStep('form'));
+  }
+
+  // 4. Form back button -> returns to previous screen (landing2 or info)
+  if (els.btnBack) {
+    els.btnBack.addEventListener('click', () => {
+      const target = previousStep === 'info' ? 'info' : 'landing2';
+      goToStep(target);
+    });
+  }
 }
 
-function goToStep(target) {
-  if (target === 'form') {
-    els.stepOverview.className = 'step step--prev';
-    els.stepForm.className = 'step step--active';
-    els.stepForm.scrollTop = 0;
-  } else {
-    els.stepOverview.className = 'step step--active';
-    els.stepForm.className = 'step step--next';
-    els.stepOverview.scrollTop = 0;
+function goToStep(target, options = {}) {
+  if (target === currentStep) return;
+
+  const steps = {
+    landing:  els.stepLanding,
+    landing2: els.stepLanding2,
+    info:     els.stepInfo,
+    form:     els.stepForm,
+  };
+
+  const oldStepEl = steps[currentStep];
+  const newStepEl = steps[target];
+  if (!newStepEl) return;
+
+  // Fade transition between landing and landing2
+  if (currentStep === 'landing' && target === 'landing2' && options.fade) {
+    if (landingTimer) clearTimeout(landingTimer);
+
+    newStepEl.className = 'step step--landing2 step--fade-in';
+    oldStepEl.className = 'step step--landing step--fade-out';
+
+    setTimeout(() => {
+      oldStepEl.className = 'step step--landing step--prev';
+      newStepEl.className = 'step step--landing2 step--active';
+    }, 700);
+
+    previousStep = currentStep;
+    currentStep = target;
+    return;
   }
+
+  // Step directional order for slide transitions
+  const order = { landing: 0, landing2: 1, info: 2, form: 3 };
+  const goingForward = (order[target] ?? 0) >= (order[currentStep] ?? 0);
+
+  if (oldStepEl) {
+    oldStepEl.className = `step step--${currentStep} ${goingForward ? 'step--prev' : 'step--next'}`;
+  }
+
+  newStepEl.className = `step step--${target} step--active`;
+  newStepEl.scrollTop = 0;
+
+  previousStep = currentStep;
+  currentStep = target;
 }
 
 // ── Media Switcher (File vs Text) ──────────────────────────────
@@ -893,7 +974,7 @@ function bindSuccess() {
   els.btnNew.addEventListener('click', () => {
     hideSuccess();
     resetForm();
-    goToStep('overview');
+    goToStep('landing2');
   });
 }
 

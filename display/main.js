@@ -183,6 +183,7 @@ const state = {
   rightWheel: null,
   leftWheelVisible: false,
   rightWheelVisible: false,
+  currentLayout: 'nodi',
   activeModal: null, // 'info' | 'detail' | null
   cursorX: window.innerWidth / 2,
   cursorY: window.innerHeight / 2,
@@ -214,9 +215,9 @@ async function init() {
   state.rightWheel = initWheelMenu({
     container: els.wheelRight,
     itemsSelector: '.wheel-btn',
-    valueAttr: 'data-filter',
+    valueAttr: 'data-val',
     side: 'right',
-    onSelect: (filter) => activateFilter(filter, false),
+    onSelect: (val) => handleRightWheelSelect(val),
   });
 
   // 5. Fetch initial memories from Supabase
@@ -251,6 +252,7 @@ async function loadMemories() {
 
   updateCounter();
   state.scene.setMemories(state.memories);
+  activateLayout(state.currentLayout, true);
 }
 
 // ── Supabase Real-Time Listener ────────────────────────────────
@@ -338,11 +340,16 @@ function handlePointerMove(x, y) {
     els.wheelLeft.classList.remove('is-visible');
   }
 
-  // Menu Destro (Filtri)
-  if (!state.rightWheelVisible && x > window.innerWidth - enterThreshold) {
-    state.rightWheelVisible = true;
-    els.wheelRight.classList.add('is-visible');
-  } else if (state.rightWheelVisible && x < window.innerWidth - leaveThreshold) {
+  // Menu Destro (Filtri / Opzioni contestuali: nascosto in layout 'nodi')
+  if (state.currentLayout !== 'nodi') {
+    if (!state.rightWheelVisible && x > window.innerWidth - enterThreshold) {
+      state.rightWheelVisible = true;
+      els.wheelRight.classList.add('is-visible');
+    } else if (state.rightWheelVisible && x < window.innerWidth - leaveThreshold) {
+      state.rightWheelVisible = false;
+      els.wheelRight.classList.remove('is-visible');
+    }
+  } else {
     state.rightWheelVisible = false;
     els.wheelRight.classList.remove('is-visible');
   }
@@ -426,14 +433,14 @@ function handleSelect() {
       return;
     }
 
-    // Wheel Right (Filters)
-    const filterBtn = el.closest('#wheel-right .wheel-btn');
-    if (filterBtn) {
-      const val = filterBtn.getAttribute('data-filter');
+    // Wheel Right (Contextual Menu)
+    const rightBtn = el.closest('#wheel-right .wheel-btn');
+    if (rightBtn) {
+      const val = rightBtn.getAttribute('data-val') || rightBtn.getAttribute('data-filter') || rightBtn.getAttribute('data-layout');
       if (state.rightWheel) {
         state.rightWheel.selectValue(val);
       } else {
-        activateFilter(val);
+        handleRightWheelSelect(val);
       }
       return;
     }
@@ -464,22 +471,26 @@ function handleZoom(factor) {
 }
 
 function handleHandStateChange(leftHand, rightHand) {
-  // Update Tracking Status text & dot in camera HUD
+  // Update Tracking Status text & dot in camera HUD (if present)
   const isTracking = leftHand.detected || rightHand.detected;
-  els.hudStatusDot.classList.toggle('is-tracking', isTracking);
-
-  if (isTracking) {
-    const parts = [];
-    if (rightHand.detected) parts.push(rightHand.isPinching ? 'Destra: Pinch' : 'Destra: Puntatore');
-    if (leftHand.detected) parts.push(leftHand.isPanning ? 'Sinistra: Pan' : leftHand.isZooming ? 'Sinistra: Zoom' : 'Sinistra: Pronta');
-    els.hudStatusText.textContent = parts.join(' · ');
-  } else {
-    els.hudStatusText.textContent = 'In attesa delle mani';
+  if (els.hudStatusDot) {
+    els.hudStatusDot.classList.toggle('is-tracking', isTracking);
   }
 
-  // Indicator pills
-  els.indRight.classList.toggle('is-active', rightHand.detected);
-  els.indLeft.classList.toggle('is-active', leftHand.detected);
+  if (els.hudStatusText) {
+    if (isTracking) {
+      const parts = [];
+      if (rightHand.detected) parts.push(rightHand.isPinching ? 'Destra: Pinch' : 'Destra: Puntatore');
+      if (leftHand.detected) parts.push(leftHand.isPanning ? 'Sinistra: Pan' : leftHand.isZooming ? 'Sinistra: Zoom' : 'Sinistra: Pronta');
+      els.hudStatusText.textContent = parts.join(' · ');
+    } else {
+      els.hudStatusText.textContent = 'In attesa delle mani';
+    }
+  }
+
+  // Indicator pills (if present)
+  if (els.indRight) els.indRight.classList.toggle('is-active', rightHand.detected);
+  if (els.indLeft) els.indLeft.classList.toggle('is-active', leftHand.detected);
 
   // Pinch progress ring on virtual cursor
   if (els.cursorProgressRing) {
@@ -492,19 +503,32 @@ function handleHandStateChange(leftHand, rightHand) {
 
 // ── UI Events & Bindings ───────────────────────────────────────
 function bindUIEvents() {
-  // Wheel Left (Layouts)
-  els.wheelLeftBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      activateLayout(btn.dataset.layout);
+  // Wheel Left (Layouts click delegato)
+  if (els.wheelLeft) {
+    els.wheelLeft.addEventListener('click', (e) => {
+      const btn = e.target.closest('.wheel-btn');
+      if (btn && btn.dataset.layout) {
+        activateLayout(btn.dataset.layout);
+      }
     });
-  });
+  }
 
-  // Wheel Right (Filters)
-  els.wheelRightBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      activateFilter(btn.dataset.filter);
+  // Wheel Right (Menu contestuale click delegato)
+  if (els.wheelRight) {
+    els.wheelRight.addEventListener('click', (e) => {
+      const btn = e.target.closest('.wheel-btn');
+      if (btn) {
+        const val = btn.getAttribute('data-val') || btn.getAttribute('data-filter') || btn.getAttribute('data-layout');
+        if (val) {
+          if (state.rightWheel) {
+            state.rightWheel.selectValue(val);
+          } else {
+            handleRightWheelSelect(val);
+          }
+        }
+      }
     });
-  });
+  }
 
   // Info Button & Modal
   els.btnInfo.addEventListener('click', openInfoModal);
@@ -557,27 +581,74 @@ function bindUIEvents() {
   });
 }
 
-// ── Layout & Filter Switching ──────────────────────────────────
+// ── Layout Switching & Contextual Menus ────────────────────────
 function activateLayout(layoutName, syncWheel = true) {
+  state.currentLayout = layoutName;
+
   document.querySelectorAll('#wheel-left .wheel-btn').forEach((b) => {
     b.classList.toggle('is-active', b.getAttribute('data-layout') === layoutName);
   });
+
   state.scene.setLayout(layoutName);
+
   if (syncWheel && state.leftWheel) {
     state.leftWheel.setActiveByValue(layoutName);
   }
+
+  // Configura dinamicamente il menu destro contestuale
+  if (state.rightWheel) {
+    if (layoutName === 'nodi') {
+      // In nodi non c'è un menu
+      state.rightWheel.setItems([]);
+      state.rightWheelVisible = false;
+      els.wheelRight.classList.remove('is-visible');
+    } else if (layoutName === 'planimetria') {
+      // Piani: Terra, Primo, Secondo
+      state.rightWheel.setItems([
+        { value: 'terra', label: 'PIANO TERRA' },
+        { value: 'primo', label: 'PRIMO PIANO' },
+        { value: 'secondo', label: 'SECONDO PIANO' },
+      ], 'terra');
+      state.scene.setFloor('terra');
+    } else if (layoutName === 'cluster') {
+      // Mostra i tag
+      const tags = state.scene.getDistinctTags();
+      const items = tags.map((t) => ({ value: t, label: t.toUpperCase() }));
+      const defaultTag = items.length > 0 ? items[0].value : null;
+      state.rightWheel.setItems(items, defaultTag);
+      if (defaultTag) state.scene.setClusterTag(defaultTag);
+    } else if (layoutName === 'timeline') {
+      // Mostra gli anni
+      const years = state.scene.getDistinctYears();
+      const items = years.map((y) => ({ value: String(y), label: String(y) }));
+      const defaultYear = items.length > 0 ? items[items.length - 1].value : null;
+      state.rightWheel.setItems(items, defaultYear);
+      if (defaultYear) state.scene.setTimelineYear(parseInt(defaultYear, 10));
+    } else if (layoutName === 'griglia') {
+      // Riordinamento: Data, Media, Tag, Luogo (senza filtrare ricordi)
+      state.rightWheel.setItems([
+        { value: 'data', label: 'DATA' },
+        { value: 'media', label: 'MEDIA' },
+        { value: 'tag', label: 'TAG' },
+        { value: 'luogo', label: 'LUOGO' },
+      ], 'data');
+      state.scene.setGridSort('data');
+    }
+  }
+
   console.log('[display] Layout switched to:', layoutName);
 }
 
-function activateFilter(filterName, syncWheel = true) {
-  document.querySelectorAll('#wheel-right .wheel-btn').forEach((b) => {
-    b.classList.toggle('is-active', b.getAttribute('data-filter') === filterName);
-  });
-  state.scene.setFilter(filterName);
-  if (syncWheel && state.rightWheel) {
-    state.rightWheel.setActiveByValue(filterName);
+function handleRightWheelSelect(val) {
+  if (state.currentLayout === 'planimetria') {
+    state.scene.setFloor(val);
+  } else if (state.currentLayout === 'cluster') {
+    state.scene.setClusterTag(val);
+  } else if (state.currentLayout === 'timeline') {
+    state.scene.setTimelineYear(val ? parseInt(val, 10) : null);
+  } else if (state.currentLayout === 'griglia') {
+    state.scene.setGridSort(val);
   }
-  console.log('[display] Filter switched to:', filterName);
 }
 
 // ── Modal Handlers ─────────────────────────────────────────────

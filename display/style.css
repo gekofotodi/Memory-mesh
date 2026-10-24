@@ -68,71 +68,45 @@ html, body.kiosk-body {
   z-index: 1;
 }
 
-/* ── 1. HUD Superiore: Titolo Editoriale MĒNĒM Style (Senza Contenitore Pillola) ── */
+/* ── 1. HUD Superiore: Titolo Editoriale Minimale Fluttuante ────── */
 .kiosk-header {
   position: fixed;
-  top: 28px;
+  top: 32px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   pointer-events: none;
+  text-align: center;
 }
 
-.header-capsule {
-  position: relative;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
-}
-
-.header-accent-line {
-  display: none;
-}
-
-.header-content {
+.header-minimal {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 0;
-  font-family: var(--font-sans);
+  gap: 4px;
 }
 
 .header-title {
   font-family: var(--font-serif);
-  font-size: 1.45rem;
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
   font-weight: 400;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.01em;
   color: #99251C;
+  line-height: 1;
 }
+
 .header-title em,
 .header-title i {
   font-style: italic;
 }
 
-.header-sep {
-  color: rgba(153, 37, 28, 0.35);
-  font-size: 0.85rem;
-}
-
-.header-tag {
-  font-size: 0.78rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: rgba(153, 37, 28, 0.70);
-}
-
-.header-counter {
-  font-size: 0.78rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: rgba(153, 37, 28, 0.70);
-}
-
-.header-counter span {
-  color: #99251C;
+.header-subtitle {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(153, 37, 28, 0.75);
 }
 
 /* ── 2. Menu Laterali a Semicerchio (Reveal su avvicinamento ai bordi) ── */
@@ -160,6 +134,12 @@ html, body.kiosk-body {
 .wheel-dock--right {
   right: 0;
   transform: translateY(-50%) translateX(140%);
+}
+
+.wheel-dock.is-hidden {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Mostra il menu quando il cursore/mano si avvicina al lato dello schermo */
@@ -273,28 +253,23 @@ html, body.kiosk-body {
   box-shadow: none !important;
 }
 
-/* ── 3. Feed Webcam Pulito (Bottom-Left) ────────────────────────── */
+/* ── 3. Feed Webcam Frameless Minimale (Bottom-Left) ─────────────── */
 .camera-hud {
   position: fixed;
-  bottom: 24px;
-  left: 24px;
+  bottom: 28px;
+  left: 28px;
   z-index: 15;
   pointer-events: none;
 }
 
-.camera-hud__card {
-  width: 180px;
-  background: var(--bg-white);
-  border-radius: 20px;
-  overflow: hidden;
-  border: 1px solid var(--border-card);
-  box-shadow: 0 10px 30px rgba(153, 37, 28, 0.08);
-}
-
 .camera-hud__viewport {
-  width: 100%;
-  height: 115px;
+  width: 168px;
+  height: 112px;
+  border-radius: 14px;
+  overflow: hidden;
   background: #2D0A08;
+  border: 1px solid rgba(153, 37, 28, 0.16);
+  box-shadow: 0 10px 28px rgba(153, 37, 28, 0.10);
 }
 
 #camera-canvas {
@@ -304,118 +279,277 @@ html, body.kiosk-body {
   transform: scaleX(-1);
 }
 
-.camera-hud__meta {
-  padding: 8px 10px;
-  background: var(--bg-white);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-top: 1px solid var(--border-light);
-}
-
-.camera-hud__status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.hud-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--accent-red);
-  transition: all 0.3s ease;
-}
-
-.hud-status-dot.is-tracking {
-  background-color: var(--accent-green-bright);
-  box-shadow: 0 0 6px var(--accent-green-bright);
-}
-
-.hud-status-text {
-  font-family: var(--font-sans);
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hud-hands-tags {
-  display: flex;
-  gap: 4px;
-}
-
-.hud-hand-tag {
-  font-family: var(--font-sans);
-  font-size: 0.58rem;
-  font-weight: 600;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: #F4EBE2;
-  color: #99251C;
-}
-
-.hud-hand-tag.is-active {
-  color: var(--accent-red);
-  background: var(--accent-red-soft);
-  border: 1px solid var(--accent-red);
-}
-
-/* ── 4. Tasto INFO MĒNĒM Style (Bottom-Right, Senza Contenitore a Pillola) ── */
-.info-pill-btn {
+/* ── 4. Tasto INFO Minimale (Bottom-Right) ────────────────────────── */
+.info-trigger-link {
   position: fixed;
   bottom: 28px;
   right: 28px;
   z-index: 15;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 36px;
-  padding: 0 16px;
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  color: #99251C;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  cursor: pointer;
+  transition: opacity 0.25s var(--ease-expo), transform 0.25s var(--ease-expo);
+  pointer-events: auto;
+}
+
+.info-trigger-link:hover {
+  opacity: 0.8;
+  transform: translateX(2px);
+}
+
+.info-arrow {
+  font-size: 1.25em;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.25s var(--ease-expo);
+}
+
+.info-trigger-link:hover .info-arrow {
+  transform: translate(2px, -2px);
+}
+
+/* ── 5. Drawer Laterale Info Progetto (Slide-in da Destra) ───────── */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(45, 10, 8, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.info-drawer {
+  width: 480px;
+  max-width: 90vw;
+  height: 100vh;
   background: var(--bg-white);
-  border: 1px solid var(--border-card);
-  border-radius: 4px; /* Rettangolare minimale, NESSUNA pillola */
+  border-left: 1px solid var(--border-card);
+  box-shadow: -16px 0 50px rgba(153, 37, 28, 0.15);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.4s var(--ease-expo);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-backdrop.is-open .info-drawer {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.drawer-badge {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(153, 37, 28, 0.7);
+}
+
+.drawer-close-btn,
+.magazine-close-btn {
+  background: none;
+  border: none;
   color: #99251C;
   font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(153, 37, 28, 0.06);
-  transition: all 0.25s var(--ease-expo);
-  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background 0.2s ease, opacity 0.2s ease;
 }
 
-.info-pill__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--accent-red);
+.drawer-close-btn:hover,
+.magazine-close-btn:hover {
+  background: rgba(153, 37, 28, 0.06);
 }
 
-.info-pill-btn:hover {
+.close-icon {
+  font-size: 0.9rem;
+}
+
+.drawer-body {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawer-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.4rem, 4.5vw, 3.2rem);
+  font-weight: 400;
+  color: var(--text-dark);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.drawer-title em {
+  font-style: italic;
+}
+
+.drawer-desc {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dark);
+}
+
+.section-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.70rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(153, 37, 28, 0.65);
+}
+
+.gesture-card {
+  padding: 16px 18px;
+  background: #F8F3EC;
+  border-radius: 12px;
+  border: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gesture-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(153, 37, 28, 0.08);
+  padding-bottom: 6px;
+}
+
+.gesture-hand {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #99251C;
+  letter-spacing: 0.10em;
+}
+
+.gesture-action {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(153, 37, 28, 0.65);
+}
+
+.gesture-desc {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.gesture-desc strong {
+  font-weight: 700;
+  color: #99251C;
+}
+
+.drawer-section--participate {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.participate-text {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(153, 37, 28, 0.85);
+  line-height: 1.45;
+}
+
+.participate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #99251C;
+  color: #FFFDF9;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.participate-link:hover {
+  opacity: 0.9;
   transform: translateY(-2px);
-  border-color: var(--text-dark);
-  box-shadow: 0 12px 30px rgba(153, 37, 28, 0.12);
 }
 
-/* ── 5. Modali Bento Grid (Light Mode & Accent Line Rossa) ──────── */
+.participate-arrow {
+  font-size: 1.1em;
+}
+
+/* ── 6. Modale Dettaglio Stile Rivista / Overlay Immersivo ────────── */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 55;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(45, 10, 8, 0.40);
+  background: rgba(45, 10, 8, 0.45);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.35s ease;
 }
 
 .modal-backdrop.is-open {
@@ -423,183 +557,69 @@ html, body.kiosk-body {
   pointer-events: auto;
 }
 
-.bento-modal {
+.magazine-modal {
   position: relative;
+  width: 960px;
+  max-width: 92vw;
+  max-height: 88vh;
   background: var(--bg-white);
+  border-radius: 24px;
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-bento);
-  box-shadow: 0 24px 70px rgba(153, 37, 28, 0.16);
-  transform: scale(0.96) translateY(14px);
-  transition: transform 0.35s var(--ease-expo);
-  max-height: 86vh;
+  box-shadow: 0 28px 80px rgba(153, 37, 28, 0.20);
   overflow-y: auto;
-  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 36px 40px;
+  box-sizing: border-box;
+  transform: scale(0.96) translateY(12px);
+  transition: transform 0.35s var(--ease-expo);
 }
 
-.modal-backdrop.is-open .bento-modal {
+.modal-backdrop.is-open .magazine-modal {
   transform: scale(1) translateY(0);
 }
 
-/* Striscia Rossa d'Accento MĒNĒM in alto */
-.modal-accent-strip {
+.magazine-close-btn {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--accent-red);
-}
-
-.bento-close-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #F4EBE2;
-  border: 1px solid var(--border-card);
-  color: var(--text-dark);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  top: 24px;
+  right: 28px;
   z-index: 10;
 }
 
-.bento-close-btn:hover {
-  background: var(--accent-red);
-  color: #FFFDF9;
-  border-color: var(--accent-red);
-}
-
-/* ── Modale Info Bento Grid ─────────────────────────────────────── */
-.bento-modal--info {
-  width: 760px;
-  max-width: 90vw;
-  padding: 34px 28px 28px;
+.magazine-layout {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 36px;
+  align-items: start;
 }
 
-.bento-card {
-  background: #FAF5ED;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-card);
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.bento-card--hero {
-  grid-column: 1 / -1;
-  background: var(--bg-white);
-  border-color: var(--border-card);
-  padding: 22px;
-}
-
-.bento-card__eyebrow {
-  font-family: var(--font-sans);
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-  font-weight: 700;
-}
-
-.bento-card__eyebrow--green {
-  color: var(--accent-sage);
-}
-
-.bento-card__eyebrow--red {
-  color: var(--accent-red);
-}
-
-.bento-card__title {
-  font-family: var(--font-serif);
-  font-size: 2.2rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--text-dark);
-  line-height: 1.15;
-}
-.bento-card__title em,
-.bento-card__title i {
-  font-style: italic;
-}
-
-.bento-card__subtitle {
-  font-family: var(--font-serif);
-  font-size: 1.45rem;
-  font-weight: 400;
-  color: var(--text-dark);
-  letter-spacing: -0.01em;
-}
-.bento-card__subtitle em,
-.bento-card__subtitle i {
-  font-style: italic;
-}
-
-.bento-card__body {
-  font-size: 0.85rem;
-  line-height: 1.55;
-  color: var(--text-body);
-}
-
-.bento-card__body strong {
-  color: var(--text-dark);
-}
-
-.bento-card__body code {
-  font-family: var(--font-mono);
-  color: var(--accent-red);
-  font-weight: 700;
-}
-
-.bento-card--upload {
-  grid-column: 1 / -1;
-}
-
-/* ── Modale Dettaglio Ricordo Bento Grid ────────────────────────── */
-.bento-modal--detail {
-  width: 800px;
-  max-width: 90vw;
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  padding: 34px 28px 28px;
-  gap: 22px;
-}
-
-.detail-media-wrap {
-  position: relative;
-  background: #FAF5ED;
-  border-radius: var(--radius-card);
+.magazine-media-col {
+  width: 100%;
+  min-height: 380px;
+  background: #F8F3EC;
+  border-radius: 16px;
+  border: 1px solid var(--border-card);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 310px;
-  border: 1px solid var(--border-card);
 }
 
-.detail-img {
+.magazine-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  max-height: 520px;
+  object-fit: contain;
   display: block;
 }
 
-.detail-audio-box {
+.magazine-audio-box {
   width: 100%;
-  height: 100%;
-  padding: 24px;
+  padding: 32px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .audio-avatar {
@@ -618,7 +638,7 @@ html, body.kiosk-body {
 
 #audio-waveform-canvas {
   width: 100%;
-  height: 60px;
+  height: 70px;
   display: block;
 }
 
@@ -627,70 +647,67 @@ html, body.kiosk-body {
   height: 34px;
 }
 
-.detail-content-wrap {
+.magazine-content-col {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+  padding-top: 6px;
 }
 
-.detail-pills-row {
+.magazine-meta-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.detail-pill {
-  padding: 3px 9px;
-  border-radius: 4px; /* Nessuna pillola */
-  font-family: var(--font-sans);
-  font-size: 0.70rem;
-  font-weight: 600;
-  background: #FAF5ED;
-  color: var(--text-dark);
+.magazine-meta-pill {
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #F8F3EC;
   border: 1px solid var(--border-card);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #99251C;
 }
 
-.detail-pill--location {
-  border-color: var(--accent-red);
-  color: var(--accent-red);
-  background: var(--accent-red-soft);
-}
-
-.detail-pill--time {
-  border-color: var(--border-card);
-}
-
-.detail-title {
+.magazine-title {
   font-family: var(--font-serif);
-  font-size: 1.95rem;
+  font-size: clamp(2.2rem, 3.8vw, 3.2rem);
   font-weight: 400;
-  letter-spacing: -0.01em;
   color: var(--text-dark);
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
-.detail-title em,
-.detail-title i {
+
+.magazine-title em {
   font-style: italic;
 }
 
-.detail-desc {
-  font-size: 0.88rem;
-  line-height: 1.6;
-  color: var(--text-body);
+.magazine-desc {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-dark);
+  opacity: 0.92;
 }
 
-.detail-section {
+.magazine-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.detail-section__header {
+.magazine-section-header {
   font-family: var(--font-sans);
-  font-size: 0.64rem;
-  letter-spacing: 0.10em;
-  color: var(--text-muted);
+  font-size: 0.68rem;
   font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(153, 37, 28, 0.65);
 }
 
 .tags-cluster {
@@ -700,14 +717,16 @@ html, body.kiosk-body {
 }
 
 .tags-cluster .tag-badge {
-  padding: 3px 10px;
-  border-radius: 4px; /* Nessuna pillola */
-  background: var(--bg-white);
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: #F8F3EC;
   border: 1px solid var(--border-card);
   color: var(--text-dark);
   font-family: var(--font-sans);
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .related-chips-grid {
@@ -718,13 +737,15 @@ html, body.kiosk-body {
 }
 
 .related-chip {
-  padding: 4px 10px;
-  background: var(--bg-white);
+  padding: 5px 12px;
+  background: #F8F3EC;
   border: 1px solid var(--border-card);
-  border-radius: 4px; /* Nessuna pillola */
+  border-radius: 4px;
   font-family: var(--font-sans);
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-dark);
   cursor: pointer;
   white-space: nowrap;
@@ -732,9 +753,9 @@ html, body.kiosk-body {
 }
 
 .related-chip:hover {
-  background: var(--accent-red-soft);
-  border-color: var(--accent-red);
-  color: var(--accent-red);
+  background: rgba(153, 37, 28, 0.08);
+  border-color: #99251C;
+  color: #99251C;
 }
 
 /* ── 6. Toast Realtime Discreto (Senza Contenitore Pillola) ──────── */
@@ -846,8 +867,11 @@ html, body.kiosk-body {
 
 /* Responsive adjustments */
 @media (max-width: 900px) {
-  .bento-modal--info,
-  .bento-modal--detail {
+  .magazine-layout {
     grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .info-drawer {
+    width: 100vw;
   }
 }

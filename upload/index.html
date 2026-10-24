@@ -16,79 +16,96 @@
 <body>
 
   <!-- ════════════════════════════════════════════════════════════
-       STEP 1 — Overview: progetto & tipologie di ricordi
+       STEP 1 — Landing (Splash screen 2s fade)
        ════════════════════════════════════════════════════════════ -->
-  <section id="step-overview" class="step step--active" aria-label="Panoramica progetto">
-    <div class="step__inner">
+  <section id="step-landing" class="step step--active step--landing" aria-label="Caricamento iniziale">
+    <div class="landing__container">
+      <div class="landing__monogram" aria-label="Memory Mesh">
+        <span class="mm-char mm-char--reg">M</span><span class="mm-char mm-char--ita">M</span>
+      </div>
+      <footer class="landing__footer">
+        <span>CENTRO GIOVANILE STOÀ</span>
+      </footer>
+    </div>
+  </section>
 
-      <!-- Hero Typography: Instrument Serif con mix di regular e italic -->
-      <section class="hero">
-        <h1 class="hero__title">
-          <strong>Memory 
-          <span class="text-accent">Mesh</span> </strong>
-          è un
-          <span class="text-accent">archivio relazionale</span>
-          che raccoglie i ricordi nati all'interno del Centro Giovanile 
-          <span class="text-accent">Stoà</span>
-          e li rende esplorabili grazie ad un'installazione permanente interattiva.
-        </h1>
-      </section>
+  <!-- ════════════════════════════════════════════════════════════
+       STEP 2 — Landing 2 (Home principale)
+       ════════════════════════════════════════════════════════════ -->
+  <section id="step-landing2" class="step step--next step--landing2" aria-label="Home Memory Mesh">
+    <div class="landing2__container">
+      <header class="landing2__header">
+        <h1 class="landing2__title">Memory <em>Mesh</em></h1>
+        <p class="landing2__intro">
+          È UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
+        </p>
+      </header>
 
-      <!-- CTA Principale prima delle caselle bento -->
-      <button class="cta cta--start" id="btn-start" type="button">
-        <span>Aggiungi la tua memoria</span>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d="M4 10h12M12 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+      <!-- Spazio centrale per immagine (quadrato placeholder vuoto da sostituire) -->
+      <div class="landing2__image-slot" aria-label="Spazio per immagine">
+        <!-- Inserisci qui la tua immagine (es. <img src="..." alt="..." />) -->
+        <div class="landing2__placeholder-box" id="landing2-placeholder"></div>
+      </div>
 
-      <!-- Bento Cards in verticale -->
-      <section class="cards" aria-label="Informazioni">
+      <!-- Tasti di navigazione in basso -->
+      <nav class="landing2__actions" aria-label="Navigazione principale">
+        <button type="button" class="action-btn" id="btn-go-info">
+          <span>SCOPRI IL PROGETTO</span>
+          <span class="action-btn__arrow" aria-hidden="true">&#x2197;</span>
+        </button>
+        <button type="button" class="action-btn" id="btn-go-form">
+          <span>AGGIUNGI UN RICORDO</span>
+          <span class="action-btn__arrow" aria-hidden="true">&#x2197;</span>
+        </button>
+      </nav>
+    </div>
+  </section>
 
-        <!-- Card 1 — Ricordi ammessi -->
-        <article class="card card--lime">
-          <div class="card__badge">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M10 2v16M2 10h16M4.2 4.2l11.6 11.6M15.8 4.2L4.2 15.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h2 class="card__title">Ricordi <em>possibili</em></h2>
-          <p class="card__desc">
-            Puoi condividere <strong>foto, video, testi o audio</strong>
-            assegnando un titolo e una descrizione.
-          </p>
-        </article>
+  <!-- ════════════════════════════════════════════════════════════
+       STEP 4 — Info (Contorno foto e informazioni progetto)
+       ════════════════════════════════════════════════════════════ -->
+  <section id="step-info" class="step step--next step--info" aria-label="Informazioni sul progetto">
+    <!-- Contorno perimetrale con foto (placeholder finché sostituito con immagine) -->
+    <div class="info__frame">
+      <div class="info__card">
+        <div class="info__content">
+          <!-- Blocco 1: diversi ricordi -->
+          <article class="info-block">
+            <h2 class="info-block__title">diversi <em>ricordi</em></h2>
+            <p class="info-block__text">
+              È UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
+            </p>
+          </article>
 
-        <!-- Card 2 — La rete visiva -->
-        <article class="card card--sage">
-          <div class="card__badge">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M3 15L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M9 3h6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M9 15H3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <h2 class="card__title"> Rete <em>visiva</em></h2>
-          <p class="card__desc">
-            Quando condividi un ricordo puoi aggiungere alcune informazioni,
-            come luogo o data, per arricchirlo e renderlo parte della trama già esistente.
-          </p>
-        </article>
+          <!-- Blocco 2: Memory Mesh -->
+          <article class="info-block">
+            <h2 class="info-block__title">Memory <em>Mesh</em></h2>
+            <p class="info-block__text">
+              È UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
+            </p>
+          </article>
 
-        <!-- Card 3 — Privacy & etica -->
-        <article class="card card--dark">
-          <div class="card__badge">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>
-              <rect x="7" y="7" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
-            </svg>
-          </div>
-          <h2 class="card__title">Obiettivo <em>finale</em></h2>
-          <p class="card__desc">
-            La trama che verrà intessuta diventerà un archivio dei ricordi nati a Stoà.
-          </p>
-        </article>
-      </section>
+          <!-- Blocco 3: Memory Mesh -->
+          <article class="info-block">
+            <h2 class="info-block__title">Memory <em>Mesh</em></h2>
+            <p class="info-block__text">
+              È UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
+            </p>
+          </article>
+        </div>
+
+        <!-- Tasti in basso nella card -->
+        <nav class="info__actions" aria-label="Navigazione info">
+          <button type="button" class="action-btn" id="btn-info-home">
+            <span>TORNA ALLA HOME</span>
+            <span class="action-btn__arrow action-btn__arrow--back" aria-hidden="true">&#x2196;</span>
+          </button>
+          <button type="button" class="action-btn" id="btn-info-form">
+            <span>AGGIUNGI UN RICORDO</span>
+            <span class="action-btn__arrow" aria-hidden="true">&#x2197;</span>
+          </button>
+        </nav>
+      </div>
     </div>
   </section>
 

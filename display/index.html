@@ -26,17 +26,11 @@
   <!-- Video sorgente webcam per MediaPipe (nascosto dall'HUD) -->
   <video id="webcam-video" autoplay playsinline muted></video>
 
-  <!-- ── 1. HUD SUPERIORE: Titolo Editoriale MĒNĒM Style ───────────── -->
+  <!-- ── 1. HUD SUPERIORE: Titolo Editoriale Minimale Fluttuante ──── -->
   <header class="kiosk-header" id="hud-header">
-    <div class="header-capsule">
-      <div class="header-accent-line"></div>
-      <div class="header-content">
-        <h1 class="header-title">MEMORY <em>MESH</em></h1>
-        <span class="header-sep">/</span>
-        <span class="header-tag">CENTRO GIOVANILE STOÀ</span>
-        <span class="header-sep">/</span>
-        <span class="header-counter"><span id="memory-counter">0</span> ARCHIVIO</span>
-      </div>
+    <div class="header-minimal">
+      <h1 class="header-title">Memory <em>Mesh</em></h1>
+      <span class="header-subtitle">CENTRO GIOVANILE STOÀ</span>
     </div>
   </header>
 
@@ -66,8 +60,8 @@
     </div>
   </aside>
 
-  <!-- ── 3. MENU A RUOTA LATERALE DESTRO: Semicerchio 2D Filtri ──────── -->
-  <aside class="wheel-dock wheel-dock--right" id="wheel-right" aria-label="Selettore filtri a ruota">
+  <!-- ── 3. MENU A RUOTA LATERALE DESTRO: Semicerchio 2D Contestuale ─────── -->
+  <aside class="wheel-dock wheel-dock--right is-hidden" id="wheel-right" aria-label="Selettore opzioni contestuali a ruota">
     <div class="wheel-arc" id="wheel-right-items">
       <button class="wheel-btn is-active" data-filter="all" aria-label="Tutti i ricordi">
         <span class="wheel-dot"></span>
@@ -100,116 +94,115 @@
     </div>
   </aside>
 
-  <!-- ── 4. ANGOLO IN BASSO A SINISTRA: Feed Webcam Pulito ─────────── -->
+  <!-- ── 4. ANGOLO IN BASSO A SINISTRA: Feed Webcam Pulito Frameless ── -->
   <section class="camera-hud" id="camera-hud" aria-label="Feed webcam compatto">
-    <div class="camera-hud__card">
-      <div class="camera-hud__viewport">
-        <canvas id="camera-canvas" width="180" height="120"></canvas>
-      </div>
-      <div class="camera-hud__meta" id="camera-badge">
-        <div class="camera-hud__status">
-          <span class="hud-status-dot" id="hud-status-dot"></span>
-          <span class="hud-status-text" id="hud-status-text">IN ATTESA DELLE MANI</span>
-        </div>
-        <div class="hud-hands-tags">
-          <span class="hud-hand-tag" id="ind-right">R: POINTER</span>
-          <span class="hud-hand-tag" id="ind-left">L: NAV</span>
-        </div>
-      </div>
+    <div class="camera-hud__viewport">
+      <canvas id="camera-canvas" width="180" height="120"></canvas>
     </div>
   </section>
 
-  <!-- ── 5. ANGOLO IN BASSO A DESTRA: Tasto INFO MĒNĒM Style ───────── -->
-  <button class="info-pill-btn info-trigger-btn" id="btn-info" aria-label="Informazioni e guida gesture">
-    <span class="info-pill__dot"></span>
-    <span class="info-pill__text">INFO</span>
+  <!-- ── 5. ANGOLO IN BASSO A DESTRA: Tasto INFO Minimale ───────────── -->
+  <button class="info-trigger-link" id="btn-info" aria-label="Informazioni e guida gesture">
+    <span>INFO</span>
+    <span class="info-arrow" aria-hidden="true">&#x2197;</span>
   </button>
 
-  <!-- ── 6. MODALE BENTO: Info Progetto & Gesture (Light Mode) ─────── -->
-  <div class="modal-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-labelledby="info-modal-title">
-    <div class="bento-modal bento-modal--info">
-      <div class="modal-accent-strip"></div>
+  <!-- ── 6. PANNELLO DRAWER LATERALE: Info Progetto & Gesture ──────── -->
+  <div class="drawer-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-labelledby="info-drawer-title">
+    <aside class="info-drawer" id="info-drawer">
+      <header class="drawer-header">
+        <span class="drawer-badge">CENTRO GIOVANILE STOÀ</span>
+        <button class="drawer-close-btn" id="btn-close-info" aria-label="Chiudi informazioni">
+          <span>CHIUDI</span>
+          <span class="close-icon" aria-hidden="true">✕</span>
+        </button>
+      </header>
 
-      <div class="bento-card bento-card--hero">
-        <span class="bento-card__eyebrow">CENTRO GIOVANILE STOÀ</span>
-        <h2 id="info-modal-title" class="bento-card__title">Memory <em>Mesh</em></h2>
-        <p class="bento-card__body">
-          Un archivio relazionale permanente che raccoglie tracce vocali, fotografie e ricordi donati dalla comunità di Stoà. Le memorie si intrecciano in una costellazione generativa sensibile alla prossimità e alle relazioni umane.
-        </p>
+      <div class="drawer-body">
+        <div class="drawer-section">
+          <h2 id="info-drawer-title" class="drawer-title">Memory <em>Mesh</em></h2>
+          <p class="drawer-desc">
+            UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
+          </p>
+        </div>
+
+        <div class="drawer-section">
+          <span class="section-eyebrow">GUIDA ALLE GESTURE</span>
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-hand">MANO DESTRA</span>
+              <span class="gesture-action">PUNTA &amp; SELEZIONA</span>
+            </div>
+            <p class="gesture-desc">
+              Punta l'indice per muovere il mirino sulla rete. <strong>Pinch (pollice-indice)</strong> per aprire ed esplorare un ricordo.
+            </p>
+          </div>
+
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-hand">MANO SINISTRA</span>
+              <span class="gesture-action">PAN &amp; ZOOM</span>
+            </div>
+            <p class="gesture-desc">
+              <strong>Pinch mantenuto</strong> per trascinare la vista con inerzia. Ruota il polso per avvicinare o allontanare la visuale.
+            </p>
+          </div>
+        </div>
+
+        <div class="drawer-section drawer-section--participate">
+          <span class="section-eyebrow">PARTECIPA</span>
+          <p class="participate-text">
+            INVIA IL TUO RICORDO CON LO SMARTPHONE SCANSIONANDO IL QR CODE O VISITANDO L'APPLICAZIONE DI UPLOAD:
+          </p>
+          <a href="../upload/" class="participate-link" target="_blank" rel="noopener">
+            <span>CARICA UN RICORDO</span>
+            <span class="participate-arrow" aria-hidden="true">&#x2197;</span>
+          </a>
+        </div>
       </div>
-
-      <div class="bento-card bento-card--gesture">
-        <span class="bento-card__eyebrow bento-card__eyebrow--green">MANO DESTRA</span>
-        <h3 class="bento-card__subtitle">Punta &amp; <em>Seleziona</em></h3>
-        <p class="bento-card__body">
-          Punta l'indice per muovere il mirino. <strong>Pinch (pollice-indice)</strong> per aprire una memoria. Le coordinate si congelano al tocco per evitare scivolamenti.
-        </p>
-      </div>
-
-      <div class="bento-card bento-card--gesture">
-        <span class="bento-card__eyebrow bento-card__eyebrow--red">MANO SINISTRA</span>
-        <h3 class="bento-card__subtitle">Pan &amp; <em>Zoom</em></h3>
-        <p class="bento-card__body">
-          <strong>Pinch mantenuto</strong> per trascinare la vista con inerzia. Ruota il polso (&gt;20°) per avvicinare o allontanare la visuale.
-        </p>
-      </div>
-
-      <div class="bento-card bento-card--upload">
-        <span class="bento-card__eyebrow">PARTECIPA</span>
-        <p class="bento-card__body">
-          Invia il tuo ricordo con lo smartphone scansionando il QR o visitando <code>/upload</code>.
-        </p>
-      </div>
-
-      <button class="bento-close-btn" id="btn-close-info" aria-label="Chiudi informazioni">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
+    </aside>
   </div>
 
-  <!-- ── 7. MODALE DETTAGLIO RICORDO (Bento Light Mode) ───────────── -->
+  <!-- ── 7. MODALE DETTAGLIO RICORDO (Stile Rivista / Overlay Immersivo) ── -->
   <div class="modal-backdrop" id="modal-detail" aria-hidden="true" role="dialog" aria-labelledby="detail-title">
-    <div class="bento-modal bento-modal--detail">
-      <div class="modal-accent-strip"></div>
-
-      <div class="detail-media-wrap" id="detail-media-wrap">
-        <img id="detail-img" class="detail-img" src="" alt="Anteprima ricordo" hidden />
-        <div id="detail-audio-wrap" class="detail-audio-box" hidden>
-          <div class="audio-avatar">♪</div>
-          <canvas id="audio-waveform-canvas" width="280" height="60"></canvas>
-          <audio id="detail-audio-el" controls></audio>
-        </div>
-      </div>
-
-      <div class="detail-content-wrap">
-        <div class="detail-pills-row">
-          <span class="detail-pill detail-pill--location" id="detail-location">📍 Salone</span>
-          <span class="detail-pill detail-pill--time" id="detail-time">⏱️ 18:30</span>
-        </div>
-
-        <h2 class="detail-title" id="detail-title">Titolo Ricordo</h2>
-        <p class="detail-desc" id="detail-desc">Descrizione della memoria...</p>
-
-        <div class="detail-section">
-          <span class="detail-section__header">TAG TEMATICI</span>
-          <div class="tags-cluster" id="detail-tags"></div>
-        </div>
-
-        <div class="detail-section" id="detail-related-section">
-          <span class="detail-section__header">COLLEGAMENTI (<span id="detail-related-count">0</span>)</span>
-          <div class="related-chips-grid" id="detail-related-chips"></div>
-        </div>
-      </div>
-
-      <button class="bento-close-btn" id="btn-close-detail" aria-label="Chiudi dettaglio ricordo">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+    <div class="magazine-modal" id="detail-modal-box">
+      <button class="magazine-close-btn" id="btn-close-detail" aria-label="Chiudi dettaglio ricordo">
+        <span>CHIUDI</span>
+        <span class="close-icon" aria-hidden="true">✕</span>
       </button>
+
+      <div class="magazine-layout">
+        <!-- Colonna Media / Immagine o Audio -->
+        <div class="magazine-media-col" id="detail-media-wrap">
+          <img id="detail-img" class="magazine-img" src="" alt="Anteprima ricordo" hidden />
+          <div id="detail-audio-wrap" class="magazine-audio-box" hidden>
+            <div class="audio-avatar">♪</div>
+            <canvas id="audio-waveform-canvas" width="320" height="70"></canvas>
+            <audio id="detail-audio-el" controls></audio>
+          </div>
+        </div>
+
+        <!-- Colonna Contenuto & Metadati -->
+        <div class="magazine-content-col">
+          <div class="magazine-meta-row">
+            <span class="magazine-meta-pill" id="detail-location">📍 Stoà</span>
+            <span class="magazine-meta-pill" id="detail-time">⏱️ Oggi</span>
+          </div>
+
+          <h2 class="magazine-title" id="detail-title">Titolo Ricordo</h2>
+          <p class="magazine-desc" id="detail-desc">Descrizione della memoria...</p>
+
+          <div class="magazine-section">
+            <span class="magazine-section-header">TAG TEMATICI</span>
+            <div class="tags-cluster" id="detail-tags"></div>
+          </div>
+
+          <div class="magazine-section" id="detail-related-section">
+            <span class="magazine-section-header">COLLEGAMENTI (<span id="detail-related-count">0</span>)</span>
+            <div class="related-chips-grid" id="detail-related-chips"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

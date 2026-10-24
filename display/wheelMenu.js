@@ -40,6 +40,44 @@ export class WheelMenu2D {
   }
 
   /**
+   * Aggiorna dinamicamente le voci del menu
+   * @param {Array<{value: string, label: string}>} items
+   * @param {string|null} activeVal
+   */
+  setItems(items = [], activeVal = null) {
+    const arc = this.container.querySelector('.wheel-arc') || this.container;
+    arc.innerHTML = '';
+
+    if (!items || items.length === 0) {
+      this.buttons = [];
+      this.activeValue = null;
+      this.container.classList.add('is-hidden');
+      return;
+    }
+
+    this.container.classList.remove('is-hidden');
+
+    this.buttons = items.map((it) => {
+      const btn = document.createElement('button');
+      btn.className = 'wheel-btn';
+      btn.setAttribute(this.valueAttr, it.value);
+      btn.setAttribute('aria-label', it.label);
+      btn.innerHTML = `<span class="wheel-dot"></span><span class="wheel-btn__text">${it.label}</span>`;
+      arc.appendChild(btn);
+      return btn;
+    });
+
+    this.setupSemicircleLayout();
+    this.bindEvents();
+
+    const targetVal = activeVal || (items[0] && items[0].value);
+    if (targetVal) {
+      this.activeValue = targetVal;
+      this.updateClasses();
+    }
+  }
+
+  /**
    * Calcola e fissa la disposizione a raggi (radial spokes) che fuoriescono
    * dal centro di un cerchio. Parametri unificati per garantire coerenza totale
    * tra lato sinistro e destro:
@@ -50,15 +88,23 @@ export class WheelMenu2D {
   setupSemicircleLayout() {
     const isLeft = (this.side === 'left');
     const count = this.buttons.length;
-    if (count <= 1) return;
+    if (count === 0) return;
 
-    const centerIdx = (count - 1) / 2;
-    // Raggio e distanza coerenti al 100% su entrambi i lati
     const pivotRadius = 420;
     const edgeMargin = 28;
     const R = pivotRadius + edgeMargin;
-    // Passo angolare unificato (voci avvicinate del 40%: passo s ~36.7px)
-    const angleStepRad = 0.082;
+
+    if (count === 1) {
+      const btn = this.buttons[0];
+      const finalX = isLeft ? edgeMargin : -edgeMargin;
+      btn.style.transform = `translate3d(${finalX.toFixed(1)}px, 0px, 0) rotate(0deg)`;
+      return;
+    }
+
+    const centerIdx = (count - 1) / 2;
+    // Passo angolare unificato (voci ravvicinate con passo coerente)
+    // Se ci sono molte voci (es. 10 tag), riduciamo leggermente il passo per mantenerle leggibili
+    const angleStepRad = count > 7 ? 0.065 : 0.082;
 
     this.buttons.forEach((btn, index) => {
       const rel = index - centerIdx;
@@ -72,9 +118,7 @@ export class WheelMenu2D {
       // A destra: X verso l'interno dello schermo è negativa (-posX) rispetto a right: 0
       const finalX = isLeft ? posX : -posX;
 
-      // Orientamento angolare del raggio lungo la direttrice dal centro:
-      // A sinistra: theta (in alto verso l'alto-destra, in basso verso il basso-destra)
-      // A destra: -theta (in alto verso il basso-destra, in basso verso l'alto-destra, come nella reference)
+      // Orientamento angolare del raggio lungo la direttrice dal centro
       const rotDeg = (isLeft ? 1 : -1) * (theta * 180 / Math.PI);
 
       btn.style.transform = `translate3d(${finalX.toFixed(1)}px, ${posY.toFixed(1)}px, 0) rotate(${rotDeg.toFixed(2)}deg)`;
