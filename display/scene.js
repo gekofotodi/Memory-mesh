@@ -48,23 +48,23 @@ const FLOORS = {
 
 // ── 2. Palette Tematica Isole Cluster ──────────────────────────
 const CLUSTER_PALETTE = {
-  studio:        { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.07)' },
-  evento:        { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.08)' },
-  'vita comune': { stroke: '#A8C3A0', fill: 'rgba(168, 195, 160, 0.08)' },
-  fede:          { stroke: '#9B51E0', fill: 'rgba(155, 81, 224, 0.07)' },
-  musica:        { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.08)' },
-  amici:         { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.08)' },
-  relax:         { stroke: '#636E72', fill: 'rgba(99, 110, 114, 0.07)' },
-  cibo:          { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.08)' },
-  arte:          { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.07)' },
-  festa:         { stroke: '#D63031', fill: 'rgba(214, 48, 49, 0.08)' },
-  carità:        { stroke: '#0984E3', fill: 'rgba(9, 132, 227, 0.07)' },
-  design:        { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.08)' },
-  social:        { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.08)' },
-  talk:          { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.07)' },
-  laboratorio:   { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.08)' },
-  sport:         { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.08)' },
-  default:       { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.07)' },
+  studio:        { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.05)' },
+  evento:        { stroke: '#D63031', fill: 'rgba(214, 48, 49, 0.05)' },
+  'vita comune': { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.05)' },
+  fede:          { stroke: '#9B51E0', fill: 'rgba(155, 81, 224, 0.05)' },
+  musica:        { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.05)' },
+  amici:         { stroke: '#00A8FF', fill: 'rgba(0, 168, 255, 0.05)' },
+  relax:         { stroke: '#576574', fill: 'rgba(87, 101, 116, 0.05)' },
+  cibo:          { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.05)' },
+  arte:          { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.05)' },
+  festa:         { stroke: '#C23616', fill: 'rgba(194, 54, 22, 0.05)' },
+  carità:        { stroke: '#4B7BEC', fill: 'rgba(75, 123, 236, 0.05)' },
+  design:        { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.05)' },
+  social:        { stroke: '#26DE81', fill: 'rgba(38, 222, 129, 0.05)' },
+  talk:          { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.05)' },
+  laboratorio:   { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.05)' },
+  sport:         { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.05)' },
+  default:       { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.05)' },
 };
 
 function getTagPalette(tag) {
@@ -73,14 +73,14 @@ function getTagPalette(tag) {
   if (CLUSTER_PALETTE[norm]) return CLUSTER_PALETTE[norm];
 
   const PALETTES = [
-    { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.08)' },
-    { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.07)' },
-    { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.08)' },
-    { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.08)' },
-    { stroke: '#9B51E0', fill: 'rgba(155, 81, 224, 0.07)' },
-    { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.08)' },
-    { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.07)' },
-    { stroke: '#A8C3A0', fill: 'rgba(168, 195, 160, 0.08)' },
+    { stroke: '#D63031', fill: 'rgba(214, 48, 49, 0.05)' },
+    { stroke: '#00A8FF', fill: 'rgba(0, 168, 255, 0.05)' },
+    { stroke: '#00B894', fill: 'rgba(0, 184, 148, 0.05)' },
+    { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.05)' },
+    { stroke: '#9B51E0', fill: 'rgba(155, 81, 224, 0.05)' },
+    { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.05)' },
+    { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.05)' },
+    { stroke: '#4B7BEC', fill: 'rgba(75, 123, 236, 0.05)' },
   ];
   let hash = 0;
   for (let i = 0; i < norm.length; i++) hash = (hash * 31 + norm.charCodeAt(i)) & 0xffffffff;
@@ -378,44 +378,89 @@ export function initScene(canvas) {
       // 2. Cluster — Isole basate esclusivamente sui Tag (nessun luogo)
       case 'cluster': {
         const allTags = getDistinctTags();
-        const tagCenters = new Map();
         const countTags = Math.max(1, allTags.length);
+        const dist = Math.min(320, 200 + countTags * 16);
 
-        allTags.forEach((tag, idx) => {
+        // Ordina i tag per massimizzare la vicinanza di tag che condividono memorie (Venn naturale)
+        const adjacency = {};
+        allTags.forEach((t1) => {
+          adjacency[t1] = {};
+          allTags.forEach((t2) => { adjacency[t1][t2] = 0; });
+        });
+        nodes.forEach((n) => {
+          const nTags = Array.isArray(n.tags) ? n.tags : [n.primaryTag];
+          for (let i = 0; i < nTags.length; i++) {
+            for (let j = i + 1; j < nTags.length; j++) {
+              const tA = nTags[i], tB = nTags[j];
+              if (adjacency[tA] && adjacency[tA][tB] !== undefined) adjacency[tA][tB]++;
+              if (adjacency[tB] && adjacency[tB][tA] !== undefined) adjacency[tB][tA]++;
+            }
+          }
+        });
+
+        const orderedTags = [allTags[0]];
+        const unvisited = new Set(allTags.slice(1));
+        while (unvisited.size > 0) {
+          const last = orderedTags[orderedTags.length - 1];
+          let best = null, maxW = -1;
+          for (const cand of unvisited) {
+            const w = (adjacency[last] && adjacency[last][cand]) || 0;
+            if (w > maxW) { maxW = w; best = cand; }
+          }
+          const nextTag = best || unvisited.values().next().value;
+          orderedTags.push(nextTag);
+          unvisited.delete(nextTag);
+        }
+
+        const tagCenters = new Map();
+        orderedTags.forEach((tag, idx) => {
           const angle = (idx / countTags) * Math.PI * 2;
-          const dist = 380;
           const pos = {
             x: Math.cos(angle) * dist,
-            y: Math.sin(angle) * dist * 0.76,
+            y: Math.sin(angle) * dist * 0.78,
           };
           tagCenters.set(tag, pos);
           tagCenters.set(tag.toLowerCase(), pos);
         });
 
-        nodes.forEach((node, ni) => {
+        // Contatore nodi per tag per calcolare la dispersione locale
+        const tagCounters = new Map();
+
+        nodes.forEach((node) => {
           const nodeTags = Array.isArray(node.tags) && node.tags.length ? node.tags : [node.primaryTag];
-          let avgX = 0, avgY = 0, validTags = 0;
+          const pTag = node.primaryTag || nodeTags[0] || 'default';
+          const pCenter = tagCenters.get(pTag) || tagCenters.get(String(pTag).toLowerCase()) || { x: 0, y: 0 };
+          const otherTags = nodeTags.filter((t) => String(t).toLowerCase() !== String(pTag).toLowerCase());
 
-          nodeTags.forEach((t) => {
-            const center = tagCenters.get(t) || tagCenters.get(String(t).toLowerCase());
-            if (center) {
-              avgX += center.x;
-              avgY += center.y;
-              validTags++;
+          let baseX = pCenter.x;
+          let baseY = pCenter.y;
+
+          // Se il ricordo ha tag secondari, viene attirato morbidamente verso il confine condiviso
+          if (otherTags.length > 0) {
+            let sx = 0, sy = 0, sc = 0;
+            otherTags.forEach((t) => {
+              const c = tagCenters.get(t) || tagCenters.get(String(t).toLowerCase());
+              if (c) { sx += c.x; sy += c.y; sc++; }
+            });
+            if (sc > 0) {
+              sx /= sc; sy /= sc;
+              const dx = sx - pCenter.x;
+              const dy = sy - pCenter.y;
+              const d = Math.hypot(dx, dy) || 1;
+              const nudge = Math.min(50, d * 0.28);
+              baseX += (dx / d) * nudge;
+              baseY += (dy / d) * nudge;
             }
-          });
-
-          if (validTags > 0) {
-            avgX /= validTags;
-            avgY /= validTags;
           }
 
-          // Dispersione controllata attorno al centroide dei tag del ricordo
-          const dispAngle = (ni * 1.618) * Math.PI * 2;
-          const dispDist = 28 + (ni % 5) * 26;
+          const localIdx = tagCounters.get(String(pTag).toLowerCase()) || 0;
+          tagCounters.set(String(pTag).toLowerCase(), localIdx + 1);
 
-          node.targetX = avgX + Math.cos(dispAngle) * dispDist;
-          node.targetY = avgY + Math.sin(dispAngle) * dispDist;
+          const dispAngle = localIdx * 2.39996 + (otherTags.length > 0 ? 0.6 : 0);
+          const dispDist = localIdx === 0 ? 0 : 26 + Math.sqrt(localIdx) * 24;
+
+          node.targetX = baseX + Math.cos(dispAngle) * dispDist;
+          node.targetY = baseY + Math.sin(dispAngle) * (dispDist * 0.85);
           node.targetScale = 1.0;
         });
         break;
@@ -460,61 +505,46 @@ export function initScene(canvas) {
         break;
       }
 
-      // 4. Timeline — Asse orizzontale in basso con steli verso l'alto
+      // 4. Timeline — Asse orizzontale in basso con steli annuali verso l'alto
       case 'timeline': {
-        const isMonthZoom = camera.zoom > 1.35 && focusedTimelineYear !== null;
         const baselineY = 220;
+        const years = getDistinctYears();
+        const yearX = new Map();
+        const countYears = Math.max(1, years.length);
+        const yearSpacing = 340;
+        const startX = -((countYears - 1) * yearSpacing) / 2;
 
-        if (!isMonthZoom) {
-          // Yearly View
-          const years = getDistinctYears();
-          const yearX = new Map();
-          const countYears = Math.max(1, years.length);
-          const yearSpacing = 340;
-          const startX = -((countYears - 1) * yearSpacing) / 2;
+        years.forEach((y, idx) => {
+          yearX.set(y, startX + idx * yearSpacing);
+        });
 
-          years.forEach((y, idx) => {
-            yearX.set(y, startX + idx * yearSpacing);
-          });
+        // Impila i nodi ordinati cronologicamente su ciascuno stelo annuale
+        years.forEach((yr) => {
+          const yearNodes = nodes
+            .filter((n) => n.dateInfo.year === yr)
+            .sort((a, b) => (a.dateInfo.month - b.dateInfo.month) || (a.dateInfo.day - b.dateInfo.day));
 
-          const yearCounts = {};
-          nodes.forEach((node) => {
-            const yr = node.dateInfo.year;
-            const x = yearX.get(yr) || 0;
-            const idxInYear = yearCounts[yr] || 0;
-            yearCounts[yr] = idxInYear + 1;
+          const x = yearX.get(yr) || 0;
+          const isFocusedYear = focusedTimelineYear === null || focusedTimelineYear === yr;
 
+          yearNodes.forEach((node, idxInYear) => {
             node.targetX = x;
-            // Stack upwards (negative y) from baseline
+            // Impilamento verso l'alto lungo lo stelo a partire dalla baseline
             node.targetY = baselineY - 60 - idxInYear * 76;
-            node.targetScale = 0.95;
-            node.targetAlpha = 1.0;
+            node.targetScale = isFocusedYear ? 0.95 : 0.85;
+            node.targetAlpha = isFocusedYear ? 1.0 : 0.28;
           });
-        } else {
-          // Monthly Zoom View for focusedTimelineYear
-          const monthSpacing = 135;
-          const startX = -((12 - 1) * monthSpacing) / 2;
-          const monthCounts = {};
+        });
 
-          nodes.forEach((node) => {
-            if (node.dateInfo.year !== focusedTimelineYear) {
-              node.targetAlpha = 0.08;
-              node.targetScale = 0.6;
-              return;
-            }
-
-            node.targetAlpha = 1.0;
-            node.targetScale = 0.95;
-
-            const mIdx = Math.max(0, Math.min(11, node.dateInfo.month - 1));
-            const x = startX + mIdx * monthSpacing;
-            const countInMonth = monthCounts[mIdx] || 0;
-            monthCounts[mIdx] = countInMonth + 1;
-
-            node.targetX = x;
-            node.targetY = baselineY - 60 - countInMonth * 76;
-          });
-        }
+        // Gestione di eventuali nodi con data non risolta
+        nodes.forEach((node) => {
+          if (!node.dateInfo.year || !yearX.has(node.dateInfo.year)) {
+            node.targetX = 0;
+            node.targetY = baselineY - 60;
+            node.targetScale = 0.8;
+            node.targetAlpha = 0.2;
+          }
+        });
         break;
       }
 
@@ -581,9 +611,10 @@ export function initScene(canvas) {
       camera.targetX = 0;
       camera.targetZoom = 1.0;
     } else if (layoutName === 'timeline') {
+      camera.targetX = 0;
       camera.targetY = 60;
       camera.targetZoom = 0.95;
-      focusedTimelineYear = getDistinctYears()[0] || 2024;
+      focusedTimelineYear = null;
     }
 
     recalculateLayoutTargets();
@@ -604,10 +635,28 @@ export function initScene(canvas) {
   }
 
   function setTimelineYear(year) {
+    if (!year || year === 'all') {
+      focusedTimelineYear = null;
+      camera.targetX = 0;
+      camera.targetY = 60;
+      camera.targetZoom = 0.95;
+      recalculateLayoutTargets();
+      return;
+    }
+
     const yr = parseInt(year, 10);
     focusedTimelineYear = yr;
-    camera.targetZoom = 1.45;
-    camera.targetY = 80;
+
+    const years = getDistinctYears();
+    const countYears = Math.max(1, years.length);
+    const yearSpacing = 340;
+    const startX = -((countYears - 1) * yearSpacing) / 2;
+    const yearIdx = years.indexOf(yr);
+    const targetYearX = yearIdx !== -1 ? startX + yearIdx * yearSpacing : 0;
+
+    camera.targetX = targetYearX;
+    camera.targetY = 60;
+    camera.targetZoom = 1.05;
     recalculateLayoutTargets();
   }
 
@@ -823,8 +872,8 @@ export function initScene(canvas) {
       drawClusterVennIslands(now);
     }
 
-    // 2. Filaments (Nodi & Cluster)
-    if (currentLayout === 'nodi' || currentLayout === 'cluster') {
+    // 2. Filaments (Nodi & Cluster su hover interattivo)
+    if (currentLayout === 'nodi' || (currentLayout === 'cluster' && hoveredNode)) {
       drawFilaments(now);
     }
 
@@ -1123,12 +1172,112 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Cluster: Isole Organiche basate unicamente sui Tag ──────
+  // ── Cluster: Geometria ad Inviluppo Organico Morbido (Convex Hull & Bézier Spline) ──
+  function computeConvexHull(pts) {
+    if (pts.length <= 2) return pts.slice();
+    const sorted = pts.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+    function crossProduct(o, a, b) {
+      return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    }
+    const lower = [];
+    for (let i = 0; i < sorted.length; i++) {
+      while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], sorted[i]) <= 0) {
+        lower.pop();
+      }
+      lower.push(sorted[i]);
+    }
+    const upper = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], sorted[i]) <= 0) {
+        upper.pop();
+      }
+      upper.push(sorted[i]);
+    }
+    lower.pop();
+    upper.pop();
+    return lower.concat(upper);
+  }
+
+  // ── Smoothing Chaikin per Archi e Tangenti Fluidi ─────────────
+  function chaikinSmooth(pts, iterations = 2) {
+    let current = pts.slice();
+    for (let it = 0; it < iterations; it++) {
+      const next = [];
+      const len = current.length;
+      for (let i = 0; i < len; i++) {
+        const p0 = current[i];
+        const p1 = current[(i + 1) % len];
+        next.push({
+          x: 0.75 * p0.x + 0.25 * p1.x,
+          y: 0.75 * p0.y + 0.25 * p1.y,
+        });
+        next.push({
+          x: 0.25 * p0.x + 0.75 * p1.x,
+          y: 0.25 * p0.y + 0.75 * p1.y,
+        });
+      }
+      current = next;
+    }
+    return current;
+  }
+
+  function generateOrganicHullPoints(tagNodes, tagIndex, now) {
+    const N = tagNodes.length;
+    if (N === 0) return [];
+
+    // Disambiguazione perimetri concentrici progressivi per tag multipli/condivisi
+    const basePadding = 46 + (tagIndex % 4) * 14;
+    const breath = Math.sin(now * 0.0012 + tagIndex * 1.35) * 3;
+    const padding = basePadding + breath;
+
+    // Campionamento radiale attorno a ciascun nodo appartenente al tag
+    const K = 16;
+    const samplePts = [];
+    tagNodes.forEach((node) => {
+      for (let k = 0; k < K; k++) {
+        const theta = (k / K) * Math.PI * 2;
+        const wobble = Math.sin(theta * 2 + tagIndex * 1.4 + now * 0.0008) * 4 +
+                       Math.cos(theta * 3 - tagIndex) * 3;
+        const r = padding + wobble;
+        samplePts.push({
+          x: node.x + Math.cos(theta) * r,
+          y: node.y + Math.sin(theta) * r,
+        });
+      }
+    });
+
+    // Inviluppo convesso globale che racchiude tutti i cerchi dilatati
+    const envelope = computeConvexHull(samplePts);
+    if (envelope.length < 3) return envelope;
+
+    // Smoothing continuo con Chaikin Corner Cutting (2 passate) per morbidezza perfetta
+    return chaikinSmooth(envelope, 2);
+  }
+
+  function drawSmoothClosedBlob(ctx, pts) {
+    if (pts.length < 3) return;
+    ctx.beginPath();
+    const mid0 = {
+      x: (pts[0].x + pts[pts.length - 1].x) / 2,
+      y: (pts[0].y + pts[pts.length - 1].y) / 2,
+    };
+    ctx.moveTo(mid0.x, mid0.y);
+    for (let i = 0; i < pts.length; i++) {
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % pts.length];
+      const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      ctx.quadraticCurveTo(p1.x, p1.y, mid.x, mid.y);
+    }
+    ctx.closePath();
+  }
+
   function drawClusterVennIslands(now) {
     const allTags = getDistinctTags();
     ctx.save();
 
-    allTags.forEach((tag) => {
+    const clusterLabels = [];
+
+    allTags.forEach((tag, tagIndex) => {
       // Crea il cluster SOLO se esiste almeno un ricordo effettivo con questo tag
       const tagLower = tag.toLowerCase().trim();
       const tagNodes = nodes.filter(
@@ -1136,58 +1285,84 @@ export function initScene(canvas) {
       );
       if (tagNodes.length === 0) return;
 
-      let avgX = 0, avgY = 0;
-      tagNodes.forEach((n) => { avgX += n.x; avgY += n.y; });
-      avgX /= tagNodes.length;
-      avgY /= tagNodes.length;
-
-      let maxDist = 70;
-      tagNodes.forEach((n) => {
-        const d = Math.hypot(n.x - avgX, n.y - avgY);
-        if (d > maxDist) maxDist = d;
-      });
-
-      const radius = maxDist + 65;
       const palette = getTagPalette(tag);
+      const isFocused = focusedClusterTag === tagLower;
 
-      // Disegno perimetro organico fluttuante
-      ctx.beginPath();
-      const points = 18;
-      for (let i = 0; i < points; i++) {
-        const theta = (i / points) * Math.PI * 2;
-        const wobble = Math.sin(theta * 3 + now * 0.001) * 7 + Math.cos(theta * 2 - now * 0.0007) * 5;
-        const r = radius + wobble;
-        const px = avgX + Math.cos(theta) * r;
-        const py = avgY + Math.sin(theta) * r;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
+      // Genera perimetro fluido organico che si adatta esattamente alla quantità di ricordi
+      const perimeterPts = generateOrganicHullPoints(tagNodes, tagIndex, now);
+      if (perimeterPts.length < 3) return;
 
-      // Riempimento tenue sfumato (le sovrapposizioni creano insiemi di Venn)
+      // Tracciamento contorno fluido organico continuo
+      drawSmoothClosedBlob(ctx, perimeterPts);
+
+      // Riempimento a bassissima opacità per trasparenze additive tipo Venn
       ctx.fillStyle = palette.fill;
       ctx.fill();
 
-      // Contorno perimetrale sottile
+      // Bordo vettoriale continuo sottile dimezzato (0.8px normale, 1.2px se focused)
       ctx.strokeStyle = palette.stroke;
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = isFocused ? 1.2 : 0.8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.stroke();
 
-      // Nome del cluster: ESATTAMENTE il nome del tag (senza "Sezione // " o all-caps)
-      ctx.fillStyle = '#99251C';
+      // Calcola il punto apicale superiore per l'etichetta del tag
+      let topPt = perimeterPts[0];
+      for (let p of perimeterPts) {
+        if (p.y < topPt.y) topPt = p;
+      }
+
+      // Prepara etichetta (Title Case in Instrument Serif naturale)
+      const tagTitle = tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
       ctx.font = 'italic 18px "Instrument Serif", Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(tag, avgX, avgY - radius - 12);
+      const textWidth = ctx.measureText(tagTitle).width;
+
+      clusterLabels.push({
+        tag: tagTitle,
+        tagLower,
+        x: topPt.x,
+        y: topPt.y - 12,
+        width: textWidth,
+        color: palette.stroke,
+        isFocused,
+      });
     });
+
+    // ── Motore Anti-Collisione Etichette dei Cluster ──────────────
+    // Ordina le etichette per coordinata X
+    clusterLabels.sort((a, b) => a.x - b.x);
+    for (let i = 0; i < clusterLabels.length; i++) {
+      for (let j = i + 1; j < clusterLabels.length; j++) {
+        const l1 = clusterLabels[i];
+        const l2 = clusterLabels[j];
+        const minGapX = (l1.width + l2.width) / 2 + 18;
+        if (Math.abs(l1.x - l2.x) < minGapX) {
+          // Se collidono orizzontalmente e sono vicine in Y, sfalsa verticalmente la seconda
+          if (Math.abs(l1.y - l2.y) < 24) {
+            l2.y = l1.y - 24;
+          }
+        }
+      }
+    }
+
+    // ── Rendering Etichette: Solo Nome, Nessun Micro-Pill di Sfondo ──
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    for (const lbl of clusterLabels) {
+      ctx.fillStyle = lbl.color;
+      ctx.font = lbl.isFocused
+        ? 'italic 21px "Instrument Serif", Georgia, serif'
+        : 'italic 18px "Instrument Serif", Georgia, serif';
+      ctx.fillText(lbl.tag, lbl.x, lbl.y);
+    }
 
     ctx.restore();
   }
 
-  // ── Timeline: Asse in Basso & Steli verso l'Alto ───────────────
+  // ── Timeline: Asse in Basso & Steli Annuali verso l'Alto ───────
   function drawTimelineGuides() {
     ctx.save();
     const baselineY = 220;
-    const isMonthZoom = camera.zoom > 1.35 && focusedTimelineYear !== null;
 
     // Baseline orizzontale in basso
     ctx.beginPath();
@@ -1197,89 +1372,53 @@ export function initScene(canvas) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    if (!isMonthZoom) {
-      // Yearly ticks and upward stems
-      const years = getDistinctYears();
-      const countYears = Math.max(1, years.length);
-      const yearSpacing = 340;
-      const startX = -((countYears - 1) * yearSpacing) / 2;
+    // Steli annuali verticali tratteggiati e indicatori degli anni
+    const years = getDistinctYears();
+    const countYears = Math.max(1, years.length);
+    const yearSpacing = 340;
+    const startX = -((countYears - 1) * yearSpacing) / 2;
 
-      years.forEach((yr, idx) => {
-        const x = startX + idx * yearSpacing;
-        const yearNodes = nodes.filter((n) => n.dateInfo.year === yr);
-        const stackHeight = yearNodes.length * 76 + 50;
+    years.forEach((yr, idx) => {
+      const x = startX + idx * yearSpacing;
+      const yearNodes = nodes.filter((n) => n.dateInfo.year === yr);
+      const stackHeight = yearNodes.length * 76 + 50;
+      const isFocused = focusedTimelineYear === yr;
+      const isDimmed = focusedTimelineYear !== null && !isFocused;
 
-        // Upward stem (dashed)
-        ctx.beginPath();
-        ctx.moveTo(x, baselineY);
-        ctx.lineTo(x, baselineY - stackHeight);
-        ctx.strokeStyle = '#EADBCE';
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([3, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+      ctx.save();
+      if (isDimmed) ctx.globalAlpha = 0.35;
 
-        // Base tick mark
-        ctx.beginPath();
-        ctx.arc(x, baselineY, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#99251C';
-        ctx.fill();
+      // Stelo verticale tratteggiato verso l'alto
+      ctx.beginPath();
+      ctx.moveTo(x, baselineY);
+      ctx.lineTo(x, baselineY - stackHeight);
+      ctx.strokeStyle = isFocused ? '#99251C' : '#EADBCE';
+      ctx.lineWidth = isFocused ? 1.6 : 1.2;
+      ctx.setLineDash([3, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-        // Prominent Year Label in Instrument Serif
-        ctx.fillStyle = '#99251C';
-        ctx.font = '400 28px "Instrument Serif", Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(String(yr), x, baselineY + 36);
-
-        ctx.font = '700 9px "Instrument Sans", sans-serif';
-        ctx.fillStyle = 'rgba(153, 37, 28, 0.65)';
-        ctx.fillText(`${yearNodes.length} MEMORIE`, x, baselineY + 52);
-      });
-    } else {
-      // Monthly ticks and upward stems for focused year
-      const monthSpacing = 135;
-      const startX = -((12 - 1) * monthSpacing) / 2;
-
-      // Year Title above
+      // Punto di ancoraggio sulla baseline
+      ctx.beginPath();
+      ctx.arc(x, baselineY, isFocused ? 5 : 4, 0, Math.PI * 2);
       ctx.fillStyle = '#99251C';
-      ctx.font = '400 36px "Instrument Serif", Georgia, serif';
+      ctx.fill();
+
+      // Etichetta anno in Instrument Serif
+      ctx.fillStyle = '#99251C';
+      ctx.font = isFocused
+        ? 'italic 32px "Instrument Serif", Georgia, serif'
+        : '400 28px "Instrument Serif", Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`ANNO // ${focusedTimelineYear}`, 0, baselineY - 480);
+      ctx.fillText(String(yr), x, baselineY + 36);
 
-      MONTH_NAMES.forEach((mName, mIdx) => {
-        const x = startX + mIdx * monthSpacing;
-        const monthNodes = nodes.filter((n) => n.dateInfo.year === focusedTimelineYear && n.dateInfo.month === mIdx + 1);
-        const stackHeight = monthNodes.length * 76 + 45;
+      // Conteggio memorie
+      ctx.font = '600 10px "Instrument Sans", sans-serif';
+      ctx.fillStyle = 'rgba(153, 37, 28, 0.70)';
+      ctx.fillText(`${yearNodes.length} ricordi`, x, baselineY + 52);
 
-        // Upward stem
-        ctx.beginPath();
-        ctx.moveTo(x, baselineY);
-        ctx.lineTo(x, baselineY - stackHeight);
-        ctx.strokeStyle = '#EADBCE';
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([3, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Month Base Tick
-        ctx.beginPath();
-        ctx.arc(x, baselineY, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#99251C';
-        ctx.fill();
-
-        // Month Label
-        ctx.font = '700 11px "Instrument Sans", sans-serif';
-        ctx.fillStyle = '#99251C';
-        ctx.textAlign = 'center';
-        ctx.fillText(mName, x, baselineY + 24);
-
-        if (monthNodes.length > 0) {
-          ctx.font = '700 8px "Instrument Sans", sans-serif';
-          ctx.fillStyle = 'rgba(153, 37, 28, 0.6)';
-          ctx.fillText(`${monthNodes.length}`, x, baselineY + 36);
-        }
-      });
-    }
+      ctx.restore();
+    });
 
     ctx.restore();
   }

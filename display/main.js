@@ -632,12 +632,14 @@ function activateLayout(layoutName, syncWheel = true) {
       state.rightWheel.setItems(items, defaultTag);
       if (defaultTag) state.scene.setClusterTag(defaultTag);
     } else if (layoutName === 'timeline') {
-      // Mostra gli anni
+      // Mostra panoramica completa per anni
       const years = state.scene.getDistinctYears();
-      const items = years.map((y) => ({ value: String(y), label: String(y) }));
-      const defaultYear = items.length > 0 ? items[items.length - 1].value : null;
-      state.rightWheel.setItems(items, defaultYear);
-      if (defaultYear) state.scene.setTimelineYear(parseInt(defaultYear, 10));
+      const items = [
+        { value: 'all', label: 'Tutti gli anni' },
+        ...years.map((y) => ({ value: String(y), label: String(y) })),
+      ];
+      state.rightWheel.setItems(items, 'all');
+      state.scene.setTimelineYear(null);
     } else if (layoutName === 'griglia') {
       // Riordinamento: Data, Media, Tag, Luogo (senza filtrare ricordi)
       state.rightWheel.setItems([
@@ -659,7 +661,7 @@ function handleRightWheelSelect(val) {
   } else if (state.currentLayout === 'cluster') {
     state.scene.setClusterTag(val);
   } else if (state.currentLayout === 'timeline') {
-    state.scene.setTimelineYear(val ? parseInt(val, 10) : null);
+    state.scene.setTimelineYear(val && val !== 'all' ? parseInt(val, 10) : null);
   } else if (state.currentLayout === 'griglia') {
     state.scene.setGridSort(val);
   }
