@@ -124,15 +124,97 @@ export function initScene(canvas) {
   let memories = [];
   let nodes = [];
   let hoveredNode = null;
+  let hoveredTimelineItem = null;
   let pointerScreen = { x: -9999, y: -9999 };
 
-  // Image cache
+  // Image & Video thumbnail canvas cache
   const imageCache = new Map();
 
-  // Dimensioni miniature fotografiche (spigoli retti, nessuna cornice)
-  const THUMB_W = 78;
-  const THUMB_H = 54;
+  // Dimensioni miniature: vincoli larghezza minima e massima (aspect ratio nativo preservato)
+  const MIN_NODE_W = 68;
+  const MAX_NODE_W = 105;
+  const DEFAULT_NODE_W = 86;
   const THUMB_R = 0;
+
+  /**
+   * Applica il rapporto originale del media a un nodo, vincolando solo la larghezza (min/max)
+   * e ricavando l'altezza proporzionale esatta: h = w / aspect
+   */
+  function applyNodeAspectRatio(node, aspect) {
+    if (!aspect || !isFinite(aspect) || aspect <= 0) return;
+    node.aspectRatio = aspect;
+    // Larghezza proporzionata: i panoramici si espandono verso MAX_NODE_W, i verticali si stringono verso MIN_NODE_W
+    const proportionalW = Math.round(84 * Math.sqrt(aspect));
+    const clampedW = Math.min(MAX_NODE_W, Math.max(MIN_NODE_W, proportionalW));
+    node.w = clampedW;
+    node.h = Math.round(clampedW / aspect);
+  }
+
+  /**
+   * Estrae il primo frame del video per usarlo come copertina del ricordo
+   */
+  function extractVideoFirstFrame(url, onFrameReady) {
+    if (!url) return;
+    if (imageCache.has(url)) {
+      if (onFrameReady) onFrameReady(imageCache.get(url));
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+
+    let resolved = false;
+    const captureFrame = () => {
+      if (resolved) return;
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        resolved = true;
+        try {
+          const offCanvas = document.createElement('canvas');
+          offCanvas.width = video.videoWidth;
+          offCanvas.height = video.videoHeight;
+          const octx = offCanvas.getContext('2d');
+          octx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
+          imageCache.set(url, offCanvas);
+          if (onFrameReady) onFrameReady(offCanvas);
+        } catch (err) {
+          console.warn('[scene] Video snapshot canvas warning (CORS):', err);
+        } finally {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        }
+      }
+    };
+
+    video.addEventListener('loadeddata', () => {
+      try {
+        video.currentTime = Math.min(0.1, (video.duration || 1) * 0.05);
+      } catch (_) {
+        captureFrame();
+      }
+    }, { once: true });
+
+    video.addEventListener('seeked', () => {
+      captureFrame();
+    }, { once: true });
+
+    video.addEventListener('error', (err) => {
+      console.warn('[scene] Impossibile caricare copertina video:', url, err);
+    }, { once: true });
+
+    // Fallback timer se seeked non scatta
+    setTimeout(() => {
+      if (!resolved && video.readyState >= 2) {
+        captureFrame();
+      }
+    }, 2200);
+
+    video.src = url;
+  }
 
   // ── Fabric Wave Distortion State ─────────────────────────────
   const fabricWave = {
@@ -212,30 +294,60 @@ export function initScene(canvas) {
   }
 
   // ── Date parsing helper ──────────────────────────────────────
+  const ITALIAN_MONTHS_MAP = {
+    gennaio: 1, gen: 1, january: 1, jan: 1,
+    febbraio: 2, feb: 2, february: 2, feb: 2,
+    marzo: 3, mar: 3, march: 3,
+    aprile: 4, apr: 4, april: 4,
+    maggio: 5, mag: 5, may: 5,
+    giugno: 6, giu: 6, june: 6, jun: 6,
+    luglio: 7, lug: 7, july: 7, jul: 7,
+    agosto: 8, ago: 8, august: 8, aug: 8,
+    settembre: 9, set: 9, september: 9, sep: 9,
+    ottobre: 10, ott: 10, october: 10, oct: 10,
+    novembre: 11, nov: 11, november: 11,
+    dicembre: 12, dic: 12, december: 12, dec: 12,
+  };
+
   function parseMemoryDate(mem) {
     let year = 2024;
     let month = 1;
+    let day = 1;
 
     if (mem.created_at) {
       const d = new Date(mem.created_at);
       if (!isNaN(d.getFullYear())) {
         year = d.getFullYear();
         month = d.getMonth() + 1;
+        day = d.getDate();
       }
     }
     if (mem.time_event) {
-      const matchYear = String(mem.time_event).match(/\b(20\d\d|19\d\d)\b/);
+      const str = String(mem.time_event).toLowerCase();
+      const matchYear = str.match(/\b(20\d\d|19\d\d)\b/);
       if (matchYear) year = parseInt(matchYear[1], 10);
-      const matchMonth = String(mem.time_event).match(/[-/.](0[1-9]|1[0-2])[-/.]/);
-      if (matchMonth) month = parseInt(matchMonth[1], 10);
+      const matchMonth = str.match(/[-/.](0[1-9]|1[0-2])[-/.]/);
+      if (matchMonth) {
+        month = parseInt(matchMonth[1], 10);
+      } else {
+        for (const [mName, mNum] of Object.entries(ITALIAN_MONTHS_MAP)) {
+          if (str.includes(mName)) {
+            month = mNum;
+            break;
+          }
+        }
+      }
     }
-    return { year, month };
+    return { year, month, day };
   }
 
+  /**
+   * Ritorna gli anni distinti in ordine cronologico invertito (dal più vecchio al più recente: a - b)
+   */
   function getDistinctYears() {
     const years = new Set();
     memories.forEach((m) => years.add(parseMemoryDate(m).year));
-    return Array.from(years).sort((a, b) => b - a);
+    return Array.from(years).sort((a, b) => a - b);
   }
 
   function getDistinctTags() {
@@ -268,12 +380,27 @@ export function initScene(canvas) {
   function setMemories(memoriesList) {
     memories = memoriesList || [];
 
+    // Precaricamento media (Immagini e Primo Frame dei Video)
     memories.forEach((m) => {
-      if ((m.media_type === 'image' || m.media_type === 'text') && m.media_url && !imageCache.has(m.media_url)) {
+      const mType = (m.media_type || '').toLowerCase();
+      if ((mType === 'image' || mType === 'text') && m.media_url && !imageCache.has(m.media_url)) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.src = m.media_url;
-        img.onload = () => imageCache.set(m.media_url, img);
+        img.onload = () => {
+          imageCache.set(m.media_url, img);
+          const n = nodes.find((node) => node.memory.media_url === m.media_url);
+          if (n && img.naturalWidth && img.naturalHeight) {
+            applyNodeAspectRatio(n, img.naturalWidth / img.naturalHeight);
+          }
+        };
+      } else if (mType === 'video' && m.media_url && !imageCache.has(m.media_url)) {
+        extractVideoFirstFrame(m.media_url, (offCanvas) => {
+          const n = nodes.find((node) => node.memory.media_url === m.media_url);
+          if (n && offCanvas.width && offCanvas.height) {
+            applyNodeAspectRatio(n, offCanvas.width / offCanvas.height);
+          }
+        });
       }
     });
 
@@ -293,7 +420,8 @@ export function initScene(canvas) {
       const primaryTag = rawTags[0] || 'amici';
       const cluster = CLUSTER_PALETTE[primaryTag] || CLUSTER_PALETTE.default;
 
-      return {
+      const mType = (m.media_type || '').toLowerCase();
+      const node = {
         id: m.id || `node-${index}`,
         memory: m,
         x: initX,
@@ -302,8 +430,8 @@ export function initScene(canvas) {
         targetY: initY,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3,
-        w: THUMB_W,
-        h: THUMB_H,
+        w: DEFAULT_NODE_W,
+        h: 62,
         radius: THUMB_R,
         scale: 0.1,
         targetScale: 1.0,
@@ -312,7 +440,24 @@ export function initScene(canvas) {
         primaryTag,
         accentColor: cluster.stroke,
         dateInfo: parseMemoryDate(m),
+        aspectRatio: 1.38,
       };
+
+      // Applica immediatamente l'aspect ratio se l'immagine o il frame è già in cache
+      if (m.media_url && imageCache.has(m.media_url)) {
+        const cached = imageCache.get(m.media_url);
+        const cw = cached.naturalWidth || cached.width;
+        const ch = cached.naturalHeight || cached.height;
+        if (cw && ch) {
+          applyNodeAspectRatio(node, cw / ch);
+        }
+      } else if (mType === 'audio') {
+        applyNodeAspectRatio(node, 84 / 62);
+      } else if (mType === 'text') {
+        applyNodeAspectRatio(node, 82 / 68);
+      }
+
+      return node;
     });
 
     recalculateLayoutTargets();
@@ -320,11 +465,28 @@ export function initScene(canvas) {
 
   function addMemory(newMem) {
     memories.unshift(newMem);
-    if ((newMem.media_type === 'image' || newMem.media_type === 'text') && newMem.media_url) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = newMem.media_url;
-      img.onload = () => imageCache.set(newMem.media_url, img);
+    const mType = (newMem.media_type || '').toLowerCase();
+
+    if (newMem.media_url && !imageCache.has(newMem.media_url)) {
+      if (mType === 'image' || mType === 'text') {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = newMem.media_url;
+        img.onload = () => {
+          imageCache.set(newMem.media_url, img);
+          const n = nodes.find((node) => node.memory.media_url === newMem.media_url);
+          if (n && img.naturalWidth && img.naturalHeight) {
+            applyNodeAspectRatio(n, img.naturalWidth / img.naturalHeight);
+          }
+        };
+      } else if (mType === 'video') {
+        extractVideoFirstFrame(newMem.media_url, (offCanvas) => {
+          const n = nodes.find((node) => node.memory.media_url === newMem.media_url);
+          if (n && offCanvas.width && offCanvas.height) {
+            applyNodeAspectRatio(n, offCanvas.width / offCanvas.height);
+          }
+        });
+      }
     }
 
     const rawTags = Array.isArray(newMem.tags) ? newMem.tags.map((t) => t.toLowerCase().trim()) : ['amici'];
@@ -340,8 +502,8 @@ export function initScene(canvas) {
       targetY: 0,
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.3,
-      w: THUMB_W,
-      h: THUMB_H,
+      w: DEFAULT_NODE_W,
+      h: 62,
       radius: THUMB_R,
       scale: 0.1,
       targetScale: 1.0,
@@ -350,7 +512,21 @@ export function initScene(canvas) {
       primaryTag,
       accentColor: cluster.stroke,
       dateInfo: parseMemoryDate(newMem),
+      aspectRatio: 1.38,
     };
+
+    if (newMem.media_url && imageCache.has(newMem.media_url)) {
+      const cached = imageCache.get(newMem.media_url);
+      const cw = cached.naturalWidth || cached.width;
+      const ch = cached.naturalHeight || cached.height;
+      if (cw && ch) {
+        applyNodeAspectRatio(newNode, cw / ch);
+      }
+    } else if (mType === 'audio') {
+      applyNodeAspectRatio(newNode, 84 / 62);
+    } else if (mType === 'text') {
+      applyNodeAspectRatio(newNode, 82 / 68);
+    }
 
     nodes.unshift(newNode);
     recalculateLayoutTargets();
@@ -362,26 +538,54 @@ export function initScene(canvas) {
     if (!nodes.length) return;
 
     switch (currentLayout) {
-      // 1. Nodi — Initial placement for force simulation
+      // 1. Nodi — Costellazione aurea stabile e armoniosa
       case 'nodi': {
         const count = nodes.length;
         nodes.forEach((node, i) => {
-          const phi = (i / count) * Math.PI * 2;
-          const dist = 220 + ((i * 59) % 320);
-          node.targetX = Math.cos(phi) * dist;
-          node.targetY = Math.sin(phi) * dist * 0.72;
+          const phi = i * 2.39996; // Angolo aureo per distribuzione uniforme e naturale
+          const dist = 160 + Math.sqrt(i + 1) * 76;
+          node.baseX = Math.cos(phi) * dist;
+          node.baseY = Math.sin(phi) * dist * 0.74;
+          node.targetX = node.baseX;
+          node.targetY = node.baseY;
           node.targetScale = 1.0;
+          node.targetAlpha = 1.0;
+        });
+
+        // Anti-collisione preliminare per garantire una spaziatura eccellente tra le miniature
+        for (let iter = 0; iter < 18; iter++) {
+          for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+              const nA = nodes[i];
+              const nB = nodes[j];
+              const dx = nB.targetX - nA.targetX;
+              const dy = nB.targetY - nA.targetY;
+              const d = Math.hypot(dx, dy) || 1;
+              const req = (nA.w + nB.w) / 2 + 42;
+              if (d < req) {
+                const push = (req - d) * 0.5;
+                nA.targetX -= (dx / d) * push;
+                nA.targetY -= (dy / d) * push;
+                nB.targetX += (dx / d) * push;
+                nB.targetY += (dy / d) * push;
+              }
+            }
+          }
+        }
+        nodes.forEach((node) => {
+          node.baseX = node.targetX;
+          node.baseY = node.targetY;
         });
         break;
       }
 
-      // 2. Cluster — Isole basate esclusivamente sui Tag (nessun luogo)
+      // 2. Cluster — Isole tematiche: i ricordi non si sovrappongono, i cluster si adattano a loro
       case 'cluster': {
         const allTags = getDistinctTags();
         const countTags = Math.max(1, allTags.length);
-        const dist = Math.min(320, 200 + countTags * 16);
+        const dist = Math.min(540, 320 + countTags * 38);
 
-        // Ordina i tag per massimizzare la vicinanza di tag che condividono memorie (Venn naturale)
+        // Ordina i tag per massimizzare la vicinanza di tag che condividono memorie
         const adjacency = {};
         allTags.forEach((t1) => {
           adjacency[t1] = {};
@@ -417,52 +621,90 @@ export function initScene(canvas) {
           const angle = (idx / countTags) * Math.PI * 2;
           const pos = {
             x: Math.cos(angle) * dist,
-            y: Math.sin(angle) * dist * 0.78,
+            y: Math.sin(angle) * (dist * 0.74),
           };
           tagCenters.set(tag, pos);
           tagCenters.set(tag.toLowerCase(), pos);
         });
 
-        // Contatore nodi per tag per calcolare la dispersione locale
-        const tagCounters = new Map();
-
+        // Raggruppa le memorie per tag primario
+        const nodesByTag = new Map();
         nodes.forEach((node) => {
-          const nodeTags = Array.isArray(node.tags) && node.tags.length ? node.tags : [node.primaryTag];
-          const pTag = node.primaryTag || nodeTags[0] || 'default';
-          const pCenter = tagCenters.get(pTag) || tagCenters.get(String(pTag).toLowerCase()) || { x: 0, y: 0 };
-          const otherTags = nodeTags.filter((t) => String(t).toLowerCase() !== String(pTag).toLowerCase());
+          const pTag = String(node.primaryTag || 'default').toLowerCase();
+          if (!nodesByTag.has(pTag)) nodesByTag.set(pTag, []);
+          nodesByTag.get(pTag).push(node);
+        });
 
-          let baseX = pCenter.x;
-          let baseY = pCenter.y;
+        // Distribuzione spaziale ampia e ordinata all'interno di ciascun cluster
+        nodesByTag.forEach((tagNodes, pTag) => {
+          const center = tagCenters.get(pTag) || { x: 0, y: 0 };
+          const K = tagNodes.length;
 
-          // Se il ricordo ha tag secondari, viene attirato morbidamente verso il confine condiviso
-          if (otherTags.length > 0) {
-            let sx = 0, sy = 0, sc = 0;
-            otherTags.forEach((t) => {
-              const c = tagCenters.get(t) || tagCenters.get(String(t).toLowerCase());
-              if (c) { sx += c.x; sy += c.y; sc++; }
+          if (K === 1) {
+            tagNodes[0].targetX = center.x;
+            tagNodes[0].targetY = center.y;
+          } else if (K === 2) {
+            tagNodes[0].targetX = center.x - 76;
+            tagNodes[0].targetY = center.y;
+            tagNodes[1].targetX = center.x + 76;
+            tagNodes[1].targetY = center.y;
+          } else {
+            // Raggio dimensionato in modo che la distanza perimetrale sia sempre > 140px
+            const ringR = Math.max(95, 52 * K);
+            tagNodes.forEach((node, kIdx) => {
+              const theta = (kIdx / K) * Math.PI * 2;
+              node.targetX = center.x + Math.cos(theta) * ringR;
+              node.targetY = center.y + Math.sin(theta) * (ringR * 0.82);
             });
-            if (sc > 0) {
-              sx /= sc; sy /= sc;
-              const dx = sx - pCenter.x;
-              const dy = sy - pCenter.y;
-              const d = Math.hypot(dx, dy) || 1;
-              const nudge = Math.min(50, d * 0.28);
-              baseX += (dx / d) * nudge;
-              baseY += (dy / d) * nudge;
-            }
           }
 
-          const localIdx = tagCounters.get(String(pTag).toLowerCase()) || 0;
-          tagCounters.set(String(pTag).toLowerCase(), localIdx + 1);
-
-          const dispAngle = localIdx * 2.39996 + (otherTags.length > 0 ? 0.6 : 0);
-          const dispDist = localIdx === 0 ? 0 : 26 + Math.sqrt(localIdx) * 24;
-
-          node.targetX = baseX + Math.cos(dispAngle) * dispDist;
-          node.targetY = baseY + Math.sin(dispAngle) * (dispDist * 0.85);
-          node.targetScale = 1.0;
+          // Lieve attrazione morbida se ci sono tag secondari
+          tagNodes.forEach((node) => {
+            const nodeTags = Array.isArray(node.tags) && node.tags.length ? node.tags : [node.primaryTag];
+            const otherTags = nodeTags.filter((t) => String(t).toLowerCase() !== pTag);
+            if (otherTags.length > 0) {
+              let sx = 0, sy = 0, sc = 0;
+              otherTags.forEach((t) => {
+                const c = tagCenters.get(String(t).toLowerCase());
+                if (c) { sx += c.x; sy += c.y; sc++; }
+              });
+              if (sc > 0) {
+                sx /= sc; sy /= sc;
+                const dx = sx - center.x;
+                const dy = sy - center.y;
+                const d = Math.hypot(dx, dy) || 1;
+                const nudge = Math.min(32, d * 0.12);
+                node.targetX += (dx / d) * nudge;
+                node.targetY += (dy / d) * nudge;
+              }
+            }
+            node.targetScale = 1.0;
+            node.targetAlpha = 1.0;
+          });
         });
+
+        // Passata di rilassamento fisico anti-sovrapposizione (garantisce zero overlap)
+        for (let iter = 0; iter < 24; iter++) {
+          for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+              const nA = nodes[i];
+              const nB = nodes[j];
+              const dx = nB.targetX - nA.targetX;
+              const dy = nB.targetY - nA.targetY;
+              const dist = Math.hypot(dx, dy) || 1;
+              const reqDist = Math.max((nA.w + nB.w) / 2 + 32, (nA.h + nB.h) / 2 + 28);
+              if (dist < reqDist) {
+                const push = (reqDist - dist) * 0.5;
+                const px = (dx / dist) * push;
+                const py = (dy / dist) * push;
+                nA.targetX -= px;
+                nA.targetY -= py;
+                nB.targetX += px;
+                nB.targetY += py;
+              }
+            }
+          }
+        }
         break;
       }
 
@@ -505,44 +747,115 @@ export function initScene(canvas) {
         break;
       }
 
-      // 4. Timeline — Asse orizzontale in basso con steli annuali verso l'alto
+      // 4. Timeline — Panoramica annuale o apertura sui 12 mesi per l'anno selezionato/zoomato
       case 'timeline': {
         const baselineY = 220;
         const years = getDistinctYears();
-        const yearX = new Map();
         const countYears = Math.max(1, years.length);
-        const yearSpacing = 340;
-        const startX = -((countYears - 1) * yearSpacing) / 2;
+        const yearSpacing = 360;
 
-        years.forEach((y, idx) => {
-          yearX.set(y, startX + idx * yearSpacing);
-        });
+        if (focusedTimelineYear !== null) {
+          // ── ANNO SELEZIONATO: APERTURA SUI MESI ────────────────────
+          const focusedYr = focusedTimelineYear;
+          const monthSpacing = 160;
+          const totalMonthSpan = (12 - 1) * monthSpacing; // 1760px
+          const startMonthX = -totalMonthSpan / 2; // Centrato a X = 0
 
-        // Impila i nodi ordinati cronologicamente su ciascuno stelo annuale
-        years.forEach((yr) => {
-          const yearNodes = nodes
-            .filter((n) => n.dateInfo.year === yr)
-            .sort((a, b) => (a.dateInfo.month - b.dateInfo.month) || (a.dateInfo.day - b.dateInfo.day));
+          // Mappa coordinate X per ciascuno dei 12 mesi
+          const monthXMap = new Map();
+          for (let m = 1; m <= 12; m++) {
+            monthXMap.set(m, startMonthX + (m - 1) * monthSpacing);
+          }
 
-          const x = yearX.get(yr) || 0;
-          const isFocusedYear = focusedTimelineYear === null || focusedTimelineYear === yr;
+          // Posiziona i nodi dell'anno selezionato sui rispettivi steli mensili
+          for (let m = 1; m <= 12; m++) {
+            const mNodes = nodes
+              .filter((n) => n.dateInfo.year === focusedYr && n.dateInfo.month === m)
+              .sort((a, b) => (a.dateInfo.day || 1) - (b.dateInfo.day || 1));
 
-          yearNodes.forEach((node, idxInYear) => {
-            node.targetX = x;
-            // Impilamento verso l'alto lungo lo stelo a partire dalla baseline
-            node.targetY = baselineY - 60 - idxInYear * 76;
-            node.targetScale = isFocusedYear ? 0.95 : 0.85;
-            node.targetAlpha = isFocusedYear ? 1.0 : 0.28;
+            const mX = monthXMap.get(m);
+            let currentStemY = baselineY - 45;
+
+            mNodes.forEach((node) => {
+              const halfH = (node.h * 0.95) / 2;
+              currentStemY -= (halfH + 12);
+              node.targetX = mX;
+              node.targetY = currentStemY;
+              currentStemY -= (halfH + 6);
+              node.targetScale = 0.95;
+              node.targetAlpha = 1.0;
+            });
+          }
+
+          // Gli altri anni non selezionati si collocano ai lati esterni
+          const earlierYears = years.filter((y) => y < focusedYr);
+          const laterYears = years.filter((y) => y > focusedYr);
+
+          earlierYears.forEach((yr, eIdx) => {
+            const x = startMonthX - 340 - (earlierYears.length - 1 - eIdx) * 260;
+            const yNodes = nodes.filter((n) => n.dateInfo.year === yr);
+            let currentStemY = baselineY - 45;
+            yNodes.forEach((node) => {
+              const halfH = (node.h * 0.75) / 2;
+              currentStemY -= (halfH + 10);
+              node.targetX = x;
+              node.targetY = currentStemY;
+              currentStemY -= halfH;
+              node.targetScale = 0.75;
+              node.targetAlpha = 0.40;
+            });
           });
-        });
+
+          laterYears.forEach((yr, lIdx) => {
+            const x = startMonthX + totalMonthSpan + 340 + lIdx * 260;
+            const yNodes = nodes.filter((n) => n.dateInfo.year === yr);
+            let currentStemY = baselineY - 45;
+            yNodes.forEach((node) => {
+              const halfH = (node.h * 0.75) / 2;
+              currentStemY -= (halfH + 10);
+              node.targetX = x;
+              node.targetY = currentStemY;
+              currentStemY -= halfH;
+              node.targetScale = 0.75;
+              node.targetAlpha = 0.40;
+            });
+          });
+
+        } else {
+          // ── PANORAMICA GENERALE ANNI (steli annuali) ──────────────
+          const yearX = new Map();
+          const startX = -((countYears - 1) * yearSpacing) / 2;
+          years.forEach((y, idx) => {
+            yearX.set(y, startX + idx * yearSpacing);
+          });
+
+          years.forEach((yr) => {
+            const yearNodes = nodes
+              .filter((n) => n.dateInfo.year === yr)
+              .sort((a, b) => (a.dateInfo.month - b.dateInfo.month) || (a.dateInfo.day - b.dateInfo.day));
+
+            const x = yearX.get(yr) || 0;
+            let currentStemY = baselineY - 45;
+
+            yearNodes.forEach((node) => {
+              const halfH = (node.h * 0.95) / 2;
+              currentStemY -= (halfH + 12);
+              node.targetX = x;
+              node.targetY = currentStemY;
+              currentStemY -= (halfH + 6);
+              node.targetScale = 0.95;
+              node.targetAlpha = 1.0;
+            });
+          });
+        }
 
         // Gestione di eventuali nodi con data non risolta
         nodes.forEach((node) => {
-          if (!node.dateInfo.year || !yearX.has(node.dateInfo.year)) {
+          if (!node.dateInfo.year) {
             node.targetX = 0;
             node.targetY = baselineY - 60;
             node.targetScale = 0.8;
-            node.targetAlpha = 0.2;
+            node.targetAlpha = 0.3;
           }
         });
         break;
@@ -574,9 +887,10 @@ export function initScene(canvas) {
 
         // Fit width to screen with margins
         const availableW = Math.max(480, Math.min(width - 240, 1100));
-        const cols = Math.max(3, Math.min(5, Math.floor(availableW / (THUMB_W + 36))));
+        const cols = Math.max(3, Math.min(5, Math.floor(availableW / (MAX_NODE_W + 36))));
         const cellW = availableW / cols;
-        const cellH = THUMB_H + 54;
+        const maxNodeH = nodes.reduce((max, n) => Math.max(max, n.h || 60), 60);
+        const cellH = maxNodeH + 54;
         const startX = -availableW / 2 + cellW / 2;
         const rows = Math.ceil(sorted.length / cols);
         const startY = -(rows * cellH) / 2 + cellH / 2;
@@ -631,33 +945,30 @@ export function initScene(canvas) {
     camera.targetY = 0;
     // Transizione morbida di scorrimento verso il nuovo piano selezionato (2.4s)
     planimetriaEntranceTime = performance.now() - 2400;
-    recalculateLayoutTargets();
   }
 
-  function setTimelineYear(year) {
+  let onTimelineYearChange = null;
+
+  function setTimelineYear(year, skipCallback = false) {
     if (!year || year === 'all') {
       focusedTimelineYear = null;
       camera.targetX = 0;
       camera.targetY = 60;
       camera.targetZoom = 0.95;
       recalculateLayoutTargets();
+      if (!skipCallback && onTimelineYearChange) onTimelineYearChange('all');
       return;
     }
 
     const yr = parseInt(year, 10);
     focusedTimelineYear = yr;
 
-    const years = getDistinctYears();
-    const countYears = Math.max(1, years.length);
-    const yearSpacing = 340;
-    const startX = -((countYears - 1) * yearSpacing) / 2;
-    const yearIdx = years.indexOf(yr);
-    const targetYearX = yearIdx !== -1 ? startX + yearIdx * yearSpacing : 0;
-
-    camera.targetX = targetYearX;
-    camera.targetY = 60;
-    camera.targetZoom = 1.05;
+    // Quando un anno è aperto sui mesi, centrare la visuale sui 12 mesi
+    camera.targetX = 0;
+    camera.targetY = 40;
+    camera.targetZoom = 1.0;
     recalculateLayoutTargets();
+    if (!skipCallback && onTimelineYearChange) onTimelineYearChange(String(yr));
   }
 
   function setClusterTag(tag) {
@@ -721,13 +1032,39 @@ export function initScene(canvas) {
     camera.targetZoom = Math.min(camera.maxZoom, Math.max(camera.minZoom, camera.targetZoom * factor));
 
     if (currentLayout === 'timeline') {
-      recalculateLayoutTargets();
+      // Zoom semantico: se si ingrandisce (targetZoom >= 1.20) e nessun anno è aperto,
+      // apri automaticamente l'anno più vicino al centro della visuale
+      if (camera.targetZoom >= 1.20 && focusedTimelineYear === null) {
+        const years = getDistinctYears();
+        const countYears = Math.max(1, years.length);
+        const yearSpacing = 360;
+        const startX = -((countYears - 1) * yearSpacing) / 2;
+        let bestYr = years[0];
+        let bestDist = Infinity;
+        years.forEach((yr, idx) => {
+          const x = startX + idx * yearSpacing;
+          const d = Math.abs(x - camera.targetX);
+          if (d < bestDist) {
+            bestDist = d;
+            bestYr = yr;
+          }
+        });
+        setTimelineYear(bestYr);
+        camera.targetZoom = 1.05;
+      } else if (camera.targetZoom <= 0.76 && focusedTimelineYear !== null) {
+        // Quando ci si allontana con lo zoom (<= 0.76), ritorna alla panoramica di tutti gli anni
+        setTimelineYear(null);
+        camera.targetZoom = 0.95;
+      } else {
+        recalculateLayoutTargets();
+      }
     }
   }
 
   function setHoverPoint(sx, sy) {
     pointerScreen.x = sx;
     pointerScreen.y = sy;
+    hoveredTimelineItem = (currentLayout === 'timeline') ? hitTestTimeline(sx, sy) : null;
   }
 
   // ── Hit-Testing ──────────────────────────────────────────────
@@ -735,7 +1072,7 @@ export function initScene(canvas) {
     const worldP = screenToWorld(screenX, screenY);
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
-      if (n.alpha < 0.2) continue;
+      if (n.alpha < 0.05) continue;
       const halfW = (n.w * n.scale) / 2;
       const halfH = (n.h * n.scale) / 2;
 
@@ -751,60 +1088,26 @@ export function initScene(canvas) {
     return null;
   }
 
-  // ── Force-Directed Simulation for Nodi ────────────────────────
+  // ── Movimento Delicato per Nodi ───────────────────────────────
   function updateForces() {
     if (currentLayout !== 'nodi') return;
 
-    for (let i = 0; i < nodes.length; i++) {
-      const n1 = nodes[i];
+    // Movimento molto lento, calmo e meditativo: i nodi rimangono ancorati alla loro
+    // posizione e hanno solo un leggero galleggiamento sul posto (nessun moto caotico o deriva)
+    const time = performance.now() * 0.00030;
 
-      // Gravity to center
-      n1.vx -= n1.x * 0.00015;
-      n1.vy -= n1.y * 0.00015;
-
-      for (let j = i + 1; j < nodes.length; j++) {
-        const n2 = nodes[j];
-        const dx = n2.x - n1.x;
-        const dy = n2.y - n1.y;
-        const dist = Math.hypot(dx, dy) || 1;
-
-        const shared = n1.tags.filter((t) => n2.tags.includes(t));
-
-        if (shared.length > 0) {
-          // Spring attraction for related memories
-          const targetDist = 160 - Math.min(shared.length, 3) * 25;
-          const springForce = (dist - targetDist) * 0.00028;
-          const fx = (dx / dist) * springForce;
-          const fy = (dy / dist) * springForce;
-
-          n1.vx += fx;
-          n1.vy += fy;
-          n2.vx -= fx;
-          n2.vy -= fy;
-        }
-
-        // Repulsion to prevent node overlap
-        if (dist < 130) {
-          const repForce = (130 - dist) * 0.0006;
-          const rx = (dx / dist) * repForce;
-          const ry = (dy / dist) * repForce;
-          n1.vx -= rx;
-          n1.vy -= ry;
-          n2.vx += rx;
-          n2.vy += ry;
-        }
+    nodes.forEach((node, idx) => {
+      if (node.baseX === undefined) {
+        node.baseX = node.targetX;
+        node.baseY = node.targetY;
       }
+      const phase = time + idx * 0.95;
+      const floatX = Math.sin(phase) * 4.2;
+      const floatY = Math.cos(phase * 0.85) * 3.6;
 
-      // Apply velocity and friction
-      n1.targetX += n1.vx;
-      n1.targetY += n1.vy;
-      n1.vx *= 0.88;
-      n1.vy *= 0.88;
-
-      // Soft boundary clamp
-      if (Math.abs(n1.targetX) > 650) n1.vx -= Math.sign(n1.targetX) * 0.5;
-      if (Math.abs(n1.targetY) > 460) n1.vy -= Math.sign(n1.targetY) * 0.5;
-    }
+      node.targetX = node.baseX + floatX;
+      node.targetY = node.baseY + floatY;
+    });
   }
 
   // ── Update Logic (Movimenti lenti, vellutati e organici) ────
@@ -816,25 +1119,16 @@ export function initScene(canvas) {
     updateForces();
 
     nodes.forEach((node) => {
-      node.x += (node.targetX - node.x) * 0.032;
-      node.y += (node.targetY - node.y) * 0.032;
+      node.x += (node.targetX - node.x) * 0.038;
+      node.y += (node.targetY - node.y) * 0.038;
 
       const isHover = (hoveredNode === node);
       let targetS = isHover ? node.targetScale * 1.25 : node.targetScale;
       node.scale += (targetS - node.scale) * 0.055;
 
-      // Alpha computation: focus on hovered relations in Nodi mode
-      let targetA = node.targetAlpha !== undefined ? node.targetAlpha : 1.0;
-      if (!isNodeMatchingFilter(node)) targetA = 0.12;
-
-      if (currentLayout === 'nodi' && hoveredNode) {
-        if (hoveredNode === node) {
-          targetA = 1.0;
-        } else {
-          const hasShared = node.tags.some((t) => hoveredNode.tags.includes(t));
-          targetA = hasShared ? 0.95 : 0.18;
-        }
-      }
+      // Nessun nodo scompare mai: visibilità sempre piena e stabile
+      let targetA = 1.0;
+      if (!isNodeMatchingFilter(node)) targetA = 0.35;
 
       node.alpha += (targetA - node.alpha) * 0.045;
     });
@@ -1226,27 +1520,32 @@ export function initScene(canvas) {
     if (N === 0) return [];
 
     // Disambiguazione perimetri concentrici progressivi per tag multipli/condivisi
-    const basePadding = 46 + (tagIndex % 4) * 14;
+    const basePadding = 42 + (tagIndex % 4) * 12;
     const breath = Math.sin(now * 0.0012 + tagIndex * 1.35) * 3;
-    const padding = basePadding + breath;
 
-    // Campionamento radiale attorno a ciascun nodo appartenente al tag
+    // Campionamento radiale attorno a ciascun nodo: il cluster si adatta alla dimensione reale del ricordo
     const K = 16;
     const samplePts = [];
     tagNodes.forEach((node) => {
+      const halfW = (node.w * (node.scale || 1.0)) / 2;
+      const halfH = (node.h * (node.scale || 1.0)) / 2;
+      const padX = halfW + basePadding + breath;
+      const padY = halfH + basePadding + breath;
+
       for (let k = 0; k < K; k++) {
         const theta = (k / K) * Math.PI * 2;
         const wobble = Math.sin(theta * 2 + tagIndex * 1.4 + now * 0.0008) * 4 +
                        Math.cos(theta * 3 - tagIndex) * 3;
-        const r = padding + wobble;
+        const rx = padX + wobble;
+        const ry = padY + wobble;
         samplePts.push({
-          x: node.x + Math.cos(theta) * r,
-          y: node.y + Math.sin(theta) * r,
+          x: node.x + Math.cos(theta) * rx,
+          y: node.y + Math.sin(theta) * ry,
         });
       }
     });
 
-    // Inviluppo convesso globale che racchiude tutti i cerchi dilatati
+    // Inviluppo convesso globale che racchiude tutti i punti dilatati
     const envelope = computeConvexHull(samplePts);
     if (envelope.length < 3) return envelope;
 
@@ -1359,67 +1658,277 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Timeline: Asse in Basso & Steli Annuali verso l'Alto ───────
+  // ── Timeline: Asse in Basso & Steli Annuali o Mensili ────────
   function drawTimelineGuides() {
     ctx.save();
     const baselineY = 220;
 
-    // Baseline orizzontale in basso
+    // Baseline orizzontale continua
     ctx.beginPath();
-    ctx.moveTo(-2200, baselineY);
-    ctx.lineTo(2200, baselineY);
+    ctx.moveTo(-3200, baselineY);
+    ctx.lineTo(3200, baselineY);
     ctx.strokeStyle = '#99251C';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Steli annuali verticali tratteggiati e indicatori degli anni
     const years = getDistinctYears();
     const countYears = Math.max(1, years.length);
-    const yearSpacing = 340;
-    const startX = -((countYears - 1) * yearSpacing) / 2;
 
-    years.forEach((yr, idx) => {
-      const x = startX + idx * yearSpacing;
-      const yearNodes = nodes.filter((n) => n.dateInfo.year === yr);
-      const stackHeight = yearNodes.length * 76 + 50;
-      const isFocused = focusedTimelineYear === yr;
-      const isDimmed = focusedTimelineYear !== null && !isFocused;
+    if (focusedTimelineYear !== null) {
+      // ── VISTA MENSILE ESPANSA PER L'ANNO ATTIVO ────────────────
+      const focusedYr = focusedTimelineYear;
+      const monthSpacing = 160;
+      const totalMonthSpan = 11 * monthSpacing;
+      const startMonthX = -totalMonthSpan / 2;
 
+      // 1. Intestazione Anno sopra i mesi con pulsante/indicatore di chiusura interattivo
+      const isHoverClose = hoveredTimelineItem && hoveredTimelineItem.type === 'close';
       ctx.save();
-      if (isDimmed) ctx.globalAlpha = 0.35;
+      const bannerW = 360;
+      const bannerH = 54;
+      const bannerY = baselineY - 440;
 
-      // Stelo verticale tratteggiato verso l'alto
-      ctx.beginPath();
-      ctx.moveTo(x, baselineY);
-      ctx.lineTo(x, baselineY - stackHeight);
-      ctx.strokeStyle = isFocused ? '#99251C' : '#EADBCE';
-      ctx.lineWidth = isFocused ? 1.6 : 1.2;
-      ctx.setLineDash([3, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.fillStyle = isHoverClose ? 'rgba(153, 37, 28, 0.08)' : 'rgba(255, 253, 249, 0.90)';
+      ctx.fillRect(-bannerW / 2, bannerY, bannerW, bannerH);
+      ctx.strokeStyle = isHoverClose ? '#99251C' : '#EADBCE';
+      ctx.lineWidth = isHoverClose ? 1.5 : 0.85;
+      ctx.strokeRect(-bannerW / 2, bannerY, bannerW, bannerH);
 
-      // Punto di ancoraggio sulla baseline
-      ctx.beginPath();
-      ctx.arc(x, baselineY, isFocused ? 5 : 4, 0, Math.PI * 2);
       ctx.fillStyle = '#99251C';
-      ctx.fill();
-
-      // Etichetta anno in Instrument Serif
-      ctx.fillStyle = '#99251C';
-      ctx.font = isFocused
-        ? 'italic 32px "Instrument Serif", Georgia, serif'
-        : '400 28px "Instrument Serif", Georgia, serif';
+      ctx.font = 'italic 30px "Instrument Serif", Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.fillText(String(yr), x, baselineY + 36);
+      ctx.fillText(`Anno ${focusedYr}`, 0, baselineY - 414);
 
-      // Conteggio memorie
-      ctx.font = '600 10px "Instrument Sans", sans-serif';
-      ctx.fillStyle = 'rgba(153, 37, 28, 0.70)';
-      ctx.fillText(`${yearNodes.length} ricordi`, x, baselineY + 52);
-
+      ctx.font = '700 8.5px "Instrument Sans", sans-serif';
+      ctx.fillStyle = isHoverClose ? '#99251C' : 'rgba(153, 37, 28, 0.70)';
+      ctx.fillText('CHIUDI MESI · MOSTRA TUTTI GLI ANNI', 0, baselineY - 397);
       ctx.restore();
-    });
 
+      // 2. Steli mensili per ciascuno dei 12 mesi
+      for (let m = 1; m <= 12; m++) {
+        const mx = startMonthX + (m - 1) * monthSpacing;
+        const mNodes = nodes.filter((n) => n.dateInfo.year === focusedYr && n.dateInfo.month === m);
+        const hasMemories = mNodes.length > 0;
+
+        let totalStackHeight = 50;
+        mNodes.forEach((n) => {
+          totalStackHeight += (n.h * 0.95) + 18;
+        });
+        const stackHeight = hasMemories ? Math.max(90, totalStackHeight) : 22;
+
+        ctx.save();
+        // Stelo verticale del mese
+        ctx.beginPath();
+        ctx.moveTo(mx, baselineY);
+        ctx.lineTo(mx, baselineY - stackHeight);
+        ctx.strokeStyle = hasMemories ? '#99251C' : 'rgba(234, 219, 206, 0.65)';
+        ctx.lineWidth = hasMemories ? 1.5 : 0.8;
+        ctx.setLineDash([3, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Punto di ancoraggio sulla baseline
+        ctx.beginPath();
+        ctx.arc(mx, baselineY, hasMemories ? 5 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = hasMemories ? '#99251C' : '#D6C3AF';
+        ctx.fill();
+
+        // Nome mese (GEN, FEB, ...)
+        ctx.fillStyle = hasMemories ? '#99251C' : 'rgba(153, 37, 28, 0.35)';
+        ctx.font = hasMemories
+          ? 'italic 20px "Instrument Serif", Georgia, serif'
+          : '400 16px "Instrument Serif", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(MONTH_NAMES[m - 1], mx, baselineY + 28);
+
+        // Conteggio memorie se presenti
+        if (hasMemories) {
+          ctx.font = '600 9.5px "Instrument Sans", sans-serif';
+          ctx.fillStyle = 'rgba(153, 37, 28, 0.75)';
+          ctx.fillText(`${mNodes.length} ${mNodes.length === 1 ? 'ricordo' : 'ricordi'}`, mx, baselineY + 44);
+        }
+
+        ctx.restore();
+      }
+
+      // 3. Steli per gli altri anni esterni
+      const earlierYears = years.filter((y) => y < focusedYr);
+      const laterYears = years.filter((y) => y > focusedYr);
+
+      earlierYears.forEach((yr, eIdx) => {
+        const x = startMonthX - 340 - (earlierYears.length - 1 - eIdx) * 260;
+        const yearNodes = nodes.filter((n) => n.dateInfo.year === yr);
+        const isHoverYr = hoveredTimelineItem && hoveredTimelineItem.type === 'year' && hoveredTimelineItem.year === yr;
+        drawExternalYearStem(ctx, x, yr, yearNodes.length, baselineY, isHoverYr);
+      });
+
+      laterYears.forEach((yr, lIdx) => {
+        const x = startMonthX + totalMonthSpan + 340 + lIdx * 260;
+        const yearNodes = nodes.filter((n) => n.dateInfo.year === yr);
+        const isHoverYr = hoveredTimelineItem && hoveredTimelineItem.type === 'year' && hoveredTimelineItem.year === yr;
+        drawExternalYearStem(ctx, x, yr, yearNodes.length, baselineY, isHoverYr);
+      });
+
+    } else {
+      // ── PANORAMICA GLOBALE ANNI ────────────────────────────────
+      const yearSpacing = 360;
+      const startX = -((countYears - 1) * yearSpacing) / 2;
+
+      years.forEach((yr, idx) => {
+        const x = startX + idx * yearSpacing;
+        const yearNodes = nodes.filter((n) => n.dateInfo.year === yr);
+        const isHoverYr = hoveredTimelineItem && hoveredTimelineItem.type === 'year' && hoveredTimelineItem.year === yr;
+
+        let totalStackHeight = 50;
+        yearNodes.forEach((n) => {
+          totalStackHeight += (n.h * 0.95) + 18;
+        });
+        const stackHeight = Math.max(90, totalStackHeight);
+
+        ctx.save();
+        // Stelo verticale tratteggiato verso l'alto
+        ctx.beginPath();
+        ctx.moveTo(x, baselineY);
+        ctx.lineTo(x, baselineY - stackHeight);
+        ctx.strokeStyle = isHoverYr ? '#99251C' : '#EADBCE';
+        ctx.lineWidth = isHoverYr ? 2.0 : 1.3;
+        ctx.setLineDash(isHoverYr ? [4, 2] : [3, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Punto di ancoraggio sulla baseline
+        ctx.beginPath();
+        ctx.arc(x, baselineY, isHoverYr ? 6 : 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#99251C';
+        ctx.fill();
+
+        // Etichetta anno
+        ctx.fillStyle = '#99251C';
+        ctx.font = isHoverYr ? '400 32px "Instrument Serif", Georgia, serif' : '400 28px "Instrument Serif", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(yr), x, baselineY + (isHoverYr ? 38 : 36));
+
+        // Conteggio memorie
+        ctx.font = '600 10px "Instrument Sans", sans-serif';
+        ctx.fillStyle = isHoverYr ? '#99251C' : 'rgba(153, 37, 28, 0.70)';
+        ctx.fillText(`${yearNodes.length} ricordi`, x, baselineY + 54);
+
+        if (isHoverYr) {
+          ctx.font = '700 8px "Instrument Sans", sans-serif';
+          ctx.fillStyle = '#99251C';
+          ctx.fillText('CLICCA PER APRIRE I MESI', x, baselineY + 68);
+        }
+
+        ctx.restore();
+      });
+    }
+
+    ctx.restore();
+  }
+
+  function drawExternalYearStem(ctx, x, yr, count, baselineY, isHover = false) {
+    ctx.save();
+    ctx.globalAlpha = isHover ? 0.90 : 0.40;
+    ctx.beginPath();
+    ctx.moveTo(x, baselineY);
+    ctx.lineTo(x, baselineY - 120);
+    ctx.strokeStyle = isHover ? '#99251C' : '#EADBCE';
+    ctx.lineWidth = isHover ? 1.8 : 1.0;
+    ctx.setLineDash([3, 4]);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x, baselineY, isHover ? 5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#99251C';
+    ctx.fill();
+
+    ctx.fillStyle = '#99251C';
+    ctx.font = isHover ? '400 25px "Instrument Serif", Georgia, serif' : '400 22px "Instrument Serif", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(yr), x, baselineY + 32);
+
+    ctx.font = '600 9px "Instrument Sans", sans-serif';
+    ctx.fillText(`${count} ricordi`, x, baselineY + 46);
+    if (isHover) {
+      ctx.font = '700 7.5px "Instrument Sans", sans-serif';
+      ctx.fillText('APRI', x, baselineY + 58);
+    }
+    ctx.restore();
+  }
+
+  // ── Hit-Testing Interattivo per la Timeline (Clic su Anni e Mesi) ──
+  function hitTestTimeline(screenX, screenY) {
+    if (currentLayout !== 'timeline') return null;
+    const worldP = screenToWorld(screenX, screenY);
+    const baselineY = 220;
+
+    if (focusedTimelineYear !== null) {
+      // 1. Clic su banner / pulsante chiudi mesi
+      if (Math.abs(worldP.x) < 185 && worldP.y >= baselineY - 445 && worldP.y <= baselineY - 380) {
+        return { type: 'close' };
+      }
+      // 2. Clic su un altro anno visibile ai lati
+      const years = getDistinctYears();
+      const monthSpacing = 160;
+      const totalMonthSpan = 11 * monthSpacing;
+      const startMonthX = -totalMonthSpan / 2;
+      const earlierYears = years.filter((y) => y < focusedTimelineYear);
+      const laterYears = years.filter((y) => y > focusedTimelineYear);
+
+      for (let i = 0; i < earlierYears.length; i++) {
+        const yr = earlierYears[i];
+        const x = startMonthX - 340 - (earlierYears.length - 1 - i) * 260;
+        if (Math.hypot(worldP.x - x, worldP.y - (baselineY + 36)) < 45 || (Math.abs(worldP.x - x) < 30 && worldP.y <= baselineY && worldP.y >= baselineY - 140)) {
+          return { type: 'year', year: yr };
+        }
+      }
+      for (let i = 0; i < laterYears.length; i++) {
+        const yr = laterYears[i];
+        const x = startMonthX + totalMonthSpan + 340 + i * 260;
+        if (Math.hypot(worldP.x - x, worldP.y - (baselineY + 36)) < 45 || (Math.abs(worldP.x - x) < 30 && worldP.y <= baselineY && worldP.y >= baselineY - 140)) {
+          return { type: 'year', year: yr };
+        }
+      }
+    } else {
+      // 3. Panoramica: clic su un'etichetta anno o stelo
+      const years = getDistinctYears();
+      const countYears = Math.max(1, years.length);
+      const yearSpacing = 360;
+      const startX = -((countYears - 1) * yearSpacing) / 2;
+
+      for (let idx = 0; idx < years.length; idx++) {
+        const yr = years[idx];
+        const x = startX + idx * yearSpacing;
+        if (Math.hypot(worldP.x - x, worldP.y - (baselineY + 36)) < 45 || (Math.abs(worldP.x - x) < 35 && worldP.y <= baselineY && worldP.y >= baselineY - 240)) {
+          return { type: 'year', year: yr };
+        }
+      }
+    }
+    return null;
+  }
+
+  // ── Badge Play per Video ─────────────────────────────────────
+  function drawVideoBadge(ctx, cx, cy, w, h, isHover) {
+    const badgeR = Math.min(13, Math.max(8, Math.min(w, h) * 0.20));
+    ctx.save();
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath();
+    ctx.arc(cx, cy, badgeR, 0, Math.PI * 2);
+    ctx.fillStyle = isHover ? 'rgba(153, 37, 28, 0.92)' : 'rgba(26, 22, 20, 0.68)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 253, 249, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Triangolo play bianco
+    ctx.beginPath();
+    const triH = badgeR * 0.52;
+    ctx.moveTo(cx - triH * 0.45, cy - triH * 0.65);
+    ctx.lineTo(cx + triH * 0.75, cy);
+    ctx.lineTo(cx - triH * 0.45, cy + triH * 0.65);
+    ctx.closePath();
+    ctx.fillStyle = '#FFFDF9';
+    ctx.fill();
     ctx.restore();
   }
 
@@ -1511,7 +2020,7 @@ export function initScene(canvas) {
 
       // Ombra calcolata SOLO su hover
       if (isHover) {
-        ctx.shadowColor = 'rgba(153, 37, 28, 0.20)';
+        ctx.shadowColor = 'rgba(153, 37, 28, 0.22)';
         ctx.shadowBlur = 14;
         ctx.shadowOffsetY = 6;
       } else {
@@ -1521,12 +2030,28 @@ export function initScene(canvas) {
       }
 
       const mediaUrl = node.memory.media_url;
-      const mediaType = node.memory.media_type;
+      const mediaType = (node.memory.media_type || '').toLowerCase();
 
-      // Disegno del media a spigoli vivi (nessun bordo stondato, nessuna cornice)
-      if (mediaType === 'image' && imageCache.has(mediaUrl)) {
+      // Disegno del media a spigoli vivi (nessun bordo stondato, nessuna cornice panna)
+      if ((mediaType === 'image' || mediaType === 'video') && imageCache.has(mediaUrl)) {
         const img = imageCache.get(mediaUrl);
+        const natW = img.naturalWidth || img.width;
+        const natH = img.naturalHeight || img.height;
+        if (natW && natH && (!node.aspectRatio || Math.abs(node.aspectRatio - (natW / natH)) > 0.02)) {
+          applyNodeAspectRatio(node, natW / natH);
+        }
+
         ctx.drawImage(img, x0, y0, w, h);
+
+        // Se è un video, mostra indicatore play elegante sul primo frame
+        if (mediaType === 'video') {
+          drawVideoBadge(ctx, nx, ny, w, h, isHover);
+        }
+      } else if (mediaType === 'video') {
+        // Fallback video se il frame non è ancora estratto
+        ctx.fillStyle = '#F8F3EC';
+        ctx.fillRect(x0, y0, w, h);
+        drawVideoBadge(ctx, nx, ny, w, h, isHover);
       } else if (mediaType === 'audio') {
         // Minimal warm audio card a spigoli vivi
         ctx.fillStyle = '#F8F3EC';
@@ -1552,6 +2077,11 @@ export function initScene(canvas) {
         ctx.font = '700 7.5px "Instrument Sans", sans-serif';
         ctx.fillText('MEMORIA', nx, ny + 12);
       }
+
+      // Bordo caldo sottile editoriale (#EADBCE / #99251C su hover)
+      ctx.strokeStyle = isHover ? '#99251C' : '#EADBCE';
+      ctx.lineWidth = isHover ? 1.5 : 0.85;
+      ctx.strokeRect(x0, y0, w, h);
 
       ctx.restore();
     });
@@ -1602,9 +2132,26 @@ export function initScene(canvas) {
     zoom,
     setHoverPoint,
     hitTest,
+    hitTestTimeline,
+    setOnTimelineYearChange: (fn) => { onTimelineYearChange = fn; },
+    getFocusedTimelineYear: () => focusedTimelineYear,
+    getHoveredTimelineItem: () => hoveredTimelineItem,
     getHoveredNode: () => hoveredNode,
     getCamera: () => camera,
     getDistinctYears,
     getDistinctTags,
+    getVideoPoster: (url) => {
+      if (url && imageCache.has(url)) {
+        const item = imageCache.get(url);
+        if (item instanceof HTMLCanvasElement) {
+          try {
+            return item.toDataURL();
+          } catch (_) {
+            return null;
+          }
+        }
+      }
+      return null;
+    },
   };
 }

@@ -27,7 +27,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Musica', 'Social'],
     location_tag: 'Portico',
     time_event: '21:30',
-    created_at: '2026-10-15T19:30:00Z',
+    created_at: '2024-05-15T19:30:00Z',
   },
   {
     id: 'stoa-2',
@@ -38,7 +38,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Talk', 'Design'],
     location_tag: 'Sala Studio',
     time_event: '16:00',
-    created_at: '2026-10-16T14:00:00Z',
+    created_at: '2024-10-16T14:00:00Z',
   },
   {
     id: 'stoa-3',
@@ -49,7 +49,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Laboratorio', 'Relax'],
     location_tag: 'Giardino',
     time_event: 'Tramonto',
-    created_at: '2026-10-17T17:45:00Z',
+    created_at: '2024-11-20T17:45:00Z',
   },
   {
     id: 'stoa-4',
@@ -60,7 +60,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Sport', 'Social'],
     location_tag: 'Salone',
     time_event: '22:15',
-    created_at: '2026-10-18T20:15:00Z',
+    created_at: '2025-03-18T20:15:00Z',
   },
   {
     id: 'stoa-5',
@@ -71,7 +71,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Social', 'Relax'],
     location_tag: 'Cucina',
     time_event: '20:00',
-    created_at: '2026-10-19T18:00:00Z',
+    created_at: '2025-07-19T18:00:00Z',
   },
   {
     id: 'stoa-6',
@@ -82,7 +82,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Musica', 'Relax'],
     location_tag: 'Terrazza',
     time_event: 'Notte',
-    created_at: '2026-10-20T21:00:00Z',
+    created_at: '2025-09-20T21:00:00Z',
   },
   {
     id: 'stoa-7',
@@ -93,7 +93,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Design', 'Laboratorio'],
     location_tag: 'Salone',
     time_event: '15:30',
-    created_at: '2026-10-21T13:30:00Z',
+    created_at: '2026-02-21T13:30:00Z',
   },
   {
     id: 'stoa-8',
@@ -104,7 +104,7 @@ const FALLBACK_MEMORIES = [
     tags: ['Relax'],
     location_tag: 'Giardino',
     time_event: '17:00',
-    created_at: '2026-10-21T15:00:00Z',
+    created_at: '2026-04-21T15:00:00Z',
   },
   {
     id: 'stoa-9',
@@ -115,7 +115,29 @@ const FALLBACK_MEMORIES = [
     tags: ['Design', 'Social'],
     location_tag: 'Portico',
     time_event: '18:45',
-    created_at: '2026-10-21T16:45:00Z',
+    created_at: '2026-06-21T16:45:00Z',
+  },
+  {
+    id: 'stoa-10',
+    title: 'Riprese del documentario Stoà',
+    description: 'Sequenza video registrata durante i preparativi dell\'installazione interattiva nel salone.',
+    media_url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+    media_type: 'video',
+    tags: ['Video', 'Design'],
+    location_tag: 'Salone',
+    time_event: '14:20',
+    created_at: '2026-08-22T12:20:00Z',
+  },
+  {
+    id: 'stoa-11',
+    title: 'Manifesto di partecipazione',
+    description: 'Questo luogo appartiene a chi lo attraversa e lascia una traccia sincera del proprio passaggio.',
+    media_url: '',
+    media_type: 'text',
+    tags: ['Social', 'Talk'],
+    location_tag: 'Portico',
+    time_event: '10:00',
+    created_at: '2026-10-23T08:00:00Z',
   },
 ];
 
@@ -150,21 +172,26 @@ const els = {
   modalInfo: $('#modal-info'),
   btnCloseInfo: $('#btn-close-info'),
 
-  // Detail Modal
+  // Detail Modal (Riquadro di Selezione)
   modalDetail: $('#modal-detail'),
+  modalDetailBox: $('#detail-modal-box'),
   btnCloseDetail: $('#btn-close-detail'),
+  mediaBoxPhoto: $('#media-box-photo'),
+  mediaBoxVideo: $('#media-box-video'),
+  mediaBoxAudio: $('#media-box-audio'),
+  mediaBoxText: $('#media-box-text'),
   detailImg: $('#detail-img'),
-  detailAudioWrap: $('#detail-audio-wrap'),
+  detailVideoEl: $('#detail-video-el'),
   detailAudioEl: $('#detail-audio-el'),
-  detailLocation: $('#detail-location'),
-  detailTime: $('#detail-time'),
+  audioWaveformCanvas: $('#audio-waveform-canvas'),
+  detailLocationVal: $('#detail-location-val'),
+  detailDateVal: $('#detail-date-val'),
+  detailTypeVal: $('#detail-type-val'),
   detailTitle: $('#detail-title'),
   detailDesc: $('#detail-desc'),
-  detailTags: $('#detail-tags'),
+  detailTagsList: $('#detail-tags-list'),
   detailRelatedSection: $('#detail-related-section'),
-  detailRelatedCount: $('#detail-related-count'),
   detailRelatedChips: $('#detail-related-chips'),
-  audioWaveformCanvas: $('#audio-waveform-canvas'),
 
   // Realtime Toast
   liveToast: $('#live-toast'),
@@ -196,6 +223,13 @@ async function init() {
 
   // 1. Initialise Canvas 2D Scene Engine
   state.scene = initScene(els.sceneCanvas);
+  if (state.scene.setOnTimelineYearChange) {
+    state.scene.setOnTimelineYearChange((val) => {
+      if (state.rightWheel && state.currentLayout === 'timeline') {
+        state.rightWheel.setActiveByValue(val);
+      }
+    });
+  }
 
   // 2. Initialise Computer Vision & Gesture Pipeline
   initTrackingPipeline();
@@ -329,6 +363,11 @@ function handlePointerMove(x, y) {
     els.virtualCursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
+  // Se la modale dettaglio è aperta, inclina l'immagine/card verso il mouse
+  if (state.activeModal === 'detail') {
+    updateMediaTilt(x, y);
+  }
+
   // Se c'è già un frame schedulato per il check DOM, attendi il prossimo tick
   if (pointerRafId) return;
 
@@ -382,11 +421,15 @@ function handlePointerMove(x, y) {
     // Update hover point in Scene Canvas
     if (!state.activeModal) {
       state.scene.setHoverPoint(px, py);
-      if (state.scene.getHoveredNode()) {
+      const isNodeHovered = !!state.scene.getHoveredNode();
+      const isTimelineHovered = (state.currentLayout === 'timeline' && !!state.scene.hitTestTimeline && !!state.scene.hitTestTimeline(px, py));
+      if (isNodeHovered || isTimelineHovered) {
         isHoveringInteractive = true;
       }
+      els.sceneCanvas.style.cursor = (isNodeHovered || isTimelineHovered) ? 'pointer' : 'default';
     } else {
       state.scene.setHoverPoint(-9999, -9999);
+      els.sceneCanvas.style.cursor = 'default';
     }
 
     // Set cursor visual state
@@ -414,11 +457,15 @@ function handleSelect() {
   if (state.activeModal) {
     const el = document.elementFromPoint(x, y);
     if (el) {
-      if (el.closest('.bento-close-btn') || el.classList.contains('modal-backdrop')) {
+      if (
+        el.closest('.bento-close-btn') ||
+        el.classList.contains('modal-backdrop') ||
+        (el.closest('.modal-backdrop') && !el.closest('.selection-box') && !el.closest('.drawer-panel'))
+      ) {
         closeModals();
         return;
       }
-      const relatedChip = el.closest('.related-chip');
+      const relatedChip = el.closest('.related-chip') || el.closest('.related-chip-link');
       if (relatedChip) {
         const memId = relatedChip.dataset.id;
         const target = state.memories.find((m) => m.id === memId);
@@ -468,6 +515,21 @@ function handleSelect() {
   const clickedNode = state.scene.hitTest(x, y);
   if (clickedNode) {
     openDetailModal(clickedNode.memory);
+    return;
+  }
+
+  // 4. Check Timeline elements (Year stems, banner)
+  if (state.currentLayout === 'timeline' && state.scene.hitTestTimeline) {
+    const tlTarget = state.scene.hitTestTimeline(x, y);
+    if (tlTarget) {
+      if (tlTarget.type === 'year') {
+        if (state.rightWheel) state.rightWheel.selectValue(String(tlTarget.year));
+        else state.scene.setTimelineYear(tlTarget.year);
+      } else if (tlTarget.type === 'close') {
+        if (state.rightWheel) state.rightWheel.selectValue('all');
+        else state.scene.setTimelineYear(null);
+      }
+    }
   }
 }
 
@@ -548,18 +610,82 @@ function bindUIEvents() {
     if (e.target === els.modalInfo) closeModals();
   });
 
-  // Detail Modal Close
-  els.btnCloseDetail.addEventListener('click', closeModals);
+  // Detail Modal Close (Chiusura via click esterno o Esc)
+  if (els.btnCloseDetail) {
+    els.btnCloseDetail.addEventListener('click', closeModals);
+  }
   els.modalDetail.addEventListener('click', (e) => {
     if (e.target === els.modalDetail) closeModals();
   });
 
+  // Canvas Mouse Drag, Wheel Zoom & Click Handling
+  let isDraggingCanvas = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let hasDraggedCanvas = false;
+
+  els.sceneCanvas.addEventListener('pointerdown', (e) => {
+    if (state.activeModal || e.button !== 0) return;
+    isDraggingCanvas = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    hasDraggedCanvas = false;
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDraggingCanvas) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    if (Math.hypot(dx, dy) > 4) {
+      hasDraggedCanvas = true;
+      handlePan(dx, dy);
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+    }
+  });
+
+  window.addEventListener('pointerup', () => {
+    isDraggingCanvas = false;
+  });
+
+  // Mouse wheel zoom & pan
+  els.sceneCanvas.addEventListener('wheel', (e) => {
+    if (state.activeModal) return;
+    e.preventDefault();
+    if (e.shiftKey) {
+      handlePan(-e.deltaY, 0);
+    } else if (Math.abs(e.deltaX) > 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      handlePan(-e.deltaX, 0);
+    } else {
+      const factor = e.deltaY < 0 ? 1.08 : 0.92;
+      handleZoom(factor);
+    }
+  }, { passive: false });
+
   // Canvas Click (Mouse / Touch fallback)
   els.sceneCanvas.addEventListener('click', (e) => {
     if (state.activeModal) return;
+    if (hasDraggedCanvas) return;
+
+    // 1. Clic su un ricordo
     const clicked = state.scene.hitTest(e.clientX, e.clientY);
     if (clicked) {
       openDetailModal(clicked.memory);
+      return;
+    }
+
+    // 2. Clic su elementi Timeline (Anno o Chiusura vista mensile)
+    if (state.currentLayout === 'timeline' && state.scene.hitTestTimeline) {
+      const tlTarget = state.scene.hitTestTimeline(e.clientX, e.clientY);
+      if (tlTarget) {
+        if (tlTarget.type === 'year') {
+          if (state.rightWheel) state.rightWheel.selectValue(String(tlTarget.year));
+          else state.scene.setTimelineYear(tlTarget.year);
+        } else if (tlTarget.type === 'close') {
+          if (state.rightWheel) state.rightWheel.selectValue('all');
+          else state.scene.setTimelineYear(null);
+        }
+      }
     }
   });
 
@@ -589,6 +715,7 @@ function bindUIEvents() {
     state.rightWheelVisible = false;
     els.wheelLeft.classList.remove('is-visible');
     els.wheelRight.classList.remove('is-visible');
+    resetMediaTilt();
   });
 }
 
@@ -667,57 +794,167 @@ function handleRightWheelSelect(val) {
   }
 }
 
-// ── Modal Handlers ─────────────────────────────────────────────
+// ── Modal Handlers (Accessibili con Focus Management) ───────────
 function openInfoModal() {
+  state.lastActiveElement = document.activeElement;
   state.activeModal = 'info';
   els.modalInfo.classList.add('is-open');
   els.modalInfo.setAttribute('aria-hidden', 'false');
+  const infoTitle = $('#info-drawer-title');
+  if (infoTitle) infoTitle.focus();
+}
+
+// ── Helper Formattazione Dati Ricordo ──────────────────────────
+function formatMemoryDate(createdAt, timeEvent) {
+  if (createdAt) {
+    try {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        const months = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = months[d.getMonth()];
+        const year = d.getFullYear();
+        return `${day} ${month} ${year}`;
+      }
+    } catch (_) {}
+  }
+  if (timeEvent) return String(timeEvent).toUpperCase();
+  return 'OGGI';
+}
+
+function formatMemoryType(mediaType) {
+  const t = (mediaType || '').toLowerCase();
+  if (t === 'image' || t === 'photo' || t === 'foto') return 'FOTO';
+  if (t === 'video') return 'VIDEO';
+  if (t === 'audio') return 'AUDIO';
+  if (t === 'text') return 'TESTO';
+  return 'MEMORIA';
 }
 
 function openDetailModal(memory) {
+  state.lastActiveElement = document.activeElement;
   state.activeModal = 'detail';
 
-  // Fill content
+  // 1. Titolo Serif e Descrizione Sans Bold Giustificato Caps Lock
   els.detailTitle.textContent = memory.title || 'Senza titolo';
-  els.detailDesc.textContent = memory.description || 'Nessuna descrizione per questo ricordo.';
-  els.detailLocation.textContent = memory.location_tag ? `📍 ${memory.location_tag}` : '📍 Stoà';
-  els.detailTime.textContent = memory.time_event ? `⏱️ ${memory.time_event}` : '⏱️ Oggi';
+  els.detailDesc.textContent = (memory.description || 'Nessuna descrizione per questo ricordo.').toUpperCase();
 
-  // Tags
-  els.detailTags.innerHTML = '';
-  const tags = memory.tags || ['Memoria'];
-  tags.forEach((tag) => {
-    const badge = document.createElement('span');
-    badge.className = 'tag-badge';
-    badge.textContent = tag;
-    els.detailTags.appendChild(badge);
-  });
-
-  // Media
-  if ((memory.media_type === 'image' || memory.media_type === 'text') && memory.media_url) {
-    els.detailImg.src = memory.media_url;
-    els.detailImg.hidden = false;
-    els.detailAudioWrap.hidden = true;
-    stopAudioVisualizer();
-  } else if (memory.media_type === 'audio' && memory.media_url) {
-    els.detailImg.hidden = true;
-    els.detailAudioWrap.hidden = false;
-    els.detailAudioEl.src = memory.media_url;
-    startAudioVisualizer();
-  } else {
-    els.detailImg.hidden = true;
-    els.detailAudioWrap.hidden = true;
-    stopAudioVisualizer();
+  // 2. Metadati Secondari in Fondo (4 Colonne: TAG, LOCATION, DATE, TYPE)
+  if (els.detailLocationVal) {
+    els.detailLocationVal.textContent = (memory.location_tag || 'Stoà').toUpperCase();
+  }
+  if (els.detailDateVal) {
+    els.detailDateVal.textContent = formatMemoryDate(memory.created_at, memory.time_event);
+  }
+  if (els.detailTypeVal) {
+    els.detailTypeVal.textContent = formatMemoryType(memory.media_type);
   }
 
-  // Related memories (sharing tags)
+  // 3. Colonna TAG Verticale
+  if (els.detailTagsList) {
+    els.detailTagsList.innerHTML = '';
+    const tags = Array.isArray(memory.tags) && memory.tags.length > 0 ? memory.tags : ['Memoria'];
+    tags.forEach((tag) => {
+      const item = document.createElement('span');
+      item.className = 'meta-tag-item';
+      item.textContent = String(tag).toUpperCase();
+      els.detailTagsList.appendChild(item);
+    });
+  }
+
+  // 4. Metà Sinistra Media: Contenitori DEDICATI e MUTUAMENTE ESCLUSIVI
+  // Disattiva preventivamente tutti i contenitori
+  if (els.mediaBoxPhoto) els.mediaBoxPhoto.classList.remove('is-active');
+  if (els.mediaBoxVideo) els.mediaBoxVideo.classList.remove('is-active');
+  if (els.mediaBoxAudio) els.mediaBoxAudio.classList.remove('is-active');
+  if (els.mediaBoxText) els.mediaBoxText.classList.remove('is-active');
+
+  // Ferma eventuale riproduzione audio/video precedente
+  if (els.detailAudioEl) {
+    els.detailAudioEl.pause();
+    els.detailAudioEl.removeAttribute('src');
+    els.detailAudioEl.load();
+  }
+  if (els.detailVideoEl) {
+    els.detailVideoEl.pause();
+    els.detailVideoEl.removeAttribute('src');
+    els.detailVideoEl.load();
+  }
+  stopAudioVisualizer();
+
+  const mType = (memory.media_type || '').toLowerCase().trim();
+  const mUrl = memory.media_url || '';
+
+  if (mType === 'video' || (mUrl && /\.(mp4|webm|mov|m4v)$/i.test(mUrl) && mType !== 'audio')) {
+    // ── 1. VIDEO: mostra solo il video con i comandi e primo frame come copertina
+    if (els.mediaBoxVideo && els.detailVideoEl && mUrl) {
+      els.detailVideoEl.src = mUrl;
+      if (state.scene && state.scene.getVideoPoster) {
+        const poster = state.scene.getVideoPoster(mUrl);
+        if (poster) {
+          els.detailVideoEl.poster = poster;
+        } else {
+          els.detailVideoEl.removeAttribute('poster');
+        }
+      }
+      els.mediaBoxVideo.classList.add('is-active');
+    } else if (els.mediaBoxText) {
+      els.mediaBoxText.classList.add('is-active');
+    }
+  } else if (mType === 'audio' || (mUrl && /\.(mp3|wav|ogg|aac|m4a)$/i.test(mUrl))) {
+    // ── 2. AUDIO: mostra solo la sound wave e i comandi
+    if (els.mediaBoxAudio && els.detailAudioEl && mUrl) {
+      els.detailAudioEl.src = mUrl;
+      els.mediaBoxAudio.classList.add('is-active');
+      startAudioVisualizer();
+    } else if (els.mediaBoxText) {
+      els.mediaBoxText.classList.add('is-active');
+    }
+  } else if (mType === 'image' || mType === 'photo' || (mUrl && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(mUrl)) || (mUrl && mType !== 'text')) {
+    // ── 3. FOTO: mostra solo la foto senza nessun altro elemento
+    if (els.mediaBoxPhoto && els.detailImg && mUrl) {
+      els.detailImg.src = mUrl;
+      els.detailImg.alt = memory.title ? `Fotografia: ${memory.title}` : 'Fotografia del ricordo';
+      els.mediaBoxPhoto.classList.add('is-active');
+    } else if (els.mediaBoxText) {
+      els.mediaBoxText.classList.add('is-active');
+    }
+  } else {
+    // ── 4. TESTO: memoria solo testuale
+    if (els.mediaBoxText) {
+      els.mediaBoxText.classList.add('is-active');
+    }
+  }
+
+  // 5. Collegamenti risonanti (riga discreta sotto i metadati)
   renderRelatedMemories(memory);
+
+  // 6. Riavvio dell'animazione da angolo a angolo del riquadro di selezione
+  resetMediaTilt();
+  if (els.modalDetailBox) {
+    const layout = els.modalDetailBox.querySelector('.selection-layout');
+    const crosses = els.modalDetailBox.querySelectorAll('.selection-cross');
+    if (layout) {
+      layout.style.animation = 'none';
+      void layout.offsetHeight; // trigger reflow
+      layout.style.animation = '';
+    }
+    crosses.forEach((cross) => {
+      cross.style.animation = 'none';
+      void cross.offsetHeight;
+      cross.style.animation = '';
+    });
+  }
 
   els.modalDetail.classList.add('is-open');
   els.modalDetail.setAttribute('aria-hidden', 'false');
+  if (els.detailTitle) {
+    els.detailTitle.focus();
+  }
 }
 
 function renderRelatedMemories(currentMem) {
+  if (!els.detailRelatedChips || !els.detailRelatedSection) return;
   els.detailRelatedChips.innerHTML = '';
   const currentTags = currentMem.tags || [];
 
@@ -725,21 +962,23 @@ function renderRelatedMemories(currentMem) {
     (m) => m.id !== currentMem.id && (m.tags || []).some((t) => currentTags.includes(t))
   );
 
-  els.detailRelatedCount.textContent = related.length;
-
   if (related.length === 0) {
-    els.detailRelatedChips.innerHTML = '<span class="text-dim" style="font-size:0.75rem;">Nessuna risonanza diretta</span>';
+    els.detailRelatedSection.hidden = true;
     return;
   }
 
-  related.slice(0, 5).forEach((rel) => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'related-chip';
-    chip.dataset.id = rel.id;
-    chip.textContent = `${rel.title || 'Ricordo'} (${rel.location_tag || 'Stoà'})`;
-    chip.addEventListener('click', () => openDetailModal(rel));
-    els.detailRelatedChips.appendChild(chip);
+  els.detailRelatedSection.hidden = false;
+  related.slice(0, 4).forEach((rel) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'related-chip-link';
+    btn.dataset.id = rel.id;
+    btn.textContent = `${rel.title || 'Ricordo'} [${(rel.location_tag || 'Stoà').toUpperCase()}]`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDetailModal(rel);
+    });
+    els.detailRelatedChips.appendChild(btn);
   });
 }
 
@@ -752,8 +991,77 @@ function closeModals() {
 
   if (els.detailAudioEl) {
     els.detailAudioEl.pause();
+    els.detailAudioEl.removeAttribute('src');
+    els.detailAudioEl.load();
+  }
+  if (els.detailVideoEl) {
+    els.detailVideoEl.pause();
+    els.detailVideoEl.removeAttribute('src');
+    els.detailVideoEl.load();
   }
   stopAudioVisualizer();
+
+  // Reset contenitori media e tilt 3D
+  resetMediaTilt();
+  if (els.mediaBoxPhoto) els.mediaBoxPhoto.classList.remove('is-active');
+  if (els.mediaBoxVideo) els.mediaBoxVideo.classList.remove('is-active');
+  if (els.mediaBoxAudio) els.mediaBoxAudio.classList.remove('is-active');
+  if (els.mediaBoxText) els.mediaBoxText.classList.remove('is-active');
+
+  // Ripristina focus all'elemento che ha attivato la modale
+  if (state.lastActiveElement && typeof state.lastActiveElement.focus === 'function') {
+    state.lastActiveElement.focus();
+    state.lastActiveElement = null;
+  }
+}
+
+// ── Inclinazione 3D della Card Media Verso il Mouse / Puntatore ──
+function updateMediaTilt(x, y) {
+  if (state.activeModal !== 'detail') return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const tiltCard = document.querySelector('.media-box.is-active .media-tilt-card') ||
+                   document.querySelector('.media-box.is-active .media-photo') ||
+                   document.querySelector('.media-box.is-active .media-video');
+  if (!tiltCard) return;
+
+  const rect = tiltCard.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return;
+
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  // Calcola offset normalizzato rispetto al centro (-1 a 1)
+  const maxDistX = window.innerWidth * 0.45;
+  const maxDistY = window.innerHeight * 0.45;
+  const normX = Math.max(-1, Math.min(1, (x - centerX) / maxDistX));
+  const normY = Math.max(-1, Math.min(1, (y - centerY) / maxDistY));
+
+  // Inclinazione verso il mouse: rotX negativo se il mouse è in alto, rotY positivo se il mouse è a destra
+  const maxAngle = 14;
+  const rotX = -normY * maxAngle;
+  const rotY = normX * maxAngle;
+
+  tiltCard.style.transform = `perspective(1000px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`;
+
+  // Sposta l'ombra della foto in modo fisico coerente con la luce del puntatore
+  const photo = tiltCard.querySelector('.media-photo') || (tiltCard.classList.contains('media-photo') ? tiltCard : null);
+  if (photo) {
+    const shadowX = (-normX * 18).toFixed(1);
+    const shadowY = (16 - normY * 10).toFixed(1);
+    photo.style.boxShadow = `${shadowX}px ${shadowY}px 36px rgba(153, 37, 28, 0.16)`;
+  }
+}
+
+function resetMediaTilt() {
+  const tiltCards = document.querySelectorAll('.media-tilt-card, .media-photo, .media-video');
+  tiltCards.forEach((card) => {
+    card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+    const photo = card.querySelector('.media-photo') || (card.classList.contains('media-photo') ? card : null);
+    if (photo) {
+      photo.style.boxShadow = '0 16px 36px rgba(153, 37, 28, 0.12)';
+    }
+  });
 }
 
 // ── Audio Waveform Visualizer ──────────────────────────────────

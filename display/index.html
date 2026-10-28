@@ -108,7 +108,7 @@
   </button>
 
   <!-- ── 6. PANNELLO DRAWER LATERALE: Info Progetto & Gesture ──────── -->
-  <div class="drawer-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-labelledby="info-drawer-title">
+  <div class="drawer-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="info-drawer-title">
     <aside class="info-drawer" id="info-drawer">
       <header class="drawer-header">
         <span class="drawer-badge">CENTRO GIOVANILE STOÀ</span>
@@ -120,7 +120,7 @@
 
       <div class="drawer-body">
         <div class="drawer-section">
-          <h2 id="info-drawer-title" class="drawer-title">Memory <em>Mesh</em></h2>
+          <h2 id="info-drawer-title" class="drawer-title" tabindex="-1">Memory <em>Mesh</em></h2>
           <p class="drawer-desc">
             UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
           </p>
@@ -163,43 +163,85 @@
     </aside>
   </div>
 
-  <!-- ── 7. MODALE DETTAGLIO RICORDO (Stile Rivista / Overlay Immersivo) ── -->
-  <div class="modal-backdrop" id="modal-detail" aria-hidden="true" role="dialog" aria-labelledby="detail-title">
-    <div class="magazine-modal" id="detail-modal-box">
-      <button class="magazine-close-btn" id="btn-close-detail" aria-label="Chiudi dettaglio ricordo">
-        <span>CHIUDI</span>
-        <span class="close-icon" aria-hidden="true">✕</span>
-      </button>
+  <!-- ── 7. RIQUADRO DI SELEZIONE DETTAGLIO RICORDO (Ispirazione Viewfinder Editoriale) ── -->
+  <div class="modal-backdrop selection-backdrop" id="modal-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="selection-box" id="detail-modal-box">
+      <!-- 4 Crocini di selezione agli angoli -->
+      <div class="selection-cross selection-cross--tl" aria-hidden="true"></div>
+      <div class="selection-cross selection-cross--tr" aria-hidden="true"></div>
+      <div class="selection-cross selection-cross--bl" aria-hidden="true"></div>
+      <div class="selection-cross selection-cross--br" aria-hidden="true"></div>
 
-      <div class="magazine-layout">
-        <!-- Colonna Media / Immagine o Audio -->
-        <div class="magazine-media-col" id="detail-media-wrap">
-          <img id="detail-img" class="magazine-img" src="" alt="Anteprima ricordo" hidden />
-          <div id="detail-audio-wrap" class="magazine-audio-box" hidden>
-            <div class="audio-avatar">♪</div>
-            <canvas id="audio-waveform-canvas" width="320" height="70"></canvas>
-            <audio id="detail-audio-el" controls></audio>
+      <div class="selection-layout">
+        <!-- Metà Sinistra: Contenitori Media Dedicati e Separati (Mutuamente Esclusivi) -->
+        <div class="selection-media-col" id="detail-media-wrap">
+          <!-- 1. Solo FOTO: mostra solo la foto senza altri elementi -->
+          <div class="media-box media-box--photo" id="media-box-photo">
+            <div class="media-tilt-card" id="media-tilt-photo">
+              <img id="detail-img" class="media-photo" src="" alt="Foto ricordo" />
+            </div>
+          </div>
+
+          <!-- 2. Solo VIDEO: mostra solo il video con i comandi -->
+          <div class="media-box media-box--video" id="media-box-video">
+            <div class="media-tilt-card" id="media-tilt-video">
+              <video id="detail-video-el" class="media-video" controls playsinline preload="metadata"></video>
+            </div>
+          </div>
+
+          <!-- 3. Solo AUDIO: mostra solo la sound wave e i comandi -->
+          <div class="media-box media-box--audio" id="media-box-audio">
+            <div class="media-tilt-card media-tilt-card--audio" id="media-tilt-audio">
+              <div class="audio-waveform-wrap">
+                <canvas id="audio-waveform-canvas" width="420" height="90"></canvas>
+              </div>
+              <audio id="detail-audio-el" class="media-audio-player" controls></audio>
+            </div>
+          </div>
+
+          <!-- 4. Solo TESTO: archivio testuale (quando non ci sono media allegati) -->
+          <div class="media-box media-box--text" id="media-box-text">
+            <div class="media-tilt-card media-tilt-card--text" id="media-tilt-text">
+              <div class="media-text-stamp">
+                <span class="stamp-icon">✎</span>
+                <span class="stamp-label">MEMORIA TESTUALE</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Colonna Contenuto & Metadati -->
-        <div class="magazine-content-col">
-          <div class="magazine-meta-row">
-            <span class="magazine-meta-pill" id="detail-location">📍 Stoà</span>
-            <span class="magazine-meta-pill" id="detail-time">⏱️ Oggi</span>
+        <!-- Metà Destra: Titolo Serif, Descrizione Sans Bold Justified Caps, Info Secondarie -->
+        <div class="selection-content-col">
+          <div class="selection-header-body">
+            <h2 class="selection-title" id="detail-title" tabindex="-1">Titolo Ricordo</h2>
+            <p class="selection-desc" id="detail-desc">DESCRIZIONE DEL RICORDO...</p>
           </div>
 
-          <h2 class="magazine-title" id="detail-title">Titolo Ricordo</h2>
-          <p class="magazine-desc" id="detail-desc">Descrizione della memoria...</p>
+          <div class="selection-bottom-section">
+            <div class="selection-secondary-grid">
+              <div class="meta-col">
+                <span class="meta-col__label">TAG</span>
+                <div class="meta-col__tags" id="detail-tags-list"></div>
+              </div>
+              <div class="meta-col">
+                <span class="meta-col__label">LOCATION</span>
+                <span class="meta-col__val" id="detail-location-val">—</span>
+              </div>
+              <div class="meta-col">
+                <span class="meta-col__label">DATE</span>
+                <span class="meta-col__val" id="detail-date-val">—</span>
+              </div>
+              <div class="meta-col">
+                <span class="meta-col__label">TYPE</span>
+                <span class="meta-col__val" id="detail-type-val">—</span>
+              </div>
+            </div>
 
-          <div class="magazine-section">
-            <span class="magazine-section-header">TAG TEMATICI</span>
-            <div class="tags-cluster" id="detail-tags"></div>
-          </div>
-
-          <div class="magazine-section" id="detail-related-section">
-            <span class="magazine-section-header">COLLEGAMENTI (<span id="detail-related-count">0</span>)</span>
-            <div class="related-chips-grid" id="detail-related-chips"></div>
+            <!-- Riga discreta collegamenti risonanti -->
+            <div class="selection-related-row" id="detail-related-section">
+              <span class="related-row__label">COLLEGAMENTI:</span>
+              <div class="related-row__chips" id="detail-related-chips"></div>
+            </div>
           </div>
         </div>
       </div>
