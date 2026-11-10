@@ -6,14 +6,15 @@
   <meta name="description" content="Memory Mesh — Installazione interattiva Kiosk per il Centro Giovanile Stoà." />
   <title>Memory Mesh · Exhibition Display</title>
 
-  <!-- Google Fonts — Instrument Serif (Titoli) & Instrument Sans (Testi) -->
+  <!-- Google Fonts — Instrument Sans (Testi); titoli in Helvetica di sistema -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
 
   <!-- MediaPipe Hands & Camera Utils CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 
   <!-- Display Stylesheet -->
   <link rel="stylesheet" href="./style.css" />
@@ -197,6 +198,11 @@
               </div>
               <audio id="detail-audio-el" class="media-audio-player" controls></audio>
             </div>
+          </div>
+
+          <!-- 5. MODELLO 3D (glb/gltf) -->
+          <div class="media-box media-box--model" id="media-box-model">
+            <model-viewer id="detail-model-el" class="media-model" auto-rotate rotation-per-second="20deg" interaction-prompt="none" shadow-intensity="0.6" exposure="1" loading="eager"></model-viewer>
           </div>
 
           <!-- 4. Solo TESTO: archivio testuale (quando non ci sono media allegati) -->

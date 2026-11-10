@@ -14,6 +14,7 @@ import { supabase } from '../shared/supabase-config.js';
 import { initTracking } from './tracking.js';
 import { initScene } from './scene.js';
 import { initWheelMenu } from './wheelMenu.js';
+import { initInkBleed, setInkHoverPoint } from '../shared/inkBleed.js';
 
 // ── Fallback Memories (Centro Giovanile Stoà) ───────────────────
 // Displayed when database is empty or offline so the kiosk is vibrant
@@ -24,8 +25,8 @@ const FALLBACK_MEMORIES = [
     description: 'Improvvisazione jazz e risate sotto il portico per l\'inizio dell\'anno associativo.',
     media_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
     media_type: 'image',
-    tags: ['Musica', 'Social'],
-    location_tag: 'Portico',
+    tags: ['musica', 'amici'],
+    location_tag: 'esterno',
     time_event: '21:30',
     created_at: '2024-05-15T19:30:00Z',
   },
@@ -35,8 +36,8 @@ const FALLBACK_MEMORIES = [
     description: 'Registrazione del primo episodio dedicato ai giovani designer del territorio.',
     media_url: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     media_type: 'audio',
-    tags: ['Talk', 'Design'],
-    location_tag: 'Sala Studio',
+    tags: ['evento', 'arte'],
+    location_tag: 'studio',
     time_event: '16:00',
     created_at: '2024-10-16T14:00:00Z',
   },
@@ -46,8 +47,8 @@ const FALLBACK_MEMORIES = [
     description: 'I primi germogli piantati durante il laboratorio di sostenibilità urbana.',
     media_url: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=800&q=80',
     media_type: 'image',
-    tags: ['Laboratorio', 'Relax'],
-    location_tag: 'Giardino',
+    tags: ['studio', 'relax'],
+    location_tag: 'giardino',
     time_event: 'Tramonto',
     created_at: '2024-11-20T17:45:00Z',
   },
@@ -57,8 +58,8 @@ const FALLBACK_MEMORIES = [
     description: 'Finalissima combattuta punto a punto con tifo da stadio nel salone.',
     media_url: 'https://images.unsplash.com/photo-1534158914592-062992fbe900?auto=format&fit=crop&w=800&q=80',
     media_type: 'image',
-    tags: ['Sport', 'Social'],
-    location_tag: 'Salone',
+    tags: ['festa', 'amici'],
+    location_tag: 'sala del re',
     time_event: '22:15',
     created_at: '2025-03-18T20:15:00Z',
   },
@@ -68,8 +69,8 @@ const FALLBACK_MEMORIES = [
     description: 'Tavolata lunga che ha unito sapori da cinque continenti preparati insieme in cucina.',
     media_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
     media_type: 'image',
-    tags: ['Social', 'Relax'],
-    location_tag: 'Cucina',
+    tags: ['amici', 'relax'],
+    location_tag: 'cucina',
     time_event: '20:00',
     created_at: '2025-07-19T18:00:00Z',
   },
@@ -79,8 +80,8 @@ const FALLBACK_MEMORIES = [
     description: 'Accordi sussurrati e vista sulle luci della città al calar della sera.',
     media_url: 'https://actions.google.com/sounds/v1/ambiences/rain_heavy.ogg',
     media_type: 'audio',
-    tags: ['Musica', 'Relax'],
-    location_tag: 'Terrazza',
+    tags: ['musica', 'relax'],
+    location_tag: 'mansarda',
     time_event: 'Notte',
     created_at: '2025-09-20T21:00:00Z',
   },
@@ -90,8 +91,8 @@ const FALLBACK_MEMORIES = [
     description: 'Stampa manuale delle grafiche del progetto sui tote bag in cotone riciclato.',
     media_url: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
     media_type: 'image',
-    tags: ['Design', 'Laboratorio'],
-    location_tag: 'Salone',
+    tags: ['arte', 'studio'],
+    location_tag: 'sala del re',
     time_event: '15:30',
     created_at: '2026-02-21T13:30:00Z',
   },
@@ -101,8 +102,8 @@ const FALLBACK_MEMORIES = [
     description: 'Pausa studio accompagnata dal ticchettio delle gocce sui vasi di terracotta.',
     media_url: 'https://actions.google.com/sounds/v1/ambiences/rain_heavy.ogg',
     media_type: 'audio',
-    tags: ['Relax'],
-    location_tag: 'Giardino',
+    tags: ['relax'],
+    location_tag: 'giardino',
     time_event: '17:00',
     created_at: '2026-04-21T15:00:00Z',
   },
@@ -112,8 +113,8 @@ const FALLBACK_MEMORIES = [
     description: 'Ritratti in bianco e nero scattati dai ragazzi durante i workshop primaverili.',
     media_url: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?auto=format&fit=crop&w=800&q=80',
     media_type: 'image',
-    tags: ['Design', 'Social'],
-    location_tag: 'Portico',
+    tags: ['arte', 'amici'],
+    location_tag: 'esterno',
     time_event: '18:45',
     created_at: '2026-06-21T16:45:00Z',
   },
@@ -123,8 +124,8 @@ const FALLBACK_MEMORIES = [
     description: 'Sequenza video registrata durante i preparativi dell\'installazione interattiva nel salone.',
     media_url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
     media_type: 'video',
-    tags: ['Video', 'Design'],
-    location_tag: 'Salone',
+    tags: ['evento', 'arte'],
+    location_tag: 'sala del re',
     time_event: '14:20',
     created_at: '2026-08-22T12:20:00Z',
   },
@@ -134,8 +135,8 @@ const FALLBACK_MEMORIES = [
     description: 'Questo luogo appartiene a chi lo attraversa e lascia una traccia sincera del proprio passaggio.',
     media_url: '',
     media_type: 'text',
-    tags: ['Social', 'Talk'],
-    location_tag: 'Portico',
+    tags: ['amici', 'evento'],
+    location_tag: 'esterno',
     time_event: '10:00',
     created_at: '2026-10-23T08:00:00Z',
   },
@@ -180,6 +181,8 @@ const els = {
   mediaBoxVideo: $('#media-box-video'),
   mediaBoxAudio: $('#media-box-audio'),
   mediaBoxText: $('#media-box-text'),
+  mediaBoxModel: $('#media-box-model'),
+  detailModelEl: $('#detail-model-el'),
   detailImg: $('#detail-img'),
   detailVideoEl: $('#detail-video-el'),
   detailAudioEl: $('#detail-audio-el'),
@@ -220,6 +223,9 @@ const state = {
 // ── Bootstrap App ──────────────────────────────────────────────
 async function init() {
   console.log('[display] Initializing Memory Mesh Kiosk...');
+
+  // 0. Ink bleed su titoli e menu (hover pilotato dal cursore virtuale)
+  initInkBleed({ selector: '.header-title, .wheel-btn, .drawer-title, .selection-title', hover: 'manual' });
 
   // 1. Initialise Canvas 2D Scene Engine
   state.scene = initScene(els.sceneCanvas);
@@ -290,23 +296,29 @@ async function loadMemories() {
 }
 
 // ── Supabase Real-Time Listener ────────────────────────────────
+let realtimeRetryId = null;
+let realtimeChannel = null;
 function setupRealtimeSubscription() {
   try {
-    supabase
-      .channel('public:memories')
+    const ch = supabase.channel('public:memories');
+    realtimeChannel = ch;
+    ch
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'memories' },
         (payload) => {
           console.log('[display] Real-Time INSERT received:', payload.new);
           const newMemory = payload.new;
+          if (!newMemory || state.memories.some((m) => String(m.id) === String(newMemory.id))) return;
 
-          // 1. Add new node to the scene
-          state.memories.unshift(newMemory);
+          // Se erano visibili i ricordi demo, sostituiscili con il primo ricordo reale
+          if (state.memories.length && String(state.memories[0].id).startsWith('stoa-')) {
+            state.memories = [];
+            state.scene.setMemories(state.memories);
+          }
+
+          // scene.addMemory condivide l'array state.memories: fa già unshift + onda
           state.scene.addMemory(newMemory);
-
-          // 2. Trigger fabric wave distortion animation
-          state.scene.triggerFabricWave();
 
           // 3. Update counter & show toast
           updateCounter();
@@ -315,6 +327,16 @@ function setupRealtimeSubscription() {
       )
       .subscribe((status) => {
         console.log('[display] Supabase realtime subscription status:', status);
+        if (ch !== realtimeChannel) return; // canale vecchio: ignora
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          // Riconnessione silenziosa + riallineamento dati
+          clearTimeout(realtimeRetryId);
+          realtimeRetryId = setTimeout(() => {
+            realtimeChannel = null;
+            supabase.removeChannel(ch);
+            loadMemories().finally(setupRealtimeSubscription);
+          }, 5000);
+        }
       });
   } catch (err) {
     console.warn('[display] Realtime subscription failed:', err);
@@ -408,6 +430,7 @@ function handlePointerMove(x, y) {
 
     // Check UI buttons (eseguito solo 1 volta per frame RAF)
     const elUnderCursor = document.elementFromPoint(px, py);
+    setInkHoverPoint(px, py);
     if (
       elUnderCursor &&
       (elUnderCursor.closest('.wheel-btn') ||
@@ -468,7 +491,7 @@ function handleSelect() {
       const relatedChip = el.closest('.related-chip') || el.closest('.related-chip-link');
       if (relatedChip) {
         const memId = relatedChip.dataset.id;
-        const target = state.memories.find((m) => m.id === memId);
+        const target = state.memories.find((m) => String(m.id) === String(memId));
         if (target) openDetailModal(target);
         return;
       }
@@ -568,7 +591,7 @@ function handleHandStateChange(leftHand, rightHand) {
   // Pinch progress ring on virtual cursor
   if (els.cursorProgressRing) {
     const progress = rightHand.pinchProgress || 0;
-    const perimeter = 125.6; // 2 * PI * 20
+    const perimeter = 113.1; // 2 * PI * 18
     const offset = perimeter - progress * perimeter;
     els.cursorProgressRing.style.strokeDashoffset = offset;
   }
@@ -809,9 +832,12 @@ function openInfoModal() {
 
 // ── Helper Formattazione Dati Ricordo ──────────────────────────
 function formatMemoryDate(createdAt, timeEvent) {
-  if (createdAt) {
+  // Priorità: data dell'evento (YYYY-MM-DD), poi data di invio
+  const isoEvent = timeEvent && /^\d{4}-\d{2}-\d{2}/.test(String(timeEvent)) ? `${String(timeEvent).slice(0, 10)}T12:00:00` : null;
+  const src = isoEvent || createdAt;
+  if (src) {
     try {
-      const d = new Date(createdAt);
+      const d = new Date(src);
       if (!isNaN(d.getTime())) {
         const months = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
         const day = String(d.getDate()).padStart(2, '0');
@@ -831,6 +857,7 @@ function formatMemoryType(mediaType) {
   if (t === 'video') return 'VIDEO';
   if (t === 'audio') return 'AUDIO';
   if (t === 'text') return 'TESTO';
+  if (t === 'model3d') return '3D';
   return 'MEMORIA';
 }
 
@@ -888,7 +915,15 @@ function openDetailModal(memory) {
   const mType = (memory.media_type || '').toLowerCase().trim();
   const mUrl = memory.media_url || '';
 
-  if (mType === 'video' || (mUrl && /\.(mp4|webm|mov|m4v)$/i.test(mUrl) && mType !== 'audio')) {
+  if (els.mediaBoxModel) els.mediaBoxModel.classList.remove('is-active');
+  if (els.detailModelEl) els.detailModelEl.removeAttribute('src');
+
+  if ((mType === 'model3d' || /\.(glb|gltf)$/i.test(mUrl)) && mUrl && els.mediaBoxModel && els.detailModelEl) {
+    // ── 0. MODELLO 3D: model-viewer con rotazione automatica
+    els.detailModelEl.setAttribute('src', mUrl);
+    els.detailModelEl.setAttribute('alt', memory.title ? `Modello 3D: ${memory.title}` : 'Modello 3D del ricordo');
+    els.mediaBoxModel.classList.add('is-active');
+  } else if (mType === 'video' || (mUrl && /\.(mp4|webm|mov|m4v)$/i.test(mUrl) && mType !== 'audio')) {
     // ── 1. VIDEO: mostra solo il video con i comandi e primo frame come copertina
     if (els.mediaBoxVideo && els.detailVideoEl && mUrl) {
       els.detailVideoEl.src = mUrl;
@@ -901,6 +936,9 @@ function openDetailModal(memory) {
         }
       }
       els.mediaBoxVideo.classList.add('is-active');
+      els.detailVideoEl.muted = true;
+      els.detailVideoEl.loop = true;
+      els.detailVideoEl.play().catch(() => {});
     } else if (els.mediaBoxText) {
       els.mediaBoxText.classList.add('is-active');
     }
@@ -913,7 +951,7 @@ function openDetailModal(memory) {
     } else if (els.mediaBoxText) {
       els.mediaBoxText.classList.add('is-active');
     }
-  } else if (mType === 'image' || mType === 'photo' || (mUrl && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(mUrl)) || (mUrl && mType !== 'text')) {
+  } else if (mType === 'image' || mType === 'photo' || mType === 'text' || (mUrl && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(mUrl)) || mUrl) {
     // ── 3. FOTO: mostra solo la foto senza nessun altro elemento
     if (els.mediaBoxPhoto && els.detailImg && mUrl) {
       els.detailImg.src = mUrl;
@@ -962,7 +1000,7 @@ function renderRelatedMemories(currentMem) {
   const currentTags = currentMem.tags || [];
 
   const related = state.memories.filter(
-    (m) => m.id !== currentMem.id && (m.tags || []).some((t) => currentTags.includes(t))
+    (m) => String(m.id) !== String(currentMem.id) && (m.tags || []).some((t) => currentTags.includes(t))
   );
 
   if (related.length === 0) {
@@ -1010,6 +1048,8 @@ function closeModals() {
   if (els.mediaBoxVideo) els.mediaBoxVideo.classList.remove('is-active');
   if (els.mediaBoxAudio) els.mediaBoxAudio.classList.remove('is-active');
   if (els.mediaBoxText) els.mediaBoxText.classList.remove('is-active');
+  if (els.mediaBoxModel) els.mediaBoxModel.classList.remove('is-active');
+  if (els.detailModelEl) els.detailModelEl.removeAttribute('src');
 
   // Ripristina focus all'elemento che ha attivato la modale
   if (state.lastActiveElement && typeof state.lastActiveElement.focus === 'function') {

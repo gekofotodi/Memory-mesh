@@ -23,8 +23,8 @@
   --border-card: #EADBCE;          /* Bordo caldo panna/bordeaux */
   --border-light: #F0E8DF;
 
-  /* Fonts: Instrument Serif per i titoli & Instrument Sans Bold per i testi */
-  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  /* Fonts: Helvetica (ink bleed) per titoli e menu & Instrument Sans per i testi */
+  --font-serif: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Helvetica con effetto ink bleed (shared/inkBleed.js) */
   --font-sans:  'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono:  'Instrument Sans', monospace, sans-serif;
 
@@ -1193,4 +1193,34 @@ body.kiosk-body {
     opacity: 1 !important;
     animation: none !important;
   }
+}
+
+/* ── Modello 3D (model-viewer) ── */
+.media-box--model .media-model {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  background: transparent;
+  --poster-color: transparent;
+}
+
+/* ── Titoli & menu: Helvetica con ink bleed ─────────────────────────
+   Il filtro SVG (bordi irregolari + espansione dell'inchiostro) è
+   assegnato per elemento da shared/inkBleed.js; in hover aumenta. */
+.header-title,
+.drawer-title,
+.selection-title {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.header-title em,
+.drawer-title em {
+  font-style: normal;
+}
+
+.wheel-btn,
+.wheel-btn__text {
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }

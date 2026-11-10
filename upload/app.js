@@ -12,6 +12,7 @@
  */
 
 import { supabase } from '../shared/supabase-config.js';
+import { initInkBleed } from '../shared/inkBleed.js';
 
 // ── Constants ──────────────────────────────────────────────────
 const MAX_IMAGE_SIDE = 1920;
@@ -113,6 +114,7 @@ const els = {
 
 // ── Initialise ─────────────────────────────────────────────────
 function init() {
+  initInkBleed({ selector: '.landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title' });
   bindNavigation();
   bindMediaSwitcher();
   bindDropzone();

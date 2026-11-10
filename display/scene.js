@@ -18,7 +18,7 @@ const FLOORS = {
     label: 'Piano Terra',
     elevation: 0,
     rooms: {
-      salone:      { x: -50,  y: 30,   w: 220, h: 160, label: 'Salone Centrale' },
+      'sala del re': { x: -50,  y: 30,   w: 220, h: 160, label: 'Sala del Re' }, // TODO: coordinate provvisorie, planimetria da aggiornare
       cucina:      { x: -250, y: -80,  w: 160, h: 140, label: 'Cucina' },
       studio:      { x: 150,  y: -70,  w: 170, h: 130, label: 'Studio' },
       ghiacciaia:  { x: -250, y: 110,  w: 150, h: 120, label: 'Ghiacciaia' },
@@ -322,6 +322,10 @@ export function initScene(canvas) {
         month = d.getMonth() + 1;
         day = d.getDate();
       }
+    }
+    const iso = mem.time_event && String(mem.time_event).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      return { year: +iso[1], month: +iso[2], day: +iso[3] };
     }
     if (mem.time_event) {
       const str = String(mem.time_event).toLowerCase();
@@ -1531,7 +1535,7 @@ export function initScene(canvas) {
         const mid = toIso(room.x, room.y, z);
 
         ctx.fillStyle = '#99251C';
-        ctx.font = 'italic 13px "Instrument Serif", Georgia, serif';
+        ctx.font = '700 11.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(room.label, mid.x, mid.y);
@@ -1542,7 +1546,7 @@ export function initScene(canvas) {
       ctx.fillStyle = '#99251C';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
-      ctx.font = 'italic 18px "Instrument Serif", Georgia, serif';
+      ctx.font = '700 15.8px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.fillText(fl.label, labelPos.x - 30, labelPos.y - 14);
 
       ctx.restore();
@@ -1696,9 +1700,9 @@ export function initScene(canvas) {
         if (p.y < topPt.y) topPt = p;
       }
 
-      // Prepara etichetta (Title Case in Instrument Serif naturale)
+      // Prepara etichetta (Title Case in Helvetica)
       const tagTitle = tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
-      ctx.font = 'italic 18px "Instrument Serif", Georgia, serif';
+      ctx.font = '700 15.8px "Helvetica Neue", Helvetica, Arial, sans-serif';
       const textWidth = ctx.measureText(tagTitle).width;
 
       clusterLabels.push({
@@ -1735,8 +1739,8 @@ export function initScene(canvas) {
     for (const lbl of clusterLabels) {
       ctx.fillStyle = lbl.color;
       ctx.font = lbl.isFocused
-        ? 'italic 21px "Instrument Serif", Georgia, serif'
-        : 'italic 18px "Instrument Serif", Georgia, serif';
+        ? '700 18.5px "Helvetica Neue", Helvetica, Arial, sans-serif'
+        : '700 15.8px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.fillText(lbl.tag, lbl.x, lbl.y);
     }
 
@@ -1780,7 +1784,7 @@ export function initScene(canvas) {
       ctx.strokeRect(-bannerW / 2, bannerY, bannerW, bannerH);
 
       ctx.fillStyle = '#99251C';
-      ctx.font = 'italic 30px "Instrument Serif", Georgia, serif';
+      ctx.font = '700 26.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`Anno ${focusedYr}`, 0, baselineY - 414);
 
@@ -1821,8 +1825,8 @@ export function initScene(canvas) {
         // Nome mese (GEN, FEB, ...)
         ctx.fillStyle = hasMemories ? '#99251C' : 'rgba(153, 37, 28, 0.35)';
         ctx.font = hasMemories
-          ? 'italic 20px "Instrument Serif", Georgia, serif'
-          : '400 16px "Instrument Serif", Georgia, serif';
+          ? '700 17.6px "Helvetica Neue", Helvetica, Arial, sans-serif'
+          : '700 14.1px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(MONTH_NAMES[m - 1], mx, baselineY + 28);
 
@@ -1889,7 +1893,7 @@ export function initScene(canvas) {
 
         // Etichetta anno
         ctx.fillStyle = '#99251C';
-        ctx.font = isHoverYr ? '400 32px "Instrument Serif", Georgia, serif' : '400 28px "Instrument Serif", Georgia, serif';
+        ctx.font = isHoverYr ? '700 28.2px "Helvetica Neue", Helvetica, Arial, sans-serif' : '700 24.6px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(String(yr), x, baselineY + (isHoverYr ? 38 : 36));
 
@@ -1928,7 +1932,7 @@ export function initScene(canvas) {
     ctx.fill();
 
     ctx.fillStyle = '#99251C';
-    ctx.font = isHover ? '400 25px "Instrument Serif", Georgia, serif' : '400 22px "Instrument Serif", Georgia, serif';
+    ctx.font = isHover ? '700 22px "Helvetica Neue", Helvetica, Arial, sans-serif' : '700 19.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(String(yr), x, baselineY + 32);
 
@@ -2118,7 +2122,7 @@ export function initScene(canvas) {
       const mediaType = (node.memory.media_type || '').toLowerCase();
 
       // Disegno del media a spigoli vivi (nessun bordo stondato, nessuna cornice panna)
-      if ((mediaType === 'image' || mediaType === 'video') && imageCache.has(mediaUrl)) {
+      if ((mediaType === 'image' || mediaType === 'video' || mediaType === 'text') && imageCache.has(mediaUrl)) {
         const img = imageCache.get(mediaUrl);
         const natW = img.naturalWidth || img.width;
         const natH = img.naturalHeight || img.height;
@@ -2149,13 +2153,22 @@ export function initScene(canvas) {
 
         ctx.font = '700 8px "Instrument Sans", sans-serif';
         ctx.fillText('AUDIO', nx, ny + 12);
+      } else if (mediaType === 'model3d') {
+        ctx.fillStyle = '#F8F3EC';
+        ctx.fillRect(x0, y0, w, h);
+        ctx.fillStyle = '#99251C';
+        ctx.font = '700 17.6px "Helvetica Neue", Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('3D', nx, ny - 2);
+        ctx.font = '700 7.5px "Instrument Sans", sans-serif';
+        ctx.fillText('MODELLO', nx, ny + 12);
       } else {
         // Text / Default memory a spigoli vivi
         ctx.fillStyle = '#F8F3EC';
         ctx.fillRect(x0, y0, w, h);
 
         ctx.fillStyle = '#99251C';
-        ctx.font = 'italic 18px "Instrument Serif", Georgia, serif';
+        ctx.font = '700 15.8px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('“ ”', nx, ny - 2);
 
@@ -2183,9 +2196,9 @@ export function initScene(canvas) {
       const x = node.x;
       const y = node.y + h / 2 + 14;
 
-      // Line 1: Titolo (Instrument Serif: naturale, mai in caps lock)
+      // Line 1: Titolo (Helvetica: naturale, mai in caps lock)
       ctx.fillStyle = '#99251C';
-      ctx.font = 'italic 13px "Instrument Serif", Georgia, serif';
+      ctx.font = '700 11.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
       const title = node.memory.title || 'Senza titolo';
       const truncTitle = title.length > 22 ? title.substring(0, 20) + '…' : title;

@@ -1,0 +1,120 @@
+# CLAUDE.md — Memory Mesh
+
+Contesto sintetico per Claude Code. **Leggi questo file invece di scansionare tutta la repo.** Apri solo i file (e le sezioni) che servono al task.
+
+Archivio di memoria comunitaria + installazione interattiva per il **Centro Giovanile Stoà**.
+Due front-end statici che condividono un backend Supabase:
+- `/upload` → web app mobile (accesso via QR) per inviare ricordi.
+- `/display` → kiosk fullscreen 16:9 navigato con le mani (MediaPipe Hands via webcam).
+
+Lingua: UI e commenti in **italiano**. Rispondi all'utente in italiano.
+
+---
+
+## Stack e vincoli
+
+- Vanilla HTML5 + CSS3 + ES Modules nativi. **Niente framework, niente bundler, niente npm build.**
+- Dipendenze solo via CDN **con versione fissata**: `@supabase/supabase-js@2` (+esm, jsDelivr), `@mediapipe/hands@0.4.1675469240` + `@mediapipe/camera_utils@0.3.1675466862`, `@google/model-viewer@3.5.0` (modelli 3D nella modale) (script globali `window.Hands`, `window.Camera`), Google Fonts (Instrument Sans; Instrument Serif solo per la card citazione generata in `upload/app.js`).
+- Hosting: Vercel statico (`vercel.json`: `cleanUrls`, `trailingSlash`). HTTPS obbligatorio per la webcam.
+- Dev locale: `npx serve .` dalla root della repo → `/upload/` e `/display/`.
+- Supabase **Free Tier**: risparmiare storage e banda è un requisito, non un'ottimizzazione.
+
+## Mappa dei file (righe ≈)
+
+```
+shared/supabase-config.js   (19)   createClient + URL/publishable key. Unica fonte credenziali.
+shared/inkBleed.js          (190)  Filtro SVG "ink bleed" per titoli/menu (uno per elemento), hover 'pointer' (upload) o 'manual' via setInkHoverPoint (display)
+upload/index.html           (333)  Step: landing → landing2 → info → form (+ overlay successo)
+upload/app.js               (1064) Navigazione step, dropzone, compressione, data AAAA-MM-GG, submit
+upload/style.css            (1113)
+display/index.html          (269)  canvas scena, video webcam, header, 2 wheel-dock, camera-hud, drawer info, modale dettaglio, toast, cursore virtuale
+display/main.js             (1115) Orchestratore: Supabase fetch + realtime, callback gesture, menu, modali
+display/tracking.js         (524)  MediaPipe → eventi astratti; fallback mouse
+display/scene.js            (2242) Motore Canvas 2D: camera, nodi, 5 layout, render loop
+display/wheelMenu.js        (182)  Classe WheelMenu2D (voci radiali, setItems, selectValue)
+display/style.css           (1196)
+.antigravity/rules.md              Regole originali per Antigravity IDE (stesso contenuto di questo file, sezione Regole)
+```
+
+### `display/scene.js` — sezioni
+- 15 `FLOORS` (stanze per piano, coordinate mondo) · 50 `CLUSTER_PALETTE` (colore per tag)
+- 96 `initScene(canvas)` → stato camera/nodi · 219 fabric wave · 297 `parseMemoryDate`
+- 381 `setMemories` / 467 `addMemory` (preload immagini, primo frame video in `imageCache`)
+- 538–915 `recalculateLayoutTargets()` — uno `case` per layout: `nodi`, `cluster`, `planimetria`, `timeline`, `griglia`
+- 916 mode switchers (`setLayout`, `setFloor`, `setTimelineYear`, `setClusterTag`, `setGridSort`)
+- 1020 `pan`/`zoom` · 1087 `hitTest` · 1130 `update` · 1171 clamp camera a molla · 1229 `render` (rAF)
+- 1282 disegno planimetria assonometrica · 1555–1745 cluster (convex hull + Chaikin) · 1747 timeline · 2021 filamenti · 2087 miniature · 2176 metadati griglia
+- 2206 API pubblica restituita da `initScene`
+
+### Contratto tracking → main (non legare la scena alle gesture)
+`initTracking({videoEl, canvasEl, callbacks})` emette: `onPointerMove(x,y)`, `onSelect()`, `onPan(dx,dy)`, `onZoom(factor)`, `onHandStateChange(left,right)`.
+- Mano **destra** fisica (label MediaPipe `Left`, camera specchiata): puntatore con lerp 0.16 + deadzone 3.5px; pinch (isteresi 0.28/0.38, hold 120ms) = select; coordinate **congelate** all'inizio del pinch.
+- Mano **sinistra** fisica: pinch prolungato = pan con inerzia (decay 0.92); polso inclinato >20° a mano aperta = zoom continuo (×1.018 / ×0.982).
+- Senza webcam/MediaPipe → `enableMouseFallback()` (click = select, shift/right-drag = pan, rotella = zoom).
+
+### Layout e menu destro contestuale (`main.js → activateLayout`)
+| Layout | Menu destro |
+|---|---|
+| `nodi` | nessuno (nascosto) |
+| `cluster` | tag presenti nei dati → `setClusterTag` |
+| `planimetria` | Piano Terra / Primo / Secondo → `setFloor` |
+| `timeline` | Tutti gli anni + anni → `setTimelineYear` |
+| `griglia` | ordina per Data / Media / Tag / Luogo → `setGridSort` |
+
+I menu compaiono per prossimità del puntatore ai bordi (enter 240px, leave 380px). Tasti kiosk: `1-5` layout, `I` info, `W` onda, `Esc` chiudi.
+
+## Supabase (progetto `memory mesh`, ref `nkymnsfkrmpnkmdyrayd`, eu-west-1)
+
+Tabella `public.memories` (RLS on, in pubblicazione `supabase_realtime`):
+| colonna | tipo | note |
+|---|---|---|
+| id | bigint identity | **numero**, non stringa |
+| created_at | timestamptz | default now() = data di invio |
+| title | text | max 5 parole (validato solo client) |
+| description | text | |
+| media_url | text | URL pubblico bucket `uploads` |
+| media_type | text | `image` · `video` · `audio` · `text` · `model3d` |
+| tags | text[] | 1–3 tag tematici minuscoli |
+| location_tag | text | stanza (minuscolo) |
+| time_event | date | data dell'evento (opzionale) |
+| privacy_consent | bool | deve essere true |
+
+Policy: `anon` INSERT su memories se `privacy_consent = true`; `anon` SELECT tutto; `anon` INSERT su storage bucket `uploads` (pubblico, nessun limite dimensione/MIME lato server).
+
+**Vocabolari controllati** (devono restare allineati tra upload e display):
+- Tag tematici (`upload/index.html #theme-chips` ↔ `scene.js CLUSTER_PALETTE`): studio, evento, vita comune, fede, musica, amici, relax, cibo, arte, festa, carità.
+- Luoghi (`upload/index.html #location-chips` ↔ `scene.js FLOORS`): cucina, sala del re, studio, ghiacciaia, giardino, esterno (terra) · sala conferenze, camere (primo) · mansarda, cappellina (secondo).
+
+## Regole di sviluppo
+
+0. Decisioni di progetto: niente moderazione; date = `time_event`, fallback `created_at`; video autoplay muto; i ricordi `FALLBACK_MEMORIES` in `main.js` sono solo demo (mostrati se il DB è vuoto, sostituiti al primo ricordo reale). In futuro: mini stampante che stampa i nuovi ricordi.
+
+1. **Modifica solo i file del task.** Non riscrivere o riformattare file interi. Mantieni la separazione: `tracking.js` = gesture, `scene.js` = rendering, `main.js` = orchestrazione/dati/realtime, `shared/` = config comune.
+2. **Kiosk resilience (/display):** mai `alert()`, `confirm()`, `prompt()` o popup bloccanti. Errori di rete o perdita del tracking → fallimento silenzioso o indicatore discreto. Nessun memory leak: un solo loop rAF per scopo, cancellare rAF/listener/media quando non servono più.
+3. **Storage efficiente (/upload):** immagini compresse via Canvas prima dell'upload (WebP/JPEG, lato lungo ≤1920px, qualità 0.8 a scendere). Mai caricare originali pesanti.
+4. **Realtime:** un unico `supabase.channel()` su `INSERT` di `memories`. Niente polling con `setInterval`.
+5. **Dati sempre con fallback:** `m.tags || []`, `m.title || 'Senza titolo'`, ecc. Confronta gli id con `String(a) === String(b)`.
+6. **Stile:** palette bordeaux `#99251C` su panna `#F9F6F0` / `#FFFDF9`, bordi `#EADBCE`; titoli e menu in Helvetica (`--font-serif`) con effetto ink bleed di `shared/inkBleed.js` (mai maiuscolo; nuovi titoli → aggiungi la classe al selettore di `initInkBleed`), testi Instrument Sans. Le etichette canvas di `scene.js` usano Helvetica bold senza filtro. Usa le CSS custom properties già definite in `:root`.
+7. Se aggiungi un tag o una stanza, aggiornalo **in entrambi** i front-end (vedi vocabolari).
+8. Nessun segreto nel codice oltre alla publishable key. Niente service_role key nel client.
+
+## Problemi noti (backlog — verificare prima di toccare queste aree)
+
+- [x] **Doppio inserimento realtime:** `scene.setMemories` tiene la stessa reference di `state.memories`; nel listener `main.js` fa `unshift` e poi `scene.addMemory` fa di nuovo `unshift` → ricordo duplicato nell'array e contatore +2. Anche l'onda parte due volte.
+- [x] **Related chip via gesture non funziona con id numerici:** `handleSelect` confronta `m.id === dataset.id` (numero vs stringa).
+- [x] **`sala del re` non esiste in `FLOORS`** → quei ricordi spariscono in planimetria. I ricordi di fallback usano luoghi inesistenti (Portico, Sala Studio, Salone) e tag fuori vocabolario.
+- [x] **Data:** modale e timeline usano `created_at` (invio) prima di `time_event` (evento).
+- [x] **`model3d` (glb/gltf)** accettato in upload ma non gestito nel display (modale prova a mostrarlo come immagine).
+- [x] **Card testo:** l'upload genera un'immagine della citazione, ma il display mostra solo il placeholder "MEMORIA".
+- [x] Video: autoplay muto in loop all'apertura (scelta di progetto). [ ] Audio: controlli nativi non azionabili con gesture.
+- [ ] Miniature caricano il file pieno (fino a 1920px) per disegnare ~86px; nessuna thumbnail dedicata.
+- [x] CDN non versionate (`supabase-js`, `@mediapipe/*`) → un rilascio upstream può rompere il kiosk.
+- [x] Riconnessione realtime (retry 5s). [ ] Recupero se la webcam si scollega; nessun idle/attract mode.
+- [ ] Bucket senza limiti server-side (dimensione/MIME). Moderazione: **scelta di progetto, NESSUNA approvazione** — i ricordi appaiono subito.
+- [ ] `alert()` in `upload/app.js` per errori di invio; file orfani nello storage se l'insert fallisce.
+- [x] Anello progresso cursore: perimetro 125.6 calcolato con r=20 ma il cerchio SVG ha r=18.
+- [ ] Fallback mouse di `tracking.js` duplica listener già presenti in `main.js` (click/rotella doppi quando la webcam manca).
+- [ ] **Planimetria provvisoria:** stanze e coordinate in `FLOORS` non definitive (la Sala del Re ha preso il posto del vecchio Salone Centrale, coordinate da rifare).
+- [ ] README obsoleto rispetto all'implementazione.
+
+Quando risolvi un punto, spuntalo qui.

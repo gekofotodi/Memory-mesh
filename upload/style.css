@@ -37,9 +37,9 @@
   --r-xl:   28px;
   --r-full: 9999px;
 
-  /* Typography: Instrument Serif per i titoli & Instrument Sans Bold per i testi */
+  /* Typography: Helvetica (ink bleed) per i titoli & Instrument Sans per i testi */
   --font-sans:  'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-serif: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Helvetica con effetto ink bleed (shared/inkBleed.js) */
   --font:       var(--font-sans);
 
   /* Motion */
@@ -1110,4 +1110,21 @@ a { color: inherit; text-decoration: none; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Titoli: Helvetica con ink bleed (shared/inkBleed.js) ─────────── */
+.landing__monogram,
+.landing2__title,
+.info-block__title,
+.header__title,
+.overlay__title {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.landing2__title em,
+.info-block__title em,
+.header__title em,
+.overlay__title em {
+  font-style: normal;
 }

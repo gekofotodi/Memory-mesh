@@ -8,7 +8,7 @@
  *   import { supabase } from '../shared/supabase-config.js';
  */
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // ── Credentials ──────────────────────────────────────────────
 // Replace with your own Supabase project values.
