@@ -230,8 +230,9 @@ export function initScene(canvas) {
 
   // ── Resize ───────────────────────────────────────────────────
   function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
+    // Usa clientWidth/clientHeight per evitare l'overflow di 100vw con scrollbar
+    width = document.documentElement.clientWidth || window.innerWidth;
+    height = document.documentElement.clientHeight || window.innerHeight;
     dpr = window.devicePixelRatio || 1;
 
     canvas.width = width * dpr;
@@ -943,7 +944,7 @@ export function initScene(canvas) {
     activeFloor = floorKey;
     camera.targetX = 0;
     camera.targetY = 0;
-    // Transizione morbida di scorrimento verso il nuovo piano selezionato (2.4s)
+    // Transizione morbida di scorrimento verso il nuovo piano selezionato
     planimetriaEntranceTime = performance.now() - 2400;
   }
 
@@ -1026,9 +1027,11 @@ export function initScene(canvas) {
     camera.targetY -= dy / camera.zoom;
   }
 
-  function zoom(factor) {
+  function zoom(factor, screenX, screenY) {
     // In griglia zoom disattivato o molto controllato
     if (currentLayout === 'griglia') return;
+
+    const oldZoom = camera.targetZoom;
     camera.targetZoom = Math.min(camera.maxZoom, Math.max(camera.minZoom, camera.targetZoom * factor));
 
     if (currentLayout === 'timeline') {
@@ -1051,13 +1054,26 @@ export function initScene(canvas) {
         });
         setTimelineYear(bestYr);
         camera.targetZoom = 1.05;
+        return; // Lo zoom semantico riposiziona la camera — niente zoom-towards-point
       } else if (camera.targetZoom <= 0.76 && focusedTimelineYear !== null) {
         // Quando ci si allontana con lo zoom (<= 0.76), ritorna alla panoramica di tutti gli anni
         setTimelineYear(null);
         camera.targetZoom = 0.95;
+        return; // Lo zoom semantico riposiziona la camera — niente zoom-towards-point
       } else {
         recalculateLayoutTargets();
       }
+    }
+
+    // ── Zoom-towards-point ──────────────────────────────────────
+    // Regola la camera affinché il punto del mondo sotto il cursore
+    // resti nella stessa posizione sullo schermo (come Google Maps)
+    const newZoom = camera.targetZoom;
+    if (screenX !== undefined && screenY !== undefined && oldZoom !== newZoom) {
+      const dx = screenX - width / 2;
+      const dy = screenY - height / 2;
+      camera.targetX += dx * (1 / oldZoom - 1 / newZoom);
+      camera.targetY += dy * (1 / oldZoom - 1 / newZoom);
     }
   }
 
@@ -1110,27 +1126,35 @@ export function initScene(canvas) {
     });
   }
 
-  // ── Update Logic (Movimenti lenti, vellutati e organici) ────
+  // ── Update Logic (Movimenti reattivi e fluidi) ───────────────
   function update() {
-    camera.x += (camera.targetX - camera.x) * 0.042;
-    camera.y += (camera.targetY - camera.y) * 0.042;
-    camera.zoom += (camera.targetZoom - camera.zoom) * 0.042;
+    // Interpolazione camera velocizzata: 0.042 → 0.14 (≈3.3× più rapida)
+    camera.x += (camera.targetX - camera.x) * 0.14;
+    camera.y += (camera.targetY - camera.y) * 0.14;
+    camera.zoom += (camera.targetZoom - camera.zoom) * 0.14;
+
+    // ── Camera Bounds Clamping ──────────────────────────────────
+    // Calcola il bounding box di tutti i nodi visibili e blocca la camera
+    // entro un margine ragionevole per impedire di perdersi nel vuoto
+    clampCameraBounds();
 
     updateForces();
 
     nodes.forEach((node) => {
-      node.x += (node.targetX - node.x) * 0.038;
-      node.y += (node.targetY - node.y) * 0.038;
+      // Interpolazione nodi velocizzata: 0.038 → 0.13 (≈3.4× più rapida)
+      node.x += (node.targetX - node.x) * 0.13;
+      node.y += (node.targetY - node.y) * 0.13;
 
       const isHover = (hoveredNode === node);
       let targetS = isHover ? node.targetScale * 1.25 : node.targetScale;
-      node.scale += (targetS - node.scale) * 0.055;
+      node.scale += (targetS - node.scale) * 0.16;
 
-      // Nessun nodo scompare mai: visibilità sempre piena e stabile
-      let targetA = 1.0;
-      if (!isNodeMatchingFilter(node)) targetA = 0.35;
+      // Alpha: combina il targetAlpha del layout con il filtro attivo
+      // Il più restrittivo tra layout e filtro vince (min)
+      let targetA = node.targetAlpha !== undefined ? node.targetAlpha : 1.0;
+      if (!isNodeMatchingFilter(node)) targetA = Math.min(targetA, 0.35);
 
-      node.alpha += (targetA - node.alpha) * 0.045;
+      node.alpha += (targetA - node.alpha) * 0.12;
     });
 
     if (pointerScreen.x > 0 && pointerScreen.y > 0) {
@@ -1138,6 +1162,67 @@ export function initScene(canvas) {
     } else {
       hoveredNode = null;
     }
+  }
+
+  // ── Camera Bounds Clamping (Molla Progressiva) ─────────────────
+  // Impedisce alla camera di uscire dalla visualizzazione: l'utente può
+  // sforare leggermente i bordi, ma una molla progressiva lo riporta
+  // indietro con forza crescente — più si va fuori, più tira forte.
+  function clampCameraBounds() {
+    if (nodes.length === 0) return;
+
+    // 1. Calcola il bounding box del contenuto visibile
+    let cMinX = Infinity, cMaxX = -Infinity;
+    let cMinY = Infinity, cMaxY = -Infinity;
+
+    nodes.forEach((node) => {
+      if (node.targetScale <= 0.05 || node.targetAlpha < 0.05) return;
+      const halfW = node.w / 2;
+      const halfH = node.h / 2;
+      cMinX = Math.min(cMinX, node.targetX - halfW);
+      cMaxX = Math.max(cMaxX, node.targetX + halfW);
+      cMinY = Math.min(cMinY, node.targetY - halfH);
+      cMaxY = Math.max(cMaxY, node.targetY + halfH);
+    });
+
+    if (!isFinite(cMinX)) return;
+
+    // 2. Margine di overscroll: max 30% del viewport in coordinate world
+    //    Permette un po' di respiro ma non di perdersi
+    const viewHalfW = (width / 2) / camera.zoom;
+    const viewHalfH = (height / 2) / camera.zoom;
+    const overscrollX = viewHalfW * 0.30;
+    const overscrollY = viewHalfH * 0.30;
+
+    const boundMinX = cMinX - overscrollX;
+    const boundMaxX = cMaxX + overscrollX;
+    const boundMinY = cMinY - overscrollY;
+    const boundMaxY = cMaxY + overscrollY;
+
+    // 3. Molla progressiva: forza proporzionale allo sforamento²
+    //    Più si esce, più la forza aumenta — impossibile scappare
+    camera.targetX = springPull(camera.targetX, boundMinX, boundMaxX);
+    camera.targetY = springPull(camera.targetY, boundMinY, boundMaxY);
+  }
+
+  /**
+   * Molla progressiva con forza crescente:
+   *  - Forza base: 18% (sensibile anche a piccoli sforamenti)
+   *  - Forza massima: 60% (impedisce derive continue)
+   *  - Aumento: proporzionale allo sforamento (0.3% per pixel world)
+   */
+  function springPull(val, min, max) {
+    if (val < min) {
+      const overshoot = min - val;
+      const force = Math.min(0.60, 0.18 + overshoot * 0.003);
+      return val + overshoot * force;
+    }
+    if (val > max) {
+      const overshoot = val - max;
+      const force = Math.min(0.60, 0.18 + overshoot * 0.003);
+      return val - overshoot * force;
+    }
+    return val;
   }
 
   // ── Render Loop (60 FPS) ─────────────────────────────────────

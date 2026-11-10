@@ -540,7 +540,7 @@ function handlePan(dx, dy) {
 
 function handleZoom(factor) {
   if (state.activeModal) return;
-  state.scene.zoom(factor);
+  state.scene.zoom(factor, state.cursorX, state.cursorY);
 }
 
 function handleHandStateChange(leftHand, rightHand) {
@@ -652,6 +652,9 @@ function bindUIEvents() {
   els.sceneCanvas.addEventListener('wheel', (e) => {
     if (state.activeModal) return;
     e.preventDefault();
+    // Aggiorna la posizione cursore dal wheel event per zoom-towards-point preciso
+    state.cursorX = e.clientX;
+    state.cursorY = e.clientY;
     if (e.shiftKey) {
       handlePan(-e.deltaY, 0);
     } else if (Math.abs(e.deltaX) > 0 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
