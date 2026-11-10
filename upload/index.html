@@ -41,10 +41,21 @@
         </p>
       </header>
 
-      <!-- Spazio centrale per immagine (quadrato placeholder vuoto da sostituire) -->
-      <div class="landing2__image-slot" aria-label="Spazio per immagine">
-        <!-- Inserisci qui la tua immagine (es. <img src="..." alt="..." />) -->
-        <div class="landing2__placeholder-box" id="landing2-placeholder"></div>
+      <!-- Illustrazione: piccola rete di ricordi (nodi + filamenti) -->
+      <div class="landing2__image-slot">
+        <svg class="landing2__mesh" viewBox="0 0 240 240" role="img" aria-label="Rete di ricordi collegati">
+          <line x1="52" y1="60" x2="150" y2="44"/><line x1="52" y1="60" x2="96" y2="132"/>
+          <line x1="150" y1="44" x2="96" y2="132"/><line x1="150" y1="44" x2="196" y2="118"/>
+          <line x1="96" y1="132" x2="196" y2="118"/><line x1="96" y1="132" x2="70" y2="196"/>
+          <line x1="196" y1="118" x2="160" y2="196"/><line x1="70" y1="196" x2="160" y2="196"/>
+          <line x1="96" y1="132" x2="160" y2="196"/>
+          <g class="node"><rect x="36" y="46" width="32" height="28" rx="2"/></g>
+          <g class="node"><rect x="132" y="30" width="36" height="28" rx="2"/></g>
+          <g class="node"><rect x="78" y="114" width="36" height="36" rx="2"/></g>
+          <g class="node"><rect x="182" y="102" width="28" height="32" rx="2"/></g>
+          <g class="node"><circle cx="70" cy="196" r="5"/></g>
+          <g class="node"><rect x="144" y="182" width="32" height="28" rx="2"/></g>
+        </svg>
       </div>
 
       <!-- Tasti di navigazione in basso -->
@@ -307,6 +318,7 @@
         <button type="submit" class="cta cta--submit" id="btn-submit">
           <span class="cta__label" id="submit-label">Invia il ricordo</span>
         </button>
+        <p class="submit-error" id="submit-error" role="alert" hidden></p>
       </form>
     </div>
   </section>

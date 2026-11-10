@@ -112,6 +112,12 @@ export function initScene(canvas) {
     maxZoom: 2.8,
   };
 
+  // Inquadratura automatica: fasce libere per header (alto) e HUD/Info (basso)
+  const FIT_PAD_TOP = 130;
+  const FIT_PAD_BOTTOM = 120;
+  const FIT_PAD_X = 90;
+  let fitZoom = 1; // zoom di riferimento dell'ultima inquadratura (per lo zoom semantico)
+
   // ── Scene State ──────────────────────────────────────────────
   let currentLayout = 'nodi';
   let currentFilter = 'all';
@@ -242,6 +248,7 @@ export function initScene(canvas) {
 
     ctx.scale(dpr, dpr);
     recalculateLayoutTargets();
+    fitCurrentLayout();
   }
   window.addEventListener('resize', resize);
   resize();
@@ -916,6 +923,84 @@ export function initScene(canvas) {
     }
   }
 
+  // ── Inquadratura automatica ──────────────────────────────────
+  // Porta tutto il contenuto visibile dentro lo schermo, lasciando libere
+  // le fasce occupate da header (alto) e HUD camera / Info (basso).
+  // (costanti FIT_PAD_* e fitZoom dichiarate accanto alla camera)
+  function fitCameraToContent(opts = {}) {
+    const {
+      filter = null,       // (node) => bool: inquadra solo questi nodi
+      extraMinY = null,    // estensioni in coordinate mondo (es. etichette timeline)
+      extraMaxY = null,
+      margin = 0,          // margine mondo attorno al contenuto (es. isole cluster)
+      maxZoom = 1.1,
+      alignTop = false,    // se il contenuto è più alto dello schermo, parti dall'alto
+    } = opts;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach((n) => {
+      if (n.targetAlpha < 0.5) return;
+      if (filter && !filter(n)) return;
+      const s = n.targetScale || 1;
+      const hw = ((n.w || 80) * s) / 2;
+      const hh = ((n.h || 60) * s) / 2;
+      minX = Math.min(minX, n.targetX - hw);
+      maxX = Math.max(maxX, n.targetX + hw);
+      minY = Math.min(minY, n.targetY - hh);
+      maxY = Math.max(maxY, n.targetY + hh);
+    });
+    if (!isFinite(minX)) return;
+    if (extraMinY !== null) minY = Math.min(minY, extraMinY);
+    if (extraMaxY !== null) maxY = Math.max(maxY, extraMaxY);
+    minX -= margin; maxX += margin; minY -= margin; maxY += margin;
+
+    const availW = Math.max(200, width - FIT_PAD_X * 2);
+    const availH = Math.max(200, height - FIT_PAD_TOP - FIT_PAD_BOTTOM);
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+
+    let z = Math.min(availW / bw, availH / bh, maxZoom);
+    let alignToTop = false;
+    if (alignTop && availH / bh < Math.min(availW / bw, maxZoom)) {
+      // Contenuto molto alto (griglia lunga): niente zoom-out estremo, si scorre in verticale
+      z = Math.min(availW / bw, maxZoom);
+      alignToTop = true;
+    }
+    z = Math.max(camera.minZoom, Math.min(camera.maxZoom, z));
+
+    const cx = (minX + maxX) / 2;
+    // Punto mondo → schermo: (w - cam) * z + size/2
+    camera.targetX = cx;
+    if (alignToTop) {
+      camera.targetY = minY - (FIT_PAD_TOP - height / 2) / z;
+    } else {
+      const screenCY = FIT_PAD_TOP + availH / 2;
+      camera.targetY = (minY + maxY) / 2 - (screenCY - height / 2) / z;
+    }
+    camera.targetZoom = z;
+    fitZoom = z;
+  }
+
+  // Inquadratura specifica per ciascun layout (chiamata dopo recalculateLayoutTargets)
+  function fitCurrentLayout() {
+    if (currentLayout === 'timeline') {
+      // Include la linea di base e le etichette anno/mese sotto di essa
+      fitCameraToContent({ extraMaxY: 300, maxZoom: 1.1 });
+    } else if (currentLayout === 'griglia') {
+      fitCameraToContent({ alignTop: true, maxZoom: 1.1 });
+    } else if (currentLayout === 'cluster') {
+      if (focusedClusterTag) {
+        fitCameraToContent({
+          filter: (n) => Array.isArray(n.tags) && n.tags.some((t) => String(t).toLowerCase().trim() === focusedClusterTag),
+          margin: 90,
+          maxZoom: 1.25,
+        });
+      } else {
+        fitCameraToContent({ margin: 90, maxZoom: 1.0 });
+      }
+    }
+  }
+
   // ── Mode Switchers ───────────────────────────────────────────
   function setLayout(layoutName) {
     if (currentLayout === layoutName) return;
@@ -926,17 +1011,14 @@ export function initScene(canvas) {
       camera.targetX = 0;
       camera.targetY = 0;
       camera.targetZoom = 1.0;
-    } else if (layoutName === 'griglia') {
-      camera.targetX = 0;
-      camera.targetZoom = 1.0;
     } else if (layoutName === 'timeline') {
-      camera.targetX = 0;
-      camera.targetY = 60;
-      camera.targetZoom = 0.95;
       focusedTimelineYear = null;
+    } else if (layoutName === 'cluster') {
+      focusedClusterTag = null;
     }
 
     recalculateLayoutTargets();
+    fitCurrentLayout();
   }
 
   function setFilter(filterName) {
@@ -957,10 +1039,8 @@ export function initScene(canvas) {
   function setTimelineYear(year, skipCallback = false) {
     if (!year || year === 'all') {
       focusedTimelineYear = null;
-      camera.targetX = 0;
-      camera.targetY = 60;
-      camera.targetZoom = 0.95;
       recalculateLayoutTargets();
+      fitCurrentLayout();
       if (!skipCallback && onTimelineYearChange) onTimelineYearChange('all');
       return;
     }
@@ -968,44 +1048,38 @@ export function initScene(canvas) {
     const yr = parseInt(year, 10);
     focusedTimelineYear = yr;
 
-    // Quando un anno è aperto sui mesi, centrare la visuale sui 12 mesi
-    camera.targetX = 0;
-    camera.targetY = 40;
-    camera.targetZoom = 1.0;
+    // Anno aperto sui mesi: inquadra i 12 steli mensili (±880 mondo) e i ricordi dell'anno
     recalculateLayoutTargets();
+    fitCameraToContent({
+      filter: (n) => n.dateInfo.year === yr,
+      extraMaxY: 300,
+      maxZoom: 1.1,
+    });
+    // Garantisce che tutti i 12 mesi siano visibili in larghezza
+    const monthsZoom = (width - FIT_PAD_X * 2) / (11 * 160 + 160);
+    if (camera.targetZoom > monthsZoom) {
+      camera.targetZoom = Math.max(camera.minZoom, monthsZoom);
+      fitZoom = camera.targetZoom;
+    }
+    camera.targetX = 0;
     if (!skipCallback && onTimelineYearChange) onTimelineYearChange(String(yr));
   }
 
   function setClusterTag(tag) {
-    if (!tag) {
+    if (!tag || tag === 'all') {
       focusedClusterTag = null;
-      camera.targetX = 0;
-      camera.targetY = 0;
-      camera.targetZoom = 1.0;
+      fitCurrentLayout();
       return;
     }
-    const tagLower = tag.toLowerCase().trim();
-    focusedClusterTag = tagLower;
-
-    const matchingNodes = nodes.filter(
-      (n) => Array.isArray(n.tags) && n.tags.some((t) => String(t).toLowerCase().trim() === tagLower)
-    );
-
-    if (matchingNodes.length > 0) {
-      let cx = 0, cy = 0;
-      matchingNodes.forEach((n) => { cx += n.targetX; cy += n.targetY; });
-      cx /= matchingNodes.length;
-      cy /= matchingNodes.length;
-
-      camera.targetX = cx;
-      camera.targetY = cy;
-      camera.targetZoom = 1.35;
-    }
+    focusedClusterTag = tag.toLowerCase().trim();
+    // Inquadra l'isola del tag scelto (con margine per il contorno dell'isola)
+    fitCurrentLayout();
   }
 
   function setGridSort(sortKey) {
     gridSortMode = sortKey;
     recalculateLayoutTargets();
+    fitCurrentLayout();
   }
 
   function isNodeMatchingFilter(node) {
@@ -1041,7 +1115,7 @@ export function initScene(canvas) {
     if (currentLayout === 'timeline') {
       // Zoom semantico: se si ingrandisce (targetZoom >= 1.20) e nessun anno è aperto,
       // apri automaticamente l'anno più vicino al centro della visuale
-      if (camera.targetZoom >= 1.20 && focusedTimelineYear === null) {
+      if (camera.targetZoom >= fitZoom * 1.3 && focusedTimelineYear === null) {
         const years = getDistinctYears();
         const countYears = Math.max(1, years.length);
         const yearSpacing = 360;
@@ -1057,12 +1131,10 @@ export function initScene(canvas) {
           }
         });
         setTimelineYear(bestYr);
-        camera.targetZoom = 1.05;
         return; // Lo zoom semantico riposiziona la camera — niente zoom-towards-point
-      } else if (camera.targetZoom <= 0.76 && focusedTimelineYear !== null) {
-        // Quando ci si allontana con lo zoom (<= 0.76), ritorna alla panoramica di tutti gli anni
+      } else if (camera.targetZoom <= fitZoom * 0.75 && focusedTimelineYear !== null) {
+        // Quando ci si allontana con lo zoom, ritorna alla panoramica di tutti gli anni
         setTimelineYear(null);
-        camera.targetZoom = 0.95;
         return; // Lo zoom semantico riposiziona la camera — niente zoom-towards-point
       } else {
         recalculateLayoutTargets();
@@ -2217,6 +2289,11 @@ export function initScene(canvas) {
   requestAnimationFrame(render);
 
   return {
+    // Debug (solo lettura): stato camera e box dei nodi visibili
+    debugInfo: () => ({
+      camera: { ...camera }, width, height, fitZoom, layout: currentLayout, focusedClusterTag,
+      nodes: nodes.map((n) => ({ x: Math.round(n.targetX), y: Math.round(n.targetY), w: n.w, h: n.h, a: n.targetAlpha })),
+    }),
     setLayout,
     setFilter,
     setFloor,

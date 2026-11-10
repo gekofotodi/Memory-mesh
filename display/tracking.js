@@ -273,6 +273,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   // ── MediaPipe Results Handler ───────────────────────────────
   function onResults(results) {
     const now = performance.now();
+    lastFrameAt = now; // per il watchdog della webcam
 
     // Reset detection flags
     state.right.detected = false;
@@ -389,7 +390,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     }
 
     try {
-      const hands = new window.Hands({
+      hands = new window.Hands({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
       });
 
@@ -401,30 +402,91 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       });
 
       hands.onResults(onResults);
+    } catch (err) {
+      console.warn('[tracking] MediaPipe initialization failed:', err);
+      enableMouseFallback();
+      return;
+    }
 
+    await startCamera();
+    watchdog();
+  }
+
+  // ── Webcam: avvio, arresto e riavvio automatico ─────────────
+  let hands = null;
+  let mpCamera = null;
+  let restartTimer = null;
+  let lastFrameAt = 0;
+  const STALL_MS = 8000;       // nessun frame elaborato per 8s = webcam bloccata
+  const RETRY_MS = 10000;      // webcam assente: riprova ogni 10s
+
+  async function startCamera() {
+    try {
       if (typeof window.Camera !== 'undefined' && videoEl) {
-        const camera = new window.Camera(videoEl, {
+        mpCamera = new window.Camera(videoEl, {
           onFrame: async () => {
-            if (state.active) {
+            if (!state.active) return;
+            try {
               await hands.send({ image: videoEl });
+            } catch (err) {
+              scheduleRestart('errore elaborazione frame');
             }
           },
           width: 1280,
           height: 720,
         });
-
-        await camera.start();
-        state.webcamRunning = true;
-        state.active = true;
-        console.log('[tracking] MediaPipe Hands camera started successfully @ 720p');
+        await mpCamera.start();
       } else {
-        // Fallback: request getUserMedia directly
         await setupDirectWebcam(hands);
       }
+      state.webcamRunning = true;
+      state.active = true;
+      lastFrameAt = performance.now();
+
+      // Webcam scollegata (cavo USB, driver): il track termina
+      const stream = videoEl && videoEl.srcObject;
+      if (stream && stream.getVideoTracks) {
+        stream.getVideoTracks().forEach((t) => t.addEventListener('ended', () => scheduleRestart('webcam scollegata')));
+      }
+      if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('camera');
+      console.log('[tracking] Webcam avviata @ 720p');
     } catch (err) {
-      console.warn('[tracking] Webcam / MediaPipe initialization failed:', err);
+      console.warn('[tracking] Webcam non disponibile, riprovo tra 10s:', err);
       enableMouseFallback();
+      scheduleRestart('avvio fallito', RETRY_MS);
     }
+  }
+
+  function stopCamera() {
+    state.active = false;
+    state.webcamRunning = false;
+    try { if (mpCamera) mpCamera.stop(); } catch (_) {}
+    mpCamera = null;
+    const stream = videoEl && videoEl.srcObject;
+    if (stream && stream.getTracks) stream.getTracks().forEach((t) => t.stop());
+    if (videoEl) videoEl.srcObject = null;
+  }
+
+  function scheduleRestart(reason, delay = 3000) {
+    if (restartTimer) return;
+    console.warn(`[tracking] Riavvio webcam (${reason})`);
+    state.right.detected = false;
+    state.left.detected = false;
+    cb.onHandStateChange(state.left, state.right);
+    if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('reconnecting');
+    restartTimer = setTimeout(async () => {
+      restartTimer = null;
+      stopCamera();
+      await startCamera();
+    }, delay);
+  }
+
+  // Controlla periodicamente che arrivino frame (catena di setTimeout, nessun polling di rete)
+  function watchdog() {
+    if (state.webcamRunning && !restartTimer && performance.now() - lastFrameAt > STALL_MS) {
+      scheduleRestart('nessun frame');
+    }
+    setTimeout(watchdog, 4000);
   }
 
   async function setupDirectWebcam(hands) {
@@ -444,7 +506,12 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
     async function streamLoop() {
       if (state.active) {
-        await hands.send({ image: videoEl });
+        try {
+          await hands.send({ image: videoEl });
+        } catch (_) {
+          scheduleRestart('errore elaborazione frame');
+          return;
+        }
         requestAnimationFrame(streamLoop);
       }
     }
@@ -456,57 +523,11 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     if (state.useMouseFallback) return;
     state.useMouseFallback = true;
     console.log('[tracking] Mouse & keyboard fallback enabled.');
-
-    let isMouseDown = false;
-    let lastX = 0;
-    let lastY = 0;
-
-    window.addEventListener('mousemove', (e) => {
-      state.right.detected = true;
-      state.right.smoothX = e.clientX;
-      state.right.smoothY = e.clientY;
-      cb.onPointerMove(e.clientX, e.clientY);
-
-      if (isMouseDown) {
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
-        cb.onPan(dx, dy);
-        lastX = e.clientX;
-        lastY = e.clientY;
-      }
-    });
-
-    window.addEventListener('mousedown', (e) => {
-      // Right click or Shift+Click simulates 2D Pan
-      if (e.button === 2 || e.shiftKey) {
-        isMouseDown = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-      } else if (e.button === 0) {
-        // Left click simulates Pinch Selection
-        state.right.isPinching = true;
-        state.right.pinchProgress = 1.0;
-        cb.onSelect();
-        setTimeout(() => {
-          state.right.isPinching = false;
-          state.right.pinchProgress = 0;
-        }, 150);
-      }
-    });
-
-    window.addEventListener('mouseup', () => {
-      isMouseDown = false;
-    });
-
-    window.addEventListener('contextmenu', (e) => {
-      e.preventDefault(); // suppress right click menu for smooth drag pan
-    });
-
-    window.addEventListener('wheel', (e) => {
-      // Mouse wheel controls Canvas Zoom
-      const zoomFactor = e.deltaY < 0 ? 1.06 : 0.94;
-      cb.onZoom(zoomFactor);
-    }, { passive: true });
+    // Mouse, click, trascinamento e rotella sono già gestiti da main.js (bindUIEvents):
+    // qui NON si aggiungono listener, altrimenti ogni click/zoom scatterebbe due volte.
+    // Si segnala solo che il tracking mani non è disponibile.
+    cb.onHandStateChange({ ...state.left, detected: false }, { ...state.right, detected: false });
+    if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('mouse');
   }
 
   // Kickstart tracking

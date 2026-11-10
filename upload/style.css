@@ -258,14 +258,24 @@ a { color: inherit; text-decoration: none; }
   padding: var(--s-lg) 0;
 }
 
-.landing2__placeholder-box {
+/* Rete di ricordi (sostituisce il vecchio quadrato placeholder) */
+.landing2__mesh {
   width: min(65vw, 240px);
   aspect-ratio: 1 / 1;
-  background-color: #D9D9D9;
-  border-radius: 4px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
-  position: relative;
-  overflow: hidden;
+  color: var(--c-text-on-dark);
+  overflow: visible;
+}
+.landing2__mesh line { stroke: currentColor; stroke-width: 1; opacity: 0.45; }
+.landing2__mesh circle { fill: currentColor; }
+.landing2__mesh rect { fill: var(--c-card-dark); stroke: currentColor; stroke-width: 1.5; }
+@media (prefers-reduced-motion: no-preference) {
+  .landing2__mesh g.node { animation: mesh-float 6s ease-in-out infinite; transform-box: fill-box; }
+  .landing2__mesh g.node:nth-child(2n) { animation-delay: -2s; }
+  .landing2__mesh g.node:nth-child(3n) { animation-delay: -4s; }
+}
+@keyframes mesh-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
 .landing2__actions {
@@ -465,8 +475,43 @@ a { color: inherit; text-decoration: none; }
 }
 .header__spacer { width: 40px; }
 
+/* CTA base (pieno bordeaux) */
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.9rem 1.5rem;
+  border: 2px solid var(--c-text);
+  border-radius: var(--r-full);
+  background: var(--c-text);
+  color: var(--c-text-on-dark);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.cta:hover { background: var(--c-card-dark-badge); border-color: var(--c-card-dark-badge); }
+.cta:focus-visible { outline: 3px solid var(--c-border); outline-offset: 3px; }
+.cta:disabled { opacity: 0.55; cursor: wait; }
+
 .cta--submit {
   margin-top: var(--s-lg);
+}
+
+/* Errore di invio (al posto di alert) */
+.submit-error {
+  margin-top: var(--s-md);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--c-error);
+  border-radius: var(--r-sm);
+  background: rgba(201, 48, 48, 0.06);
+  color: var(--c-error);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 /* CTA outline */
@@ -533,10 +578,10 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: var(--s-sm);
 }
 .field__hint {
+  font-size: 0.75rem;
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
-  opacity: 0.7;
 }
 
 .field__wrap {

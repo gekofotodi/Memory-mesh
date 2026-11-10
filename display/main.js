@@ -202,7 +202,59 @@ const els = {
   // Virtual Cursor
   virtualCursor: $('#virtual-cursor'),
   cursorProgressRing: $('#cursor-progress-ring'),
+
+  // Idle overlay & stato webcam
+  idleOverlay: $('#idle-overlay'),
+  cameraHud: $('#camera-hud'),
+  cameraHudStatus: $('#camera-hud-status'),
 };
+
+// ── Schermata di attesa (idle) ─────────────────────────────────
+// Dopo IDLE_MS senza mani/mouse compare il titolo grande con il QR per caricare;
+// sparisce al primo gesto (il gesto che la chiude non seleziona nulla).
+const IDLE_MS = 45000;
+const idle = { lastActivity: performance.now(), visible: false };
+
+function markActivity(source = '') {
+  idle.lastActivity = performance.now();
+  if (idle.visible) {
+    console.log('[display] Schermata di attesa chiusa da:', source || 'attività');
+    hideIdleOverlay();
+  }
+}
+
+function showIdleOverlay() {
+  if (idle.visible || !els.idleOverlay) return;
+  idle.visible = true;
+  closeModals();
+  if (state.currentLayout !== 'nodi') activateLayout('nodi');
+  state.leftWheelVisible = false;
+  state.rightWheelVisible = false;
+  els.wheelLeft.classList.remove('is-visible');
+  els.wheelRight.classList.remove('is-visible');
+  els.idleOverlay.classList.add('is-visible');
+  els.idleOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function hideIdleOverlay() {
+  if (!idle.visible || !els.idleOverlay) return;
+  idle.visible = false;
+  els.idleOverlay.classList.remove('is-visible');
+  els.idleOverlay.setAttribute('aria-hidden', 'true');
+}
+
+function idleWatch() {
+  if (!idle.visible && performance.now() - idle.lastActivity > IDLE_MS) showIdleOverlay();
+  setTimeout(idleWatch, 1000);
+}
+
+function handleTrackingStatus(status) {
+  if (!els.cameraHud || !els.cameraHudStatus) return;
+  const offline = status !== 'camera';
+  els.cameraHud.classList.toggle('is-offline', offline);
+  els.cameraHudStatus.hidden = !offline;
+  els.cameraHudStatus.textContent = status === 'reconnecting' ? 'Webcam: riconnessione…' : 'Webcam non disponibile';
+}
 
 // ── Global App State ───────────────────────────────────────────
 const state = {
@@ -225,10 +277,12 @@ async function init() {
   console.log('[display] Initializing Memory Mesh Kiosk...');
 
   // 0. Ink bleed su titoli e menu (hover pilotato dal cursore virtuale)
-  initInkBleed({ selector: '.header-title, .wheel-btn, .drawer-title, .selection-title', hover: 'manual' });
+  initInkBleed({ selector: '.header-title, .wheel-btn, .drawer-title, .selection-title, .idle-title', hover: 'manual' });
 
   // 1. Initialise Canvas 2D Scene Engine
   state.scene = initScene(els.sceneCanvas);
+  // In locale espone la scena per il debug dalla console del browser
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__mm = { state, showIdle: () => showIdleOverlay() };
   if (state.scene.setOnTimelineYearChange) {
     state.scene.setOnTimelineYearChange((val) => {
       if (state.rightWheel && state.currentLayout === 'timeline') {
@@ -265,6 +319,9 @@ async function init() {
 
   // 6. Subscribe to Real-Time Supabase INSERT events
   setupRealtimeSubscription();
+
+  // 7. Schermata di attesa dopo 45s di inattività
+  idleWatch();
 
   console.log('[display] Ready and listening.');
 }
@@ -368,6 +425,7 @@ function initTrackingPipeline() {
       onPan: handlePan,
       onZoom: handleZoom,
       onHandStateChange: handleHandStateChange,
+      onTrackingStatus: handleTrackingStatus,
     },
   });
 }
@@ -376,6 +434,7 @@ function initTrackingPipeline() {
 let pointerRafId = null;
 
 function handlePointerMove(x, y) {
+  markActivity('puntatore');
   state.cursorX = x;
   state.cursorY = y;
 
@@ -463,6 +522,9 @@ function handlePointerMove(x, y) {
 }
 
 function handleSelect() {
+  // Il primo gesto chiude la schermata di attesa senza selezionare nulla
+  if (idle.visible) { markActivity('select'); return; }
+  markActivity();
   const x = state.cursorX;
   const y = state.cursorY;
 
@@ -557,11 +619,13 @@ function handleSelect() {
 }
 
 function handlePan(dx, dy) {
+  markActivity('pan');
   if (state.activeModal) return; // Freeze scene navigation while reading a memory
   state.scene.pan(dx, dy);
 }
 
 function handleZoom(factor) {
+  markActivity('zoom');
   if (state.activeModal) return;
   state.scene.zoom(factor, state.cursorX, state.cursorY);
 }
@@ -569,6 +633,7 @@ function handleZoom(factor) {
 function handleHandStateChange(leftHand, rightHand) {
   // Update Tracking Status text & dot in camera HUD (if present)
   const isTracking = leftHand.detected || rightHand.detected;
+  if (isTracking) markActivity('mano rilevata'); // una mano davanti alla webcam chiude la schermata di attesa
   if (els.hudStatusDot) {
     els.hudStatusDot.classList.toggle('is-tracking', isTracking);
   }
@@ -717,6 +782,8 @@ function bindUIEvents() {
 
   // Keyboard accessibility & kiosk helpers
   window.addEventListener('keydown', (e) => {
+    if (idle.visible) { markActivity('tastiera'); return; }
+    markActivity();
     if (e.key === 'Escape') closeModals();
     if (e.key === '1') activateLayout('nodi');
     if (e.key === '2') activateLayout('cluster');
@@ -781,9 +848,9 @@ function activateLayout(layoutName, syncWheel = true) {
         value: t,
         label: t.charAt(0).toUpperCase() + t.slice(1).toLowerCase(),
       }));
-      const defaultTag = items.length > 0 ? items[0].value : null;
-      state.rightWheel.setItems(items, defaultTag);
-      if (defaultTag) state.scene.setClusterTag(defaultTag);
+      // Prima voce: panoramica di tutte le isole (vista di ingresso)
+      state.rightWheel.setItems([{ value: 'all', label: 'Tutti i temi' }, ...items], 'all');
+      state.scene.setClusterTag(null);
     } else if (layoutName === 'timeline') {
       // Mostra panoramica completa per anni
       const years = state.scene.getDistinctYears();

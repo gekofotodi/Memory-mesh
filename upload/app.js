@@ -600,7 +600,10 @@ function compressImage(file) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Iteratively compress until under MAX_FILE_BYTES
+      // Iteratively compress until under MAX_FILE_BYTES.
+      // Alcuni browser (es. Safari iOS) non sanno codificare WebP e restituiscono
+      // silenziosamente un PNG non compresso: in quel caso si passa a JPEG.
+      let mime = 'image/webp';
       const tryCompress = (quality) => {
         canvas.toBlob(
           (blob) => {
@@ -608,18 +611,28 @@ function compressImage(file) {
               reject(new Error('Canvas toBlob returned null'));
               return;
             }
+            if (blob.type !== mime) {
+              if (mime === 'image/webp') {
+                mime = 'image/jpeg';
+                tryCompress(IMAGE_QUALITY_START);
+                return;
+              }
+              reject(new Error(`Formato immagine non supportato dal browser (${blob.type})`));
+              return;
+            }
             if (blob.size > MAX_FILE_BYTES && quality > IMAGE_QUALITY_MIN) {
               tryCompress(quality - IMAGE_QUALITY_STEP);
             } else {
+              const ext = mime === 'image/webp' ? '.webp' : '.jpg';
               const compressed = new File(
                 [blob],
-                file.name.replace(/\.[^.]+$/, '.webp'),
-                { type: 'image/webp' }
+                file.name.replace(/\.[^.]+$/, '') + ext,
+                { type: mime }
               );
               resolve(compressed);
             }
           },
-          'image/webp',
+          mime,
           quality
         );
       };
@@ -706,19 +719,25 @@ function generateTextCardImage(text, title = '') {
       ctx.fillText(title.toUpperCase(), 72, 715);
     }
 
-    // Export to WebP blob
-    canvas.toBlob(
+    // Export to WebP blob (fallback JPEG se il browser non codifica WebP, es. Safari iOS)
+    const exportAs = (mime) => canvas.toBlob(
       (blob) => {
         if (!blob) {
           reject(new Error('Canvas toBlob failed'));
           return;
         }
-        const file = new File([blob], `text_card_${Date.now()}.webp`, { type: 'image/webp' });
+        if (blob.type !== mime && mime === 'image/webp') {
+          exportAs('image/jpeg');
+          return;
+        }
+        const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+        const file = new File([blob], `text_card_${Date.now()}.${ext}`, { type: blob.type });
         resolve(file);
       },
-      'image/webp',
-      0.92
+      mime,
+      0.9
     );
+    exportAs('image/webp');
   });
 }
 
@@ -896,6 +915,7 @@ function validate() {
 }
 
 async function submitMemory() {
+  hideSubmitError();
   setLoading(true);
 
   try {
@@ -924,18 +944,58 @@ async function submitMemory() {
       privacy_consent: true,
     };
 
-    const { error } = await supabase.from('memories').insert(record);
-    if (error) throw error;
+    await withRetry(async () => {
+      const { error } = await supabase.from('memories').insert(record);
+      if (error) throw error;
+    });
 
     // 3. Show success
     showSuccess();
   } catch (err) {
     console.error('[upload] submit failed:', err);
-    alert(`Errore durante l'invio: ${err.message || err}`);
+    showSubmitError(err);
   } finally {
     setLoading(false);
   }
 }
+
+// Ritenta un'operazione di rete (Wi-Fi affollato all'evento): 3 tentativi, attesa crescente
+async function withRetry(fn, attempts = 3) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      // Errori di validazione lato server (4xx) non migliorano ritentando
+      const status = Number(err?.statusCode || err?.status || 0);
+      const code = String(err?.code || '');
+      if ((status >= 400 && status < 500) || code.startsWith('23')) break;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+function showSubmitError(err) {
+  const box = $('#submit-error');
+  if (!box) return;
+  const raw = String(err?.message || err || '');
+  let msg = 'Invio non riuscito. Controlla la connessione e riprova.';
+  if (/size|too large|exceeded/i.test(raw)) msg = 'Il file è troppo pesante (max 10 MB). Scegline uno più leggero.';
+  else if (/mime|type/i.test(raw)) msg = 'Formato del file non accettato. Usa foto, video, audio o modelli .glb.';
+  else if (/violates check|constraint/i.test(raw)) msg = 'Alcuni dati non sono validi. Controlla titolo, tag e luogo e riprova.';
+  box.textContent = msg;
+  box.hidden = false;
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function hideSubmitError() {
+  const box = $('#submit-error');
+  if (box) box.hidden = true;
+}
+
+const EXT_MIME = { glb: 'model/gltf-binary', gltf: 'model/gltf+json' };
 
 async function uploadFile(file) {
   // Generate unique filename
@@ -944,15 +1004,16 @@ async function uploadFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   const filePath = `${timestamp}_${random}.${ext}`;
 
-  const { data, error } = await supabase.storage
-    .from('uploads')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type || 'application/octet-stream',
-    });
+  // I .glb spesso non hanno MIME dal browser: lo forziamo (il bucket accetta solo tipi noti)
+  const contentType = EXT_MIME[ext] || file.type || 'application/octet-stream';
 
-  if (error) throw error;
+  await withRetry(async () => {
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filePath, file, { cacheControl: '31536000', upsert: false, contentType });
+    // 409 = il tentativo precedente era già andato a buon fine (risposta persa)
+    if (error && String(error.statusCode) !== '409') throw error;
+  });
 
   // Get public URL
   const { data: urlData } = supabase.storage
