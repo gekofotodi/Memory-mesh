@@ -7,7 +7,7 @@
 
 ## Display
 
-- [ ] D8 !! · gesture · provare D7 con le mani sul PC del kiosk → il mirino è ancora in ritardo? [?]
+- [ ] D8 !! · gesture · sul PC del kiosk premi F e mandami i numeri del contatore (soprattutto "Collo di bottiglia") → il mirino va ancora a scatti [?]
 
 ## Upload
 
@@ -23,3 +23,4 @@
 - [x] D5 · hover/click sul titolo → pannello testo + QR + "esplora", a righe con filetti (niente bento) · (display/index.html, style.css, main.js)
 - [x] D6 · linee a bordo schermo, una per voce, stessa inclinazione; attiva lunga e piena, vicine medie; spariscono quando il menu è aperto · (display/wheelMenu.js, style.css)
 - [x] D7 · mirino: filtro One Euro + movimento a 60fps (prima lerp 0.16 a ~20fps = ~0,6s di ritardo); zona attiva centrale della webcam; MediaPipe modello lite a 640×480 · (display/tracking.js)
+- [x] D9 · contatore prestazioni: tasto F o /display/?fps=1 → webcam, MediaPipe, schermo, GPU e collo di bottiglia · (display/main.js, tracking.js, style.css)

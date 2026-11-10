@@ -328,6 +328,7 @@ async function init() {
 
   // 2. Initialise Computer Vision & Gesture Pipeline
   initTrackingPipeline();
+  if (new URLSearchParams(location.search).has('fps')) togglePerfHud(true);
 
   // 3. Bind UI interactions (Wheel menus, modals, click fallbacks)
   bindUIEvents();
@@ -450,6 +451,72 @@ function showLiveToast() {
 }
 
 // ── Hand Tracking Pipeline Setup ───────────────────────────────
+// ── Contatore prestazioni (tasto F, oppure /display/?fps=1) ────
+// Webcam = fotogrammi consegnati dalla webcam · MediaPipe = fotogrammi analizzati
+// Schermo = fluidità del disegno · GPU = scheda usata da Chrome (SwiftShader = senza accelerazione)
+const perfHud = { el: null, timer: null, rafCount: 0, rafId: null, gpu: null };
+
+function detectGpu() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) return 'WebGL non disponibile';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    return String(name).replace(/^ANGLE \((.*)\)$/, '$1');
+  } catch (_) { return 'sconosciuta'; }
+}
+
+function perfRow(label, value, level) {
+  return `<div class="perf-hud__row is-${level}"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function updatePerfHud() {
+  const st = state.tracking && state.tracking.takePerfStats ? state.tracking.takePerfStats() : null;
+  const screenFps = perfHud.rafCount; perfHud.rafCount = 0;
+  const lvl = (v, ok, warn) => (v >= ok ? 'ok' : v >= warn ? 'warn' : 'bad');
+  const software = /swiftshader|software|llvmpipe|basic render/i.test(perfHud.gpu);
+  let html = '<span class="perf-hud__title">PRESTAZIONI · tasto F</span>';
+  if (st && st.running) {
+    html += perfRow('Webcam', `${st.camFrames} fps · ${st.camW}×${st.camH}`, lvl(st.camFrames, 24, 15));
+    html += perfRow('MediaPipe', `${st.results} fps · ${st.sendMs.toFixed(0)} ms`, lvl(st.results, 20, 12));
+    html += perfRow('Mani', String(st.hands), 'ok');
+  } else {
+    html += perfRow('Webcam', 'non attiva', 'bad');
+  }
+  html += perfRow('Schermo', `${screenFps} fps`, lvl(screenFps, 50, 30));
+  html += perfRow('GPU', perfHud.gpu, software ? 'bad' : 'ok');
+  // Verdetto: dove si perde la fluidità
+  let verdict = ['Nessuno', 'ok'];
+  if (!st || !st.running) verdict = ['Webcam assente', 'bad'];
+  else if (software) verdict = ['Chrome senza accelerazione GPU', 'bad'];
+  else if (st.results < Math.min(st.camFrames, 30) * 0.8) verdict = ['PC: analisi mani lenta', 'bad'];
+  else if (st.camFrames < 24) verdict = ['Webcam lenta (luce o driver)', 'warn'];
+  else if (screenFps < 40) verdict = ['PC: disegno della scena lento', 'warn'];
+  html += perfRow('Collo di bottiglia', verdict[0], verdict[1]);
+  perfHud.el.innerHTML = html;
+}
+
+function togglePerfHud(force) {
+  const show = typeof force === 'boolean' ? force : !perfHud.el;
+  if (!show) {
+    clearInterval(perfHud.timer); cancelAnimationFrame(perfHud.rafId);
+    if (perfHud.el) perfHud.el.remove();
+    perfHud.el = null;
+    return;
+  }
+  if (perfHud.el) return;
+  if (!perfHud.gpu) perfHud.gpu = detectGpu();
+  perfHud.el = document.createElement('div');
+  perfHud.el.className = 'perf-hud';
+  perfHud.el.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(perfHud.el);
+  const countRaf = () => { perfHud.rafCount++; perfHud.rafId = requestAnimationFrame(countRaf); };
+  perfHud.rafId = requestAnimationFrame(countRaf);
+  if (state.tracking && state.tracking.takePerfStats) state.tracking.takePerfStats(); // azzera
+  perfHud.el.innerHTML = '<span class="perf-hud__title">PRESTAZIONI · misuro…</span>';
+  perfHud.timer = setInterval(updatePerfHud, 1000);
+}
+
 function initTrackingPipeline() {
   state.tracking = initTracking({
     videoEl: els.webcamVideo,
@@ -850,6 +917,7 @@ function bindUIEvents() {
     if (e.key === '5') activateLayout('griglia');
     if (e.key === 'i' || e.key === 'I') togglePanelPinned(els.hudHeader);
     if (e.key === 'w' || e.key === 'W') state.scene.triggerFabricWave();
+    if (e.key === 'f' || e.key === 'F') togglePerfHud();
   });
 
   // Mouse cursor proximity listener (reveals side menus seamlessly on edge approach)

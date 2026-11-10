@@ -1221,3 +1221,24 @@ body.kiosk-body {
 /* Pannello gesture aperto: sopra le linee del menu laterale */
 .camera-hud.is-hover,
 .camera-hud.is-pinned { z-index: 25; }
+
+/* ── Contatore prestazioni (diagnostica, tasto F) ── */
+.perf-hud {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 120;
+  min-width: 260px;
+  padding: 12px 14px;
+  background: rgba(45, 10, 8, 0.88);
+  color: #FFFDF9;
+  font: 500 13px/1.4 var(--font-sans);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.perf-hud__title { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; opacity: 0.7; margin-bottom: 6px; }
+.perf-hud__row { display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
+.perf-hud__row strong { font-weight: 700; text-align: right; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.perf-hud__row.is-ok strong { color: #9BE3A8; }
+.perf-hud__row.is-warn strong { color: #FFD27A; }
+.perf-hud__row.is-bad strong { color: #FF8C7A; }

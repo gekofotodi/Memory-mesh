@@ -172,6 +172,37 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   }
   requestAnimationFrame(pointerLoop);
 
+  // ── Diagnostica prestazioni (contatore FPS, tasto F) ────────
+  const perf = { camFrames: 0, results: 0, sendMsTotal: 0, sends: 0, hands: 0 };
+  function timedSend() {
+    const t0 = performance.now();
+    return hands.send({ image: videoEl }).then(() => {
+      perf.sendMsTotal += performance.now() - t0;
+      perf.sends++;
+    });
+  }
+  // Fotogrammi reali consegnati dalla webcam (indipendenti da MediaPipe)
+  function countCameraFrames() {
+    if (!videoEl || typeof videoEl.requestVideoFrameCallback !== 'function') return;
+    const tick = () => { perf.camFrames++; videoEl.requestVideoFrameCallback(tick); };
+    videoEl.requestVideoFrameCallback(tick);
+  }
+  countCameraFrames();
+  // Restituisce i valori dell'ultimo intervallo e azzera i contatori
+  function takePerfStats() {
+    const out = {
+      camFrames: perf.camFrames,
+      results: perf.results,
+      sendMs: perf.sends ? perf.sendMsTotal / perf.sends : 0,
+      hands: perf.hands,
+      camW: videoEl ? videoEl.videoWidth : 0,
+      camH: videoEl ? videoEl.videoHeight : 0,
+      running: state.webcamRunning,
+    };
+    perf.camFrames = 0; perf.results = 0; perf.sendMsTotal = 0; perf.sends = 0;
+    return out;
+  }
+
   // ── Hand Pose Analysis ──────────────────────────────────────
   function analyzeRightHand(landmarks, now) {
     const r = state.right;
@@ -322,6 +353,8 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   function onResults(results) {
     const now = performance.now();
     lastFrameAt = now; // per il watchdog della webcam
+    perf.results++;
+    perf.hands = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
 
     // Reset detection flags
     state.right.detected = false;
@@ -475,7 +508,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
           onFrame: async () => {
             if (!state.active) return;
             try {
-              await hands.send({ image: videoEl });
+              await timedSend();
             } catch (err) {
               scheduleRestart('errore elaborazione frame');
             }
@@ -555,7 +588,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     async function streamLoop() {
       if (state.active) {
         try {
-          await hands.send({ image: videoEl });
+          await timedSend();
         } catch (_) {
           scheduleRestart('errore elaborazione frame');
           return;
@@ -585,6 +618,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   return {
     enableMouseFallback,
     getState: () => state,
+    takePerfStats,
     stop: () => {
       state.active = false;
       if (state.inertiaAnimId) cancelAnimationFrame(state.inertiaAnimId);
