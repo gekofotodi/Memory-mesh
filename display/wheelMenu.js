@@ -24,6 +24,12 @@ export class WheelMenu2D {
     this.side = side;
     this.onSelect = onSelect;
 
+    // Linee indicatrici a bordo schermo (una per voce, stessa inclinazione)
+    this.ticksEl = document.createElement('div');
+    this.ticksEl.className = `wheel-ticks wheel-ticks--${side}`;
+    this.ticksEl.setAttribute('aria-hidden', 'true');
+    container.insertAdjacentElement('afterend', this.ticksEl);
+
     // Vincolo diretto alle voci statiche presenti nell'HTML (nessuna duplicazione)
     this.buttons = Array.from(container.querySelectorAll(itemsSelector));
     if (this.buttons.length === 0) return;
@@ -50,6 +56,7 @@ export class WheelMenu2D {
 
     if (!items || items.length === 0) {
       this.buttons = [];
+      this.ticksEl.innerHTML = '';
       this.activeValue = null;
       this.container.classList.add('is-hidden');
       return;
@@ -94,10 +101,12 @@ export class WheelMenu2D {
     const edgeMargin = 28;
     const R = pivotRadius + edgeMargin;
 
+    const poses = [];
     if (count === 1) {
       const btn = this.buttons[0];
       const finalX = isLeft ? edgeMargin : -edgeMargin;
       btn.style.transform = `translate3d(${finalX.toFixed(1)}px, 0px, 0) rotate(0deg)`;
+      this.renderTicks([{ x: edgeMargin, y: 0, rot: 0 }], edgeMargin);
       return;
     }
 
@@ -122,7 +131,26 @@ export class WheelMenu2D {
       const rotDeg = (isLeft ? 1 : -1) * (theta * 180 / Math.PI);
 
       btn.style.transform = `translate3d(${finalX.toFixed(1)}px, ${posY.toFixed(1)}px, 0) rotate(${rotDeg.toFixed(2)}deg)`;
+      poses.push({ x: posX, y: posY, rot: rotDeg });
     });
+    this.renderTicks(poses, edgeMargin);
+  }
+
+  /**
+   * Linee a bordo schermo: stessa posizione verticale e inclinazione delle voci,
+   * spostate verso il bordo così restano visibili anche a menu chiuso.
+   */
+  renderTicks(poses, edgeMargin) {
+    const isLeft = (this.side === 'left');
+    const inset = 14; // distanza dal bordo dello schermo
+    this.ticks = poses.map((p) => {
+      const tick = document.createElement('span');
+      tick.className = 'wheel-tick';
+      const x = p.x - edgeMargin + inset;
+      tick.style.transform = `translate3d(${(isLeft ? x : -x).toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${p.rot.toFixed(2)}deg)`;
+      return tick;
+    });
+    this.ticksEl.replaceChildren(...this.ticks);
   }
 
   bindEvents() {
@@ -161,10 +189,16 @@ export class WheelMenu2D {
   }
 
   updateClasses() {
-    this.buttons.forEach((btn) => {
+    let activeIdx = -1;
+    this.buttons.forEach((btn, i) => {
       const isSelected = (btn.getAttribute(this.valueAttr) === this.activeValue);
+      if (isSelected) activeIdx = i;
       btn.classList.toggle('is-active', isSelected);
       btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    });
+    (this.ticks || []).forEach((tick, i) => {
+      tick.classList.toggle('is-active', i === activeIdx);
+      tick.classList.toggle('is-near', activeIdx >= 0 && Math.abs(i - activeIdx) === 1);
     });
   }
 

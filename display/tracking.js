@@ -36,8 +36,14 @@ const HAND_CONNECTIONS = [
 ];
 
 // ── Tuning Hyperparameters ────────────────────────────────────
-const LERP_FACTOR = 0.16;             // Smoothing factor for pointer
-const JITTER_DEADZONE_PX = 3.5;       // Jitter deadzone in screen pixels
+// Puntatore: filtro One Euro (liscio da fermo, reattivo in movimento) sui frame
+// di MediaPipe + inseguimento a frame rate del display, così il mirino non scatta
+// tra un rilevamento e l'altro e non resta indietro.
+const EURO_MIN_CUTOFF = 1.2;          // Hz: più basso = più stabile da fermo
+const EURO_BETA = 0.006;              // quanto il filtro si apre con la velocità (px/s)
+const EURO_D_CUTOFF = 1.0;
+const POINTER_FOLLOW_MS = 38;         // costante di tempo dell'inseguimento a 60fps
+const POINTER_REGION = 0.12;          // margine del fotogramma ignorato: meno braccio da muovere
 const PINCH_ENTER_DIST = 0.28;        // Normalized threshold to start pinch
 const PINCH_EXIT_DIST = 0.38;         // Hysteresis threshold to release pinch
 const PINCH_HOLD_MS_TO_SELECT = 120;  // Milliseconds of held pinch before selection triggers
@@ -82,6 +88,9 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       pinchStartTime: 0,
       hasTriggeredSelect: false,
       pinchProgress: 0, // 0 to 1
+      targetX: window.innerWidth / 2,
+      targetY: window.innerHeight / 2,
+      lastSeen: 0,
     },
 
     // Left Hand (Pan & Zoom)
@@ -118,6 +127,51 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
 
+  // ── Filtro One Euro (Casiez et al.) ─────────────────────────
+  function makeOneEuro() {
+    let xPrev = null, dxPrev = 0, tPrev = 0;
+    const alpha = (cutoff, dt) => 1 / (1 + 1 / (2 * Math.PI * cutoff * dt));
+    return {
+      reset() { xPrev = null; },
+      filter(x, tMs) {
+        if (xPrev === null) { xPrev = x; tPrev = tMs; dxPrev = 0; return x; }
+        const dt = Math.max(1e-3, (tMs - tPrev) / 1000);
+        tPrev = tMs;
+        const dx = (x - xPrev) / dt;
+        dxPrev = dxPrev + alpha(EURO_D_CUTOFF, dt) * (dx - dxPrev);
+        const cutoff = EURO_MIN_CUTOFF + EURO_BETA * Math.abs(dxPrev);
+        xPrev = xPrev + alpha(cutoff, dt) * (x - xPrev);
+        return xPrev;
+      },
+    };
+  }
+  const euroX = makeOneEuro();
+  const euroY = makeOneEuro();
+
+  // Mappa la zona centrale del fotogramma su tutto lo schermo
+  function mapToScreen(v) {
+    const t = (v - POINTER_REGION) / (1 - 2 * POINTER_REGION);
+    return Math.min(1, Math.max(0, t));
+  }
+
+  // Inseguimento del bersaglio filtrato a frame rate del display
+  let pointerLoopAt = 0;
+  function pointerLoop(now) {
+    requestAnimationFrame(pointerLoop);
+    const r = state.right;
+    const dt = pointerLoopAt ? Math.min(100, now - pointerLoopAt) : 16;
+    pointerLoopAt = now;
+    if (r.isPinching || now - r.lastSeen > 400) return; // mano assente o pinch (coordinate congelate)
+    const dx = r.targetX - r.smoothX;
+    const dy = r.targetY - r.smoothY;
+    if (Math.abs(dx) < 0.25 && Math.abs(dy) < 0.25) return;
+    const k = 1 - Math.exp(-dt / POINTER_FOLLOW_MS);
+    r.smoothX += dx * k;
+    r.smoothY += dy * k;
+    cb.onPointerMove(r.smoothX, r.smoothY);
+  }
+  requestAnimationFrame(pointerLoop);
+
   // ── Hand Pose Analysis ──────────────────────────────────────
   function analyzeRightHand(landmarks, now) {
     const r = state.right;
@@ -130,9 +184,11 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     const indexTip = landmarks[INDEX_TIP];
     const thumbTip = landmarks[THUMB_TIP];
 
-    // Coordinate mapping (mirror X axis: 1.0 - x)
-    const targetX = (1.0 - indexTip.x) * window.innerWidth;
-    const targetY = indexTip.y * window.innerHeight;
+    // Coordinate mapping (mirror X axis: 1.0 - x), zona attiva centrale + filtro One Euro
+    if (now - r.lastSeen > 400) { euroX.reset(); euroY.reset(); }
+    r.lastSeen = now;
+    const targetX = euroX.filter(mapToScreen(1.0 - indexTip.x) * window.innerWidth, now);
+    const targetY = euroY.filter(mapToScreen(indexTip.y) * window.innerHeight, now);
 
     // Pinch distance (Thumb tip to Index tip, normalized by hand scale)
     const rawPinchDist = distance3D(thumbTip, indexTip);
@@ -168,17 +224,9 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       // Keep reporting the frozen position
       cb.onPointerMove(r.frozenX, r.frozenY);
     } else {
-      // Pointer free movement: Apply Lerp + Dynamic Deadzone
-      const dx = targetX - r.smoothX;
-      const dy = targetY - r.smoothY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist > JITTER_DEADZONE_PX) {
-        r.smoothX += dx * LERP_FACTOR;
-        r.smoothY += dy * LERP_FACTOR;
-      }
-
-      cb.onPointerMove(r.smoothX, r.smoothY);
+      // Movimento libero: il loop rAF (pointerLoop) insegue questo bersaglio
+      r.targetX = targetX;
+      r.targetY = targetY;
     }
   }
 
@@ -396,7 +444,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
       hands.setOptions({
         maxNumHands: 2,
-        modelComplexity: 1,
+        modelComplexity: 0, // modello lite: ~2x più veloce, sufficiente per puntare e fare pinch
         minDetectionConfidence: 0.65,
         minTrackingConfidence: 0.65,
       });
@@ -432,8 +480,8 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
               scheduleRestart('errore elaborazione frame');
             }
           },
-          width: 1280,
-          height: 720,
+          width: 640,
+          height: 480,
         });
         await mpCamera.start();
       } else {
@@ -449,7 +497,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
         stream.getVideoTracks().forEach((t) => t.addEventListener('ended', () => scheduleRestart('webcam scollegata')));
       }
       if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('camera');
-      console.log('[tracking] Webcam avviata @ 720p');
+      console.log('[tracking] Webcam avviata @ 640x480');
     } catch (err) {
       console.warn('[tracking] Webcam non disponibile, riprovo tra 10s:', err);
       enableMouseFallback();
@@ -495,7 +543,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
       audio: false,
     });
 

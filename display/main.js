@@ -169,9 +169,8 @@ const els = {
   indLeft: $('#ind-left'),
 
   // Info Modal
-  btnInfo: $('#btn-info'),
-  modalInfo: $('#modal-info'),
-  btnCloseInfo: $('#btn-close-info'),
+  hudHeader: $('#hud-header'),
+  hudTitle: $('#hud-title'),
 
   // Detail Modal (Riquadro di Selezione)
   modalDetail: $('#modal-detail'),
@@ -232,6 +231,7 @@ function showIdleOverlay() {
   state.rightWheelVisible = false;
   els.wheelLeft.classList.remove('is-visible');
   els.wheelRight.classList.remove('is-visible');
+  closeHudPanels();
   els.idleOverlay.classList.add('is-visible');
   els.idleOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -241,6 +241,41 @@ function hideIdleOverlay() {
   idle.visible = false;
   els.idleOverlay.classList.remove('is-visible');
   els.idleOverlay.setAttribute('aria-hidden', 'true');
+}
+
+// ── Pannelli a comparsa: info progetto (titolo) e gesture (webcam) ──
+// .is-hover segue mouse/mirino, .is-pinned resta aperto dopo click o pinch.
+function hudPanelHosts() {
+  return [
+    { host: els.hudHeader, trigger: els.hudTitle },
+    { host: els.cameraHud, trigger: els.cameraHud },
+  ].filter((p) => p.host && p.trigger);
+}
+
+function syncPanelAria() {
+  hudPanelHosts().forEach(({ host, trigger }) => {
+    const open = host.classList.contains('is-hover') || host.classList.contains('is-pinned');
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+}
+
+function setPanelHover(host, on) {
+  if (!host || host.classList.contains('is-hover') === on) return;
+  host.classList.toggle('is-hover', on);
+  syncPanelAria();
+}
+
+function togglePanelPinned(host) {
+  if (!host) return;
+  const pin = !host.classList.contains('is-pinned');
+  hudPanelHosts().forEach((p) => p.host.classList.remove('is-pinned'));
+  host.classList.toggle('is-pinned', pin);
+  syncPanelAria();
+}
+
+function closeHudPanels() {
+  hudPanelHosts().forEach((p) => p.host.classList.remove('is-pinned', 'is-hover'));
+  syncPanelAria();
 }
 
 function idleWatch() {
@@ -277,7 +312,7 @@ async function init() {
   console.log('[display] Initializing Memory Mesh Kiosk...');
 
   // 0. Ink bleed su titoli e menu (hover pilotato dal cursore virtuale)
-  initInkBleed({ selector: '.header-title, .wheel-btn, .drawer-title, .selection-title, .idle-title', hover: 'manual' });
+  initInkBleed({ selector: '.header-title, .wheel-btn, .selection-title, .idle-title', hover: 'manual' });
 
   // 1. Initialise Canvas 2D Scene Engine
   state.scene = initScene(els.sceneCanvas);
@@ -461,8 +496,17 @@ function handlePointerMove(x, y) {
     const enterThreshold = 240;
     const leaveThreshold = 380;
 
+    // Sopra la webcam (angolo in basso a sinistra) il menu non si apre: lì c'è la guida gesture
+    const hudTop = els.cameraHud ? els.cameraHud.getBoundingClientRect().top - 24 : Infinity;
+    const nearCameraHud = py > hudTop || (els.cameraHud && (els.cameraHud.classList.contains('is-hover') || els.cameraHud.classList.contains('is-pinned')) && px < 400);
+
     // Menu Sinistro (Layout)
-    if (!state.leftWheelVisible && px < enterThreshold) {
+    if (nearCameraHud) {
+      if (state.leftWheelVisible) {
+        state.leftWheelVisible = false;
+        els.wheelLeft.classList.remove('is-visible');
+      }
+    } else if (!state.leftWheelVisible && px < enterThreshold) {
       state.leftWheelVisible = true;
       els.wheelLeft.classList.add('is-visible');
     } else if (state.leftWheelVisible && px > leaveThreshold) {
@@ -490,10 +534,13 @@ function handlePointerMove(x, y) {
     // Check UI buttons (eseguito solo 1 volta per frame RAF)
     const elUnderCursor = document.elementFromPoint(px, py);
     setInkHoverPoint(px, py);
+    setPanelHover(els.hudHeader, !!(elUnderCursor && elUnderCursor.closest('#hud-header')));
+    setPanelHover(els.cameraHud, !!(elUnderCursor && elUnderCursor.closest('#camera-hud')));
     if (
       elUnderCursor &&
       (elUnderCursor.closest('.wheel-btn') ||
-        elUnderCursor.closest('.info-trigger-btn') ||
+        elUnderCursor.closest('#hud-title') ||
+        elUnderCursor.closest('#camera-hud') ||
         elUnderCursor.closest('.bento-close-btn') ||
         elUnderCursor.closest('.related-chip'))
     ) {
@@ -588,13 +635,15 @@ function handleSelect() {
       return;
     }
 
-    // Info Button
-    const infoBtn = el.closest('#btn-info');
-    if (infoBtn) {
-      openInfoModal();
-      return;
-    }
+    // Titolo → info progetto · Webcam → guida gesture
+    if (el.closest('#hud-title')) { togglePanelPinned(els.hudHeader); return; }
+    if (el.closest('#camera-hud')) { togglePanelPinned(els.cameraHud); return; }
+    // Dentro un pannello aperto: non attraversare verso la scena
+    if (el.closest('.project-panel') || el.closest('.gesture-panel')) return;
   }
+
+  // Pinch altrove: chiude i pannelli fissati
+  closeHudPanels();
 
   // 3. Check Scene Nodes
   const clickedNode = state.scene.hitTest(x, y);
@@ -691,11 +740,20 @@ function bindUIEvents() {
     });
   }
 
-  // Info Button & Modal
-  els.btnInfo.addEventListener('click', openInfoModal);
-  els.btnCloseInfo.addEventListener('click', closeModals);
-  els.modalInfo.addEventListener('click', (e) => {
-    if (e.target === els.modalInfo) closeModals();
+  // Titolo (info progetto) e webcam (gesture): click / Invio fissano il pannello
+  [[els.hudTitle, els.hudHeader], [els.cameraHud, els.cameraHud]].forEach(([trigger, host]) => {
+    if (!trigger || !host) return;
+    trigger.addEventListener('click', (e) => {
+      if (e.target.closest('.project-panel, .gesture-panel')) return;
+      e.stopPropagation();
+      togglePanelPinned(host);
+    });
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanelPinned(host); }
+    });
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#hud-header, #camera-hud')) closeHudPanels();
   });
 
   // Detail Modal Close (Chiusura via click esterno o Esc)
@@ -784,13 +842,13 @@ function bindUIEvents() {
   window.addEventListener('keydown', (e) => {
     if (idle.visible) { markActivity('tastiera'); return; }
     markActivity();
-    if (e.key === 'Escape') closeModals();
+    if (e.key === 'Escape') { closeModals(); closeHudPanels(); }
     if (e.key === '1') activateLayout('nodi');
     if (e.key === '2') activateLayout('cluster');
     if (e.key === '3') activateLayout('planimetria');
     if (e.key === '4') activateLayout('timeline');
     if (e.key === '5') activateLayout('griglia');
-    if (e.key === 'i' || e.key === 'I') openInfoModal();
+    if (e.key === 'i' || e.key === 'I') togglePanelPinned(els.hudHeader);
     if (e.key === 'w' || e.key === 'W') state.scene.triggerFabricWave();
   });
 
@@ -888,14 +946,6 @@ function handleRightWheelSelect(val) {
 }
 
 // ── Modal Handlers (Accessibili con Focus Management) ───────────
-function openInfoModal() {
-  state.lastActiveElement = document.activeElement;
-  state.activeModal = 'info';
-  els.modalInfo.classList.add('is-open');
-  els.modalInfo.setAttribute('aria-hidden', 'false');
-  const infoTitle = $('#info-drawer-title');
-  if (infoTitle) infoTitle.focus();
-}
 
 // ── Helper Formattazione Dati Ricordo ──────────────────────────
 function formatMemoryDate(createdAt, timeEvent) {
@@ -1092,8 +1142,6 @@ function renderRelatedMemories(currentMem) {
 
 function closeModals() {
   state.activeModal = null;
-  els.modalInfo.classList.remove('is-open');
-  els.modalInfo.setAttribute('aria-hidden', 'true');
   els.modalDetail.classList.remove('is-open');
   els.modalDetail.setAttribute('aria-hidden', 'true');
 

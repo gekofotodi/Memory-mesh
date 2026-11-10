@@ -29,10 +29,29 @@
 
   <!-- ── 1. HUD SUPERIORE: Titolo Editoriale Minimale Fluttuante ──── -->
   <header class="kiosk-header" id="hud-header">
-    <div class="header-minimal">
+    <div class="header-minimal" id="hud-title" role="button" tabindex="0" aria-expanded="false" aria-controls="project-panel">
       <h1 class="header-title">Memory <em>Mesh</em></h1>
       <span class="header-subtitle">CENTRO GIOVANILE STOÀ</span>
     </div>
+
+    <!-- Info progetto: si apre con hover o click sul titolo -->
+    <section class="project-panel" id="project-panel" aria-label="Il progetto">
+      <p class="project-panel__lead">
+        Un archivio relazionale che raccoglie i ricordi nati al Centro Giovanile Stoà
+        e li rende esplorabili con un'installazione interattiva permanente.
+      </p>
+      <div class="project-panel__row">
+        <img class="project-panel__qr" src="./qr-upload.svg" width="88" height="88" alt="QR code per aggiungere un ricordo" />
+        <div class="project-panel__text">
+          <span class="panel-eyebrow">PARTECIPA</span>
+          <p>Inquadra il QR con lo smartphone e aggiungi un tuo ricordo: comparirà subito nella rete.</p>
+        </div>
+      </div>
+      <div class="project-panel__row project-panel__row--plain">
+        <span class="panel-eyebrow">ESPLORA</span>
+        <p>Avvicina la mano ai bordi dello schermo per cambiare vista e filtri.</p>
+      </div>
+    </section>
   </header>
 
   <!-- ── 2. MENU A RUOTA LATERALE SINISTRO: Semicerchio 2D Layout ─────── -->
@@ -96,74 +115,22 @@
   </aside>
 
   <!-- ── 4. ANGOLO IN BASSO A SINISTRA: Feed Webcam Pulito Frameless ── -->
-  <section class="camera-hud" id="camera-hud" aria-label="Feed webcam compatto">
+  <section class="camera-hud" id="camera-hud" aria-label="Feed webcam e guida alle gesture" role="button" tabindex="0" aria-expanded="false" aria-controls="gesture-panel">
+    <!-- Guida gesture: si apre con hover o click sulla webcam -->
+    <div class="gesture-panel" id="gesture-panel">
+      <span class="panel-eyebrow">GESTURE</span>
+      <dl class="gesture-list">
+        <div class="gesture-row"><dt><span>Mano destra</span>Punta</dt><dd>Muovi l'indice per spostare il mirino</dd></div>
+        <div class="gesture-row"><dt><span>Mano destra</span>Pinch</dt><dd>Unisci pollice e indice per aprire un ricordo</dd></div>
+        <div class="gesture-row"><dt><span>Mano sinistra</span>Pinch e trascina</dt><dd>Tieni chiuso e muovi per spostare la vista</dd></div>
+        <div class="gesture-row"><dt><span>Mano sinistra</span>Ruota il polso</dt><dd>A destra avvicini, a sinistra allontani</dd></div>
+      </dl>
+    </div>
     <div class="camera-hud__viewport">
-      <canvas id="camera-canvas" width="180" height="120"></canvas>
+      <canvas id="camera-canvas" width="252" height="168"></canvas>
     </div>
     <span class="camera-hud__status" id="camera-hud-status" hidden></span>
   </section>
-
-  <!-- ── 5. ANGOLO IN BASSO A DESTRA: Tasto INFO Minimale ───────────── -->
-  <button class="info-trigger-link" id="btn-info" aria-label="Informazioni e guida gesture">
-    <span>INFO</span>
-    <span class="info-arrow" aria-hidden="true">&#x2197;</span>
-  </button>
-
-  <!-- ── 6. PANNELLO DRAWER LATERALE: Info Progetto & Gesture ──────── -->
-  <div class="drawer-backdrop" id="modal-info" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="info-drawer-title">
-    <aside class="info-drawer" id="info-drawer">
-      <header class="drawer-header">
-        <span class="drawer-badge">CENTRO GIOVANILE STOÀ</span>
-        <button class="drawer-close-btn" id="btn-close-info" aria-label="Chiudi informazioni">
-          <span>CHIUDI</span>
-          <span class="close-icon" aria-hidden="true">✕</span>
-        </button>
-      </header>
-
-      <div class="drawer-body">
-        <div class="drawer-section">
-          <h2 id="info-drawer-title" class="drawer-title" tabindex="-1">Memory <em>Mesh</em></h2>
-          <p class="drawer-desc">
-            UN ARCHIVIO RELAZIONALE CHE RACCOGLIE I RICORDI NATI ALL'INTERNO DEL CENTRO GIOVANILE STOÀ E LI RENDE ESPLORABILI GRAZIE AD UN'INSTALLAZIONE PERMANENTE INTERATTIVA.
-          </p>
-        </div>
-
-        <div class="drawer-section">
-          <span class="section-eyebrow">GUIDA ALLE GESTURE</span>
-          <div class="gesture-card">
-            <div class="gesture-header">
-              <span class="gesture-hand">MANO DESTRA</span>
-              <span class="gesture-action">PUNTA &amp; SELEZIONA</span>
-            </div>
-            <p class="gesture-desc">
-              Punta l'indice per muovere il mirino sulla rete. <strong>Pinch (pollice-indice)</strong> per aprire ed esplorare un ricordo.
-            </p>
-          </div>
-
-          <div class="gesture-card">
-            <div class="gesture-header">
-              <span class="gesture-hand">MANO SINISTRA</span>
-              <span class="gesture-action">PAN &amp; ZOOM</span>
-            </div>
-            <p class="gesture-desc">
-              <strong>Pinch mantenuto</strong> per trascinare la vista con inerzia. Ruota il polso per avvicinare o allontanare la visuale.
-            </p>
-          </div>
-        </div>
-
-        <div class="drawer-section drawer-section--participate">
-          <span class="section-eyebrow">PARTECIPA</span>
-          <p class="participate-text">
-            INVIA IL TUO RICORDO CON LO SMARTPHONE SCANSIONANDO IL QR CODE O VISITANDO L'APPLICAZIONE DI UPLOAD:
-          </p>
-          <a href="../upload/" class="participate-link" target="_blank" rel="noopener">
-            <span>CARICA UN RICORDO</span>
-            <span class="participate-arrow" aria-hidden="true">&#x2197;</span>
-          </a>
-        </div>
-      </div>
-    </aside>
-  </div>
 
   <!-- ── 7. RIQUADRO DI SELEZIONE DETTAGLIO RICORDO (Ispirazione Viewfinder Editoriale) ── -->
   <div class="modal-backdrop selection-backdrop" id="modal-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="detail-title">
