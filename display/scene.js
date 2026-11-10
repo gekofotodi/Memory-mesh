@@ -1676,42 +1676,141 @@ export function initScene(canvas) {
     return current;
   }
 
-  function generateOrganicHullPoints(tagNodes, tagIndex, now) {
-    const N = tagNodes.length;
-    if (N === 0) return [];
+  // ── Contorni organici dei cluster (metaball + marching squares) ──
+  // Ogni ricordo genera un "campo" che decresce con la distanza dal suo bordo;
+  // la curva di livello 1 avvolge il ricordo a distanza R e, quando due ricordi
+  // sono vicini, i contorni si fondono come gocce (vedi inspo "visualizzazione sezioni.png").
+  // Il calcolo è in cache: si rifà solo quando i ricordi si spostano.
+  const clusterContourCache = new Map();
+  const CONTOUR_CELL = 14; // lato cella della griglia (px mondo)
 
-    // Disambiguazione perimetri concentrici progressivi per tag multipli/condivisi
-    const basePadding = 42 + (tagIndex % 4) * 12;
-    const breath = Math.sin(now * 0.0012 + tagIndex * 1.35) * 3;
+  // Il campo parte da un nucleo ridotto del ricordo (30%) con un raggio proprio:
+  // attorno a un ricordo singolo il contorno è quasi un cerchio, non un rettangolo
+  function clusterFieldAt(px, py, rects) {
+    let f = 0;
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      const dx = Math.max(Math.abs(px - r.x) - r.hw * 0.3, 0);
+      const dy = Math.max(Math.abs(py - r.y) - r.hh * 0.3, 0);
+      f += r.r2 / (dx * dx + dy * dy + r.r2 * 0.02);
+    }
+    return f;
+  }
 
-    // Campionamento radiale attorno a ciascun nodo: il cluster si adatta alla dimensione reale del ricordo
-    const K = 16;
-    const samplePts = [];
-    tagNodes.forEach((node) => {
-      const halfW = (node.w * (node.scale || 1.0)) / 2;
-      const halfH = (node.h * (node.scale || 1.0)) / 2;
-      const padX = halfW + basePadding + breath;
-      const padY = halfH + basePadding + breath;
+  function computeClusterContours(rects, R) {
+    for (const r of rects) {
+      const rad = R + Math.hypot(r.hw * 0.7, r.hh * 0.7);
+      r.r2 = rad * rad;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const r of rects) {
+      minX = Math.min(minX, r.x - r.hw); maxX = Math.max(maxX, r.x + r.hw);
+      minY = Math.min(minY, r.y - r.hh); maxY = Math.max(maxY, r.y + r.hh);
+    }
+    const pad = R * 2.2 + Math.max(...rects.map((r) => Math.max(r.hw, r.hh)));
+    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    const cols = Math.ceil((maxX - minX) / CONTOUR_CELL) + 1;
+    const rows = Math.ceil((maxY - minY) / CONTOUR_CELL) + 1;
+    if (cols * rows > 160000) return []; // protezione: area enorme
 
-      for (let k = 0; k < K; k++) {
-        const theta = (k / K) * Math.PI * 2;
-        const wobble = Math.sin(theta * 2 + tagIndex * 1.4 + now * 0.0008) * 4 +
-                       Math.cos(theta * 3 - tagIndex) * 3;
-        const rx = padX + wobble;
-        const ry = padY + wobble;
-        samplePts.push({
-          x: node.x + Math.cos(theta) * rx,
-          y: node.y + Math.sin(theta) * ry,
-        });
+    const field = new Float32Array(cols * rows);
+    for (let j = 0; j < rows; j++) {
+      const y = minY + j * CONTOUR_CELL;
+      for (let i = 0; i < cols; i++) {
+        field[j * cols + i] = clusterFieldAt(minX + i * CONTOUR_CELL, y, rects) - 1;
       }
-    });
+    }
 
-    // Inviluppo convesso globale che racchiude tutti i punti dilatati
-    const envelope = computeConvexHull(samplePts);
-    if (envelope.length < 3) return envelope;
+    // Punto interpolato sul lato di cella, identificato da una chiave univoca
+    const pts = new Map();
+    const edgePoint = (key, x0, y0, v0, x1, y1, v1) => {
+      if (!pts.has(key)) {
+        const t = v0 / (v0 - v1);
+        pts.set(key, { x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t });
+      }
+      return key;
+    };
+    const links = new Map(); // chiave -> [chiavi collegate]
+    const link = (a, b) => {
+      if (!links.has(a)) links.set(a, []);
+      if (!links.has(b)) links.set(b, []);
+      links.get(a).push(b);
+      links.get(b).push(a);
+    };
 
-    // Smoothing continuo con Chaikin Corner Cutting (2 passate) per morbidezza perfetta
-    return chaikinSmooth(envelope, 2);
+    for (let j = 0; j < rows - 1; j++) {
+      for (let i = 0; i < cols - 1; i++) {
+        const tl = field[j * cols + i], tr = field[j * cols + i + 1];
+        const br = field[(j + 1) * cols + i + 1], bl = field[(j + 1) * cols + i];
+        const c = (tl > 0 ? 8 : 0) | (tr > 0 ? 4 : 0) | (br > 0 ? 2 : 0) | (bl > 0 ? 1 : 0);
+        if (c === 0 || c === 15) continue;
+        const x0 = minX + i * CONTOUR_CELL, x1 = x0 + CONTOUR_CELL;
+        const y0 = minY + j * CONTOUR_CELL, y1 = y0 + CONTOUR_CELL;
+        const T = () => edgePoint(`h${i},${j}`, x0, y0, tl, x1, y0, tr);
+        const B = () => edgePoint(`h${i},${j + 1}`, x0, y1, bl, x1, y1, br);
+        const L = () => edgePoint(`v${i},${j}`, x0, y0, tl, x0, y1, bl);
+        const Rr = () => edgePoint(`v${i + 1},${j}`, x1, y0, tr, x1, y1, br);
+        const center = (tl + tr + br + bl) / 4;
+        switch (c) {
+          case 1: case 14: link(L(), B()); break;
+          case 2: case 13: link(B(), Rr()); break;
+          case 3: case 12: link(L(), Rr()); break;
+          case 4: case 11: link(T(), Rr()); break;
+          case 6: case 9: link(T(), B()); break;
+          case 7: case 8: link(L(), T()); break;
+          case 5: if (center > 0) { link(L(), T()); link(B(), Rr()); } else { link(L(), B()); link(T(), Rr()); } break;
+          case 10: if (center > 0) { link(T(), Rr()); link(L(), B()); } else { link(L(), T()); link(B(), Rr()); } break;
+        }
+      }
+    }
+
+    // Unisce i segmenti in anelli chiusi
+    const loops = [];
+    const visited = new Set();
+    for (const start of links.keys()) {
+      if (visited.has(start)) continue;
+      const loop = [];
+      let prev = null, cur = start;
+      while (cur && !visited.has(cur)) {
+        visited.add(cur);
+        loop.push(pts.get(cur));
+        const nb = links.get(cur) || [];
+        const next = nb[0] !== prev && !visited.has(nb[0]) ? nb[0] : nb[1] !== prev && !visited.has(nb[1]) ? nb[1] : null;
+        prev = cur;
+        cur = next;
+      }
+      if (loop.length >= 6) loops.push(loop);
+    }
+    return loops;
+  }
+
+  function getClusterContours(tagLower, tagNodes, tagIndex) {
+    // Raggio diverso per tag: i contorni di tag condivisi non si sovrappongono esattamente
+    const R = 22 + (tagIndex % 4) * 10;
+    const rects = tagNodes.map((n) => ({
+      x: n.x, y: n.y,
+      hw: (n.w * (n.scale || 1)) / 2,
+      hh: (n.h * (n.scale || 1)) / 2,
+    }));
+    const key = R + '|' + rects.map((r) => `${Math.round(r.x / 3)},${Math.round(r.y / 3)},${Math.round(r.hw / 3)},${Math.round(r.hh / 3)}`).join(';');
+    const cached = clusterContourCache.get(tagLower);
+    if (cached && cached.key === key) return cached.loops;
+    const loops = computeClusterContours(rects, R);
+    clusterContourCache.set(tagLower, { key, loops });
+    return loops;
+  }
+
+  // Aggiunge al path corrente un anello chiuso levigato (curve quadratiche sui punti medi)
+  function appendSmoothLoop(ctx, pts) {
+    const n = pts.length;
+    if (n < 3) return;
+    ctx.moveTo((pts[0].x + pts[n - 1].x) / 2, (pts[0].y + pts[n - 1].y) / 2);
+    for (let i = 0; i < n; i++) {
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % n];
+      ctx.quadraticCurveTo(p1.x, p1.y, (p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+    }
+    ctx.closePath();
   }
 
   function drawSmoothClosedBlob(ctx, pts) {
@@ -1748,29 +1847,26 @@ export function initScene(canvas) {
       const palette = getTagPalette(tag);
       const isFocused = focusedClusterTag === tagLower;
 
-      // Genera perimetro fluido organico che si adatta esattamente alla quantità di ricordi
-      const perimeterPts = generateOrganicHullPoints(tagNodes, tagIndex, now);
-      if (perimeterPts.length < 3) return;
+      // Contorni organici (uno o più anelli) che avvolgono i ricordi del tag
+      const loops = getClusterContours(tagLower, tagNodes, tagIndex);
+      if (loops.length === 0) return;
 
-      // Tracciamento contorno fluido organico continuo
-      drawSmoothClosedBlob(ctx, perimeterPts);
+      ctx.beginPath();
+      for (const loop of loops) appendSmoothLoop(ctx, loop);
 
       // Riempimento a bassissima opacità per trasparenze additive tipo Venn
       ctx.fillStyle = palette.fill;
-      ctx.fill();
+      ctx.fill('evenodd');
 
-      // Bordo vettoriale continuo sottile dimezzato (0.8px normale, 1.2px se focused)
       ctx.strokeStyle = palette.stroke;
-      ctx.lineWidth = isFocused ? 1.2 : 0.8;
+      ctx.lineWidth = isFocused ? 1.4 : 1;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
 
-      // Calcola il punto apicale superiore per l'etichetta del tag
-      let topPt = perimeterPts[0];
-      for (let p of perimeterPts) {
-        if (p.y < topPt.y) topPt = p;
-      }
+      // Punto più alto del contorno per l'etichetta del tag
+      let topPt = loops[0][0];
+      for (const loop of loops) for (const p of loop) if (p.y < topPt.y) topPt = p;
 
       // Prepara etichetta (Title Case in Helvetica)
       const tagTitle = tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();

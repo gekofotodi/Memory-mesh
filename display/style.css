@@ -1042,13 +1042,7 @@ body.kiosk-body {
   color: var(--text-muted);
   margin: 0;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .idle-overlay.is-visible .idle-qr { animation: idle-breathe 4s ease-in-out infinite; }
-}
-@keyframes idle-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.025); }
-}
+/* QR fermo (niente animazione): deve essere facile da inquadrare */
 
 /* ── HUD webcam: stato discreto quando la webcam manca o si riconnette ── */
 .camera-hud.is-offline .camera-hud__viewport { display: none; }
@@ -1242,3 +1236,15 @@ body.kiosk-body {
 .perf-hud__row.is-ok strong { color: #9BE3A8; }
 .perf-hud__row.is-warn strong { color: #FFD27A; }
 .perf-hud__row.is-bad strong { color: #FF8C7A; }
+
+/* ── Menu: niente pallino sulla voce selezionata (resta il grassetto) ── */
+.wheel-dot { display: none !important; }
+
+/* Linee del menu chiuso: estremità arrotondate e spessore vicino al tratto del font */
+.wheel-tick {
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 999px;
+}
+.wheel-tick.is-near { width: 22px; }
+.wheel-tick.is-active { width: 34px; height: 4.5px; margin-top: -2.25px; }

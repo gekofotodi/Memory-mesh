@@ -214,12 +214,19 @@ const els = {
 const IDLE_MS = 45000;
 const idle = { lastActivity: performance.now(), visible: false };
 
+// Durante l'attesa solo un saluto verso la webcam la chiude (più tastiera e click del mouse,
+// per la manutenzione). Mani, puntatore, pan e zoom non contano finché l'attesa è visibile.
+const IDLE_DISMISS_SOURCES = new Set(['saluto', 'tastiera', 'click']);
+
 function markActivity(source = '') {
-  idle.lastActivity = performance.now();
   if (idle.visible) {
-    console.log('[display] Schermata di attesa chiusa da:', source || 'attività');
+    if (!IDLE_DISMISS_SOURCES.has(source)) return;
+    console.log('[display] Schermata di attesa chiusa da:', source);
+    idle.lastActivity = performance.now();
     hideIdleOverlay();
+    return;
   }
+  idle.lastActivity = performance.now();
 }
 
 function showIdleOverlay() {
@@ -529,6 +536,7 @@ function initTrackingPipeline() {
       onZoom: handleZoom,
       onHandStateChange: handleHandStateChange,
       onTrackingStatus: handleTrackingStatus,
+      onWave: () => markActivity('saluto'),
     },
   });
 }
@@ -737,12 +745,14 @@ function handleSelect() {
 
 function handlePan(dx, dy) {
   markActivity('pan');
+  if (idle.visible) return;
   if (state.activeModal) return; // Freeze scene navigation while reading a memory
   state.scene.pan(dx, dy);
 }
 
 function handleZoom(factor) {
   markActivity('zoom');
+  if (idle.visible) return;
   if (state.activeModal) return;
   state.scene.zoom(factor, state.cursorX, state.cursorY);
 }
@@ -750,7 +760,7 @@ function handleZoom(factor) {
 function handleHandStateChange(leftHand, rightHand) {
   // Update Tracking Status text & dot in camera HUD (if present)
   const isTracking = leftHand.detected || rightHand.detected;
-  if (isTracking) markActivity('mano rilevata'); // una mano davanti alla webcam chiude la schermata di attesa
+  if (isTracking) markActivity('mano rilevata'); // tiene sveglio il display (non chiude l'attesa: serve il saluto)
   if (els.hudStatusDot) {
     els.hudStatusDot.classList.toggle('is-tracking', isTracking);
   }
@@ -807,6 +817,9 @@ function bindUIEvents() {
       }
     });
   }
+
+  // Schermata di attesa: click del mouse (manutenzione)
+  if (els.idleOverlay) els.idleOverlay.addEventListener('click', () => markActivity('click'));
 
   // Titolo (info progetto) e webcam (gesture): click / Invio fissano il pannello
   [[els.hudTitle, els.hudHeader], [els.cameraHud, els.cameraHud]].forEach(([trigger, host]) => {

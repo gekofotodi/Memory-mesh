@@ -43,7 +43,18 @@ const EURO_MIN_CUTOFF = 1.2;          // Hz: più basso = più stabile da fermo
 const EURO_BETA = 0.006;              // quanto il filtro si apre con la velocità (px/s)
 const EURO_D_CUTOFF = 1.0;
 const POINTER_FOLLOW_MS = 38;         // costante di tempo dell'inseguimento a 60fps
-const POINTER_REGION = 0.12;          // margine del fotogramma ignorato: meno braccio da muovere
+// Zona della webcam (coordinate specchiate 0..1) che copre tutto lo schermo:
+// la mano destra resta nella metà destra dell'inquadratura e il mirino arriva ovunque
+const POINTER_X_RANGE = [0.48, 0.92];
+const POINTER_Y_RANGE = [0.12, 0.76];
+// Saluto (chiude la schermata di attesa): mano aperta che oscilla destra-sinistra
+const WAVE_MIN_SWINGS = 2;            // inversioni di direzione (destra-sinistra-destra)
+const WAVE_MIN_AMPLITUDE = 0.035;     // ampiezza minima di ogni oscillazione (frazione della larghezza webcam)
+const WAVE_WINDOW_MS = 1600;
+// Immagine webcam: luminosità e contrasto (anteprima + regolazione hardware se la webcam lo permette)
+const PREVIEW_FILTER = 'brightness(1.45) contrast(1.2)';
+const CAMERA_BRIGHTNESS = 0.62;       // posizione nell'intervallo della webcam (0.5 = predefinito tipico)
+const CAMERA_CONTRAST = 0.6;
 const PINCH_ENTER_DIST = 0.28;        // Normalized threshold to start pinch
 const PINCH_EXIT_DIST = 0.38;         // Hysteresis threshold to release pinch
 const PINCH_HOLD_MS_TO_SELECT = 120;  // Milliseconds of held pinch before selection triggers
@@ -65,6 +76,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     onPan: callbacks.onPan || (() => {}),
     onZoom: callbacks.onZoom || (() => {}),
     onHandStateChange: callbacks.onHandStateChange || (() => {}),
+    onWave: callbacks.onWave || (() => {}),
   };
 
   const canvasCtx = canvasEl ? canvasEl.getContext('2d') : null;
@@ -148,10 +160,47 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   const euroX = makeOneEuro();
   const euroY = makeOneEuro();
 
-  // Mappa la zona centrale del fotogramma su tutto lo schermo
-  function mapToScreen(v) {
-    const t = (v - POINTER_REGION) / (1 - 2 * POINTER_REGION);
-    return Math.min(1, Math.max(0, t));
+  // Mappa una zona della webcam su tutto lo schermo (guadagno > 1: il mirino è più veloce della mano)
+  function mapRange(v, [lo, hi]) {
+    return Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+  }
+
+  // ── Riconoscimento del saluto ───────────────────────────────
+  // Mano aperta (4 dita distese) che oscilla orizzontalmente: si contano le inversioni
+  // di direzione con un'ampiezza minima, entro una finestra di tempo.
+  const wave = { dir: 0, extremeX: null, swings: [], lastFire: 0 };
+  function isOpenHand(lm) {
+    const tips = [INDEX_TIP, MIDDLE_TIP, RING_TIP, PINKY_TIP];
+    const pips = [INDEX_PIP, MIDDLE_PIP, RING_PIP, PINKY_PIP];
+    let extended = 0;
+    for (let k = 0; k < 4; k++) {
+      if (distance2D(lm[tips[k]], lm[WRIST]) > distance2D(lm[pips[k]], lm[WRIST]) * 1.1) extended++;
+    }
+    return extended >= 4;
+  }
+  function trackWave(lm, now) {
+    if (!isOpenHand(lm)) { wave.dir = 0; wave.extremeX = null; return; }
+    const x = lm[MIDDLE_MCP].x;
+    if (wave.extremeX === null) { wave.extremeX = x; return; }
+    const delta = x - wave.extremeX;
+    const dir = Math.sign(delta);
+    if (wave.dir === 0) {
+      if (Math.abs(delta) > WAVE_MIN_AMPLITUDE) { wave.dir = dir; wave.extremeX = x; }
+      return;
+    }
+    if (dir === wave.dir) {
+      wave.extremeX = x; // continua nella stessa direzione: aggiorna l'estremo
+    } else if (Math.abs(delta) > WAVE_MIN_AMPLITUDE) {
+      wave.swings.push(now); // inversione abbastanza ampia
+      wave.dir = dir;
+      wave.extremeX = x;
+    }
+    wave.swings = wave.swings.filter((t) => now - t < WAVE_WINDOW_MS);
+    if (wave.swings.length >= WAVE_MIN_SWINGS && now - wave.lastFire > 2000) {
+      wave.lastFire = now;
+      wave.swings = [];
+      cb.onWave();
+    }
   }
 
   // Inseguimento del bersaglio filtrato a frame rate del display
@@ -274,8 +323,8 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     // Coordinate mapping (mirror X axis: 1.0 - x), zona attiva centrale + filtro One Euro
     if (now - r.lastSeen > 400) { euroX.reset(); euroY.reset(); }
     r.lastSeen = now;
-    const targetX = euroX.filter(mapToScreen(1.0 - indexTip.x) * window.innerWidth, now);
-    const targetY = euroY.filter(mapToScreen(indexTip.y) * window.innerHeight, now);
+    const targetX = euroX.filter(mapRange(1.0 - indexTip.x, POINTER_X_RANGE) * window.innerWidth, now);
+    const targetY = euroY.filter(mapRange(indexTip.y, POINTER_Y_RANGE) * window.innerHeight, now);
 
     // Pinch distance (Thumb tip to Index tip, normalized by hand scale)
     const rawPinchDist = distance3D(thumbTip, indexTip);
@@ -422,6 +471,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       for (let i = 0; i < results.multiHandLandmarks.length; i++) {
         const landmarks = results.multiHandLandmarks[i];
+        if (i === 0) trackWave(landmarks, now);
         let label = 'Right'; // default fallback
 
         if (results.multiHandedness && results.multiHandedness[i]) {
@@ -455,14 +505,16 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     // 1. Draw mirrored video background
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, w, h);
+    canvasCtx.filter = PREVIEW_FILTER;
     if (results.image) {
       canvasCtx.drawImage(results.image, 0, 0, w, h);
     } else if (videoEl && videoEl.readyState >= 2) {
       canvasCtx.drawImage(videoEl, 0, 0, w, h);
     }
+    canvasCtx.filter = 'none';
 
-    // Translucent dark tint for high-contrast skeleton overlay
-    canvasCtx.fillStyle = 'rgba(9, 12, 16, 0.45)';
+    // Velatura leggera per far leggere lo scheletro (prima 0.45: immagine troppo scura)
+    canvasCtx.fillStyle = 'rgba(9, 12, 16, 0.12)';
     canvasCtx.fillRect(0, 0, w, h);
 
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
@@ -587,6 +639,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
       // Webcam scollegata (cavo USB, driver): il track termina
       const stream = videoEl && videoEl.srcObject;
+      tuneCameraImage(stream);
       if (stream && stream.getVideoTracks) {
         stream.getVideoTracks().forEach((t) => t.addEventListener('ended', () => scheduleRestart('webcam scollegata')));
       }
@@ -597,6 +650,24 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       enableMouseFallback();
       scheduleRestart('avvio fallito', RETRY_MS);
     }
+  }
+
+  // Alza luminosità e contrasto direttamente sulla webcam, se il driver lo consente
+  // (molte webcam USB su Windows sì; le fotocamere dei Mac di solito no: resta il filtro anteprima)
+  function tuneCameraImage(stream) {
+    try {
+      const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (!track || typeof track.getCapabilities !== 'function') return;
+      const caps = track.getCapabilities();
+      const adv = {};
+      const pick = (c, t) => c.min + (c.max - c.min) * t;
+      if (caps.brightness) adv.brightness = pick(caps.brightness, CAMERA_BRIGHTNESS);
+      if (caps.contrast) adv.contrast = pick(caps.contrast, CAMERA_CONTRAST);
+      if (Object.keys(adv).length === 0) return;
+      track.applyConstraints({ advanced: [adv] })
+        .then(() => console.log('[tracking] Webcam regolata:', adv))
+        .catch((err) => console.warn('[tracking] Regolazione webcam non applicata:', err));
+    } catch (_) {}
   }
 
   function stopCamera() {
