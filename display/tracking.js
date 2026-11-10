@@ -173,21 +173,75 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   requestAnimationFrame(pointerLoop);
 
   // ── Diagnostica prestazioni (contatore FPS, tasto F) ────────
-  const perf = { camFrames: 0, results: 0, sendMsTotal: 0, sends: 0, hands: 0 };
+  const perf = { camFrames: 0, results: 0, sendMsTotal: 0, sends: 0, hands: 0, restarts: 0, lastRestart: '' };
+  // Numero progressivo dei fotogrammi webcam: si analizza solo un fotogramma nuovo,
+  // non lo stesso a ogni aggiornamento dello schermo (prima: 120 analisi/s con webcam a 30 fps)
+  let frameSeq = 0;
+  let lastSentSeq = -1;
+  let lastTickAt = 0;
+  let lastSendAt = 0;
+  const hasVideoFrameCb = !!(videoEl && typeof videoEl.requestVideoFrameCallback === 'function');
+  function isNewFrame() {
+    const now = performance.now();
+    if (hasVideoFrameCb && now - lastTickAt < 1000) {
+      if (frameSeq === lastSentSeq) return false;
+      lastSentSeq = frameSeq;
+    } else if (now - lastSendAt < 33) {
+      // conteggio fotogrammi non disponibile o fermo: massimo ~30 analisi/s
+      return false;
+    }
+    lastSendAt = now;
+    return true;
+  }
+  // Gli errori di un'istanza Hands già sostituita (chiusa durante un riavvio) vanno ignorati,
+  // altrimenti ogni riavvio ne provoca un altro
   function timedSend() {
     const t0 = performance.now();
-    return hands.send({ image: videoEl }).then(() => {
+    const h = hands;
+    return h.send({ image: videoEl }).then(() => {
       perf.sendMsTotal += performance.now() - t0;
       perf.sends++;
+    }, (err) => {
+      if (h !== hands || restartTimer) return;
+      console.warn('[tracking] Errore MediaPipe:', err);
+      throw err;
     });
   }
+
+  // Ultima risorsa per il kiosk: ricarica la pagina (tutto riparte pulito).
+  // Al massimo 5 ricariche in 10 minuti, poi resta il fallback mouse per non andare in loop.
+  let reloading = false;
+  function reloadPage(reason) {
+    if (reloading) return;
+    let log = [];
+    try { log = JSON.parse(sessionStorage.getItem('mm-reloads') || '[]'); } catch (_) {}
+    const now = Date.now();
+    log = log.filter((t) => now - t < 10 * 60 * 1000);
+    if (log.length >= 5) {
+      console.warn(`[tracking] ${reason}: troppe ricariche, resto in modalità mouse`);
+      stopCamera();
+      enableMouseFallback();
+      return;
+    }
+    reloading = true;
+    log.push(now);
+    try { sessionStorage.setItem('mm-reloads', JSON.stringify(log)); } catch (_) {}
+    console.warn(`[tracking] ${reason}: ricarico la pagina tra 2s`);
+    if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('reconnecting');
+    setTimeout(() => location.reload(), 2000);
+  }
   // Fotogrammi reali consegnati dalla webcam (indipendenti da MediaPipe)
+  let tickGen = 0;
   function countCameraFrames() {
-    if (!videoEl || typeof videoEl.requestVideoFrameCallback !== 'function') return;
-    const tick = () => { perf.camFrames++; videoEl.requestVideoFrameCallback(tick); };
+    if (!hasVideoFrameCb) return;
+    const gen = ++tickGen; // una sola catena attiva anche dopo i riavvii
+    const tick = () => {
+      if (gen !== tickGen) return;
+      perf.camFrames++; frameSeq++; lastTickAt = performance.now();
+      videoEl.requestVideoFrameCallback(tick);
+    };
     videoEl.requestVideoFrameCallback(tick);
   }
-  countCameraFrames();
   // Restituisce i valori dell'ultimo intervallo e azzera i contatori
   function takePerfStats() {
     const out = {
@@ -198,6 +252,8 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       camW: videoEl ? videoEl.videoWidth : 0,
       camH: videoEl ? videoEl.videoHeight : 0,
       running: state.webcamRunning,
+      restarts: perf.restarts,
+      lastRestart: perf.lastRestart,
     };
     perf.camFrames = 0; perf.results = 0; perf.sendMsTotal = 0; perf.sends = 0;
     return out;
@@ -471,18 +527,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     }
 
     try {
-      hands = new window.Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
-      });
-
-      hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 0, // modello lite: ~2x più veloce, sufficiente per puntare e fare pinch
-        minDetectionConfidence: 0.65,
-        minTrackingConfidence: 0.65,
-      });
-
-      hands.onResults(onResults);
+      createHands();
     } catch (err) {
       console.warn('[tracking] MediaPipe initialization failed:', err);
       enableMouseFallback();
@@ -491,6 +536,21 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
     await startCamera();
     watchdog();
+  }
+
+  // Istanza MediaPipe Hands (una sola: ricrearla con questa versione della libreria
+  // la manda in errore; se MediaPipe si rompe si ricarica la pagina, vedi reloadPage)
+  function createHands() {
+    hands = new window.Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
+    });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 0, // modello lite: ~2x più veloce, sufficiente per puntare e fare pinch
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.65,
+    });
+    hands.onResults(onResults);
   }
 
   // ── Webcam: avvio, arresto e riavvio automatico ─────────────
@@ -506,11 +566,11 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       if (typeof window.Camera !== 'undefined' && videoEl) {
         mpCamera = new window.Camera(videoEl, {
           onFrame: async () => {
-            if (!state.active) return;
+            if (!state.active || !isNewFrame()) return;
             try {
               await timedSend();
             } catch (err) {
-              scheduleRestart('errore elaborazione frame');
+              reloadPage('errore MediaPipe');
             }
           },
           width: 640,
@@ -523,6 +583,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       state.webcamRunning = true;
       state.active = true;
       lastFrameAt = performance.now();
+      countCameraFrames();
 
       // Webcam scollegata (cavo USB, driver): il track termina
       const stream = videoEl && videoEl.srcObject;
@@ -548,9 +609,15 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     if (videoEl) videoEl.srcObject = null;
   }
 
+  const restartLog = [];
   function scheduleRestart(reason, delay = 3000) {
     if (restartTimer) return;
     console.warn(`[tracking] Riavvio webcam (${reason})`);
+    perf.restarts++;
+    perf.lastRestart = reason;
+    restartLog.push(performance.now());
+    while (restartLog.length && performance.now() - restartLog[0] > 120000) restartLog.shift();
+    if (restartLog.length > 3) { reloadPage('troppi riavvii webcam'); return; }
     state.right.detected = false;
     state.left.detected = false;
     cb.onHandStateChange(state.left, state.right);
@@ -587,10 +654,11 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
     async function streamLoop() {
       if (state.active) {
+        if (!isNewFrame()) { requestAnimationFrame(streamLoop); return; }
         try {
           await timedSend();
         } catch (_) {
-          scheduleRestart('errore elaborazione frame');
+          reloadPage('errore MediaPipe');
           return;
         }
         requestAnimationFrame(streamLoop);

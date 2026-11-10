@@ -480,6 +480,7 @@ function updatePerfHud() {
     html += perfRow('Webcam', `${st.camFrames} fps · ${st.camW}×${st.camH}`, lvl(st.camFrames, 24, 15));
     html += perfRow('MediaPipe', `${st.results} fps · ${st.sendMs.toFixed(0)} ms`, lvl(st.results, 20, 12));
     html += perfRow('Mani', String(st.hands), 'ok');
+    html += perfRow('Riavvii', st.restarts ? `${st.restarts} · ${st.lastRestart}` : '0', st.restarts ? 'warn' : 'ok');
   } else {
     html += perfRow('Webcam', 'non attiva', 'bad');
   }
