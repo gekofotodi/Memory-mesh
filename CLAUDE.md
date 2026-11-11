@@ -119,7 +119,7 @@ Policy: `anon` INSERT su memories se `privacy_consent = true`; `anon` SELECT tut
 - [x] Anello progresso cursore: perimetro 125.6 calcolato con r=20 ma il cerchio SVG ha r=18.
 - [x] Fallback mouse di `tracking.js` non aggiunge più listener (li gestisce `main.js`).
 - [ ] **Planimetria provvisoria:** stanze e coordinate in `FLOORS` non definitive (la Sala del Re ha preso il posto del vecchio Salone Centrale, coordinate da rifare).
-- [ ] README obsoleto rispetto all'implementazione.
+- [x] README allineato all'implementazione (11/11).
 - [x] **Crash webcam/ricariche (11/11):** fotogrammi inviati solo con video pronto, errori di invii vecchi ignorati, 1-2 errori isolati tollerati, MediaPipe bloccato >6s = ricarica; dopo 5 ricariche in 10 min pausa e nuovo tentativo dopo 10 min; riavvio preventivo dopo 45 min solo in attesa; senza rete le ricariche aspettano che torni la connessione. Registro incidenti: `JSON.parse(localStorage['mm-incidents'])` nella console del kiosk.
 
 Quando risolvi un punto, spuntalo qui.
