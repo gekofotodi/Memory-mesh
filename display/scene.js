@@ -127,6 +127,7 @@ export function initScene(canvas) {
   let planimetriaEntranceTime = 0;
   // 11/11 D5: cambio piano = il piano corrente torna nell'esploso, poi scende il nuovo
   let floorSwitch = null; // { from, e0, start, dur }
+  let gridCellW = 200; // larghezza colonna della griglia (per tagliare i titoli)
   let gridSortMode = 'data';
   let focusedTimelineYear = null;
   let focusedClusterTag = null;
@@ -934,8 +935,9 @@ export function initScene(canvas) {
         const availableW = Math.max(480, Math.min(width - 240, 1100));
         const cols = Math.max(3, Math.min(5, Math.floor(availableW / (MAX_NODE_W + 36))));
         const cellW = availableW / cols;
+        gridCellW = cellW;
         const maxNodeH = nodes.reduce((max, n) => Math.max(max, n.h || 60), 60);
-        const cellH = maxNodeH + 54;
+        const cellH = maxNodeH + 78; // spazio per titolo e data più grandi
         const startX = -availableW / 2 + cellW / 2;
         const rows = Math.ceil(sorted.length / cols);
         const startY = -(rows * cellH) / 2 + cellH / 2;
@@ -2671,21 +2673,25 @@ export function initScene(canvas) {
       const w = node.w * node.scale;
       const h = node.h * node.scale;
       const x = node.x;
-      const y = node.y + h / 2 + 14;
+      const y = node.y + h / 2 + 22;
 
-      // Line 1: Titolo (Helvetica: naturale, mai in caps lock)
+      // Line 1: Titolo (Helvetica: naturale, mai in caps lock) — grande per la lettura a distanza
       ctx.fillStyle = '#99251C';
-      ctx.font = '700 11.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.font = '700 18px "Helvetica Neue", Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
-      const title = node.memory.title || 'Senza titolo';
-      const truncTitle = title.length > 22 ? title.substring(0, 20) + '…' : title;
-      ctx.fillText(truncTitle, x, y);
+      let title = node.memory.title || 'Senza titolo';
+      const maxW = gridCellW - 16; // non invadere la colonna accanto
+      if (ctx.measureText(title).width > maxW) {
+        while (title.length > 1 && ctx.measureText(title + '…').width > maxW) title = title.slice(0, -1);
+        title = title.trimEnd() + '…';
+      }
+      ctx.fillText(title, x, y);
 
       // Line 2: Data
-      ctx.font = '700 8.5px "Instrument Sans", sans-serif';
+      ctx.font = '700 12px "Instrument Sans", sans-serif';
       ctx.fillStyle = 'rgba(153, 37, 28, 0.65)';
       const dateStr = node.memory.time_event || (node.dateInfo.year ? `${node.dateInfo.year}` : 'STOÀ');
-      ctx.fillText(String(dateStr).toUpperCase(), x, y + 13);
+      ctx.fillText(String(dateStr).toUpperCase(), x, y + 19);
     });
     ctx.restore();
   }

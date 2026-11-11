@@ -265,13 +265,58 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   function videoReady() {
     return !!videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0 && videoEl.videoHeight > 0;
   }
+  // ── Luce scarsa: schiarisce i fotogrammi prima di MediaPipe ──
+  // Una volta al secondo misura la luminosità media (miniatura 32x24); se la scena è buia
+  // passa a MediaPipe una copia schiarita del fotogramma (filtro canvas, su GPU).
+  // Con luce normale manda il video così com'è: nessun costo aggiuntivo.
+  const LOW_LIGHT_THRESHOLD = 0.32;  // luminosità media 0..1 sotto cui si interviene
+  const LOW_LIGHT_TARGET = 0.45;     // luminosità a cui si punta
+  const LOW_LIGHT_MAX_GAIN = 2.6;    // oltre, il rumore della webcam peggiora il rilevamento
+  const light = { gain: 1, checkedAt: 0, probeCtx: null, out: null, outCtx: null };
+  function frameForDetection() {
+    const now = performance.now();
+    if (now - light.checkedAt > 1000) {
+      light.checkedAt = now;
+      try {
+        if (!light.probeCtx) {
+          const c = document.createElement('canvas');
+          c.width = 32; c.height = 24;
+          light.probeCtx = c.getContext('2d', { willReadFrequently: true });
+        }
+        light.probeCtx.drawImage(videoEl, 0, 0, 32, 24);
+        const d = light.probeCtx.getImageData(0, 0, 32, 24).data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+        const mean = sum / (d.length / 4) / 255;
+        const wanted = mean < LOW_LIGHT_THRESHOLD ? Math.min(LOW_LIGHT_MAX_GAIN, LOW_LIGHT_TARGET / Math.max(mean, 0.02)) : 1;
+        light.gain += (wanted - light.gain) * 0.5; // niente salti bruschi
+        if (light.gain < 1.05) light.gain = 1;
+        perf.lightMean = mean;
+        perf.lightGain = light.gain;
+      } catch (_) {
+        light.gain = 1;
+      }
+    }
+    if (light.gain === 1) return videoEl;
+    const w = videoEl.videoWidth || 640;
+    const h = videoEl.videoHeight || 480;
+    if (!light.outCtx) {
+      light.out = document.createElement('canvas');
+      light.outCtx = light.out.getContext('2d');
+    }
+    if (light.out.width !== w || light.out.height !== h) { light.out.width = w; light.out.height = h; }
+    light.outCtx.filter = `brightness(${light.gain.toFixed(2)}) contrast(1.15)`;
+    light.outCtx.drawImage(videoEl, 0, 0, w, h);
+    return light.out;
+  }
+
   function timedSend() {
     if (!videoReady()) return Promise.resolve(); // niente dati: salta il fotogramma
     const t0 = performance.now();
     const h = hands;
     const gen = camGen;
     sendPendingSince = t0;
-    return h.send({ image: videoEl }).then(() => {
+    return h.send({ image: frameForDetection() }).then(() => {
       sendPendingSince = 0;
       perf.sendMsTotal += performance.now() - t0;
       perf.sends++;
@@ -688,8 +733,9 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     hands.setOptions({
       maxNumHands: 2,
       modelComplexity: 0, // modello lite: ~2x più veloce, sufficiente per puntare e fare pinch
-      minDetectionConfidence: 0.65,
-      minTrackingConfidence: 0.65,
+      // Luogo buio: soglie più basse, i fotogrammi poco contrastati danno punteggi più bassi
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
     });
     hands.onResults(onResults);
   }
@@ -728,6 +774,12 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
       // Webcam scollegata (cavo USB, driver): il track termina
       const stream = videoEl && videoEl.srcObject;
+      // Luogo buio: lascia che la webcam allunghi l'esposizione (fino a 15 fps) se lo supporta
+      if (stream && stream.getVideoTracks) {
+        stream.getVideoTracks().forEach((t) => {
+          t.applyConstraints({ frameRate: { ideal: 30, min: 15 }, advanced: [{ exposureMode: 'continuous' }] }).catch(() => {});
+        });
+      }
       if (stream && stream.getVideoTracks) {
         stream.getVideoTracks().forEach((t) => t.addEventListener('ended', () => scheduleRestart('webcam scollegata')));
       }
