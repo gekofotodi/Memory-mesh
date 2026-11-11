@@ -127,17 +127,30 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   };
 
   // ── Helpers ─────────────────────────────────────────────────
+  // Punto mancante: distanza infinita (nessun pinch) invece di un'eccezione
   function distance2D(p1, p2) {
+    if (!p1 || !p2) return Infinity;
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
     return Math.sqrt(dx * dx + dy * dy);
   }
 
   function distance3D(p1, p2) {
+    if (!p1 || !p2) return Infinity;
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
     const dz = (p1.z || 0) - (p2.z || 0);
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  // Mano utilizzabile: 21 landmark, ognuno con x e y numerici e finiti
+  function isValidHand(lm) {
+    if (!Array.isArray(lm) || lm.length < 21) return false;
+    for (let i = 0; i < 21; i++) {
+      const p = lm[i];
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+    }
+    return true;
   }
 
   // ── Filtro One Euro (Casiez et al.) ─────────────────────────
@@ -289,6 +302,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
         t: new Date().toISOString(),
         reason,
         err: err ? String((err && err.message) || err).slice(0, 200) : '',
+        stack: err && err.stack ? String(err.stack).slice(0, 500) : '',
         uptimeMin: Math.round(performance.now() / 60000),
         heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
       });
@@ -486,22 +500,42 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
   // ── MediaPipe Results Handler ───────────────────────────────
   function onResults(results) {
+    // Nessun errore del nostro codice deve risalire a MediaPipe: farebbe fallire
+    // hands.send(), verrebbe contato come errore MediaPipe e ricaricherebbe la pagina
+    try {
+      handleResults(results);
+    } catch (err) {
+      logIncident('errore onResults', err); // il frame viene saltato, nessuna ricarica
+    }
+  }
+
+  function handleResults(results) {
     const now = performance.now();
     lastFrameAt = now; // per il watchdog della webcam
     perf.results++;
-    perf.hands = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+
+    // Solo mani complete; multiHandedness resta allineato agli stessi indici
+    const rawHands = results.multiHandLandmarks || [];
+    const rawHandedness = results.multiHandedness || [];
+    const hands = [];
+    const handedness = [];
+    for (let i = 0; i < rawHands.length; i++) {
+      if (!isValidHand(rawHands[i])) continue;
+      hands.push(rawHands[i]);
+      handedness.push(rawHandedness[i]);
+    }
+    perf.hands = hands.length;
 
     // Reset detection flags
     state.right.detected = false;
     state.left.detected = false;
 
     // Render webcam feed & skeleton to camera canvas
-    renderSkeleton(results);
+    renderSkeleton({ image: results.image, multiHandLandmarks: hands, multiHandedness: handedness });
 
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      const all = results.multiHandLandmarks;
-      const labels = all.map((_, i) =>
-        (results.multiHandedness && results.multiHandedness[i] && results.multiHandedness[i].label) || 'Right');
+    if (hands.length > 0) {
+      const all = hands;
+      const labels = all.map((_, i) => (handedness[i] && handedness[i].label) || 'Right');
       // D15: con due mani MediaPipe a volte dà la stessa etichetta a entrambe e la sinistra
       // finiva trattata come destra (il pinch diventava pan). Si decide dalla posizione:
       // nell'immagine non specchiata la mano destra fisica sta a sinistra (x minore).
@@ -569,6 +603,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     // 2. Draw Skeletal Connections & Landmarks
     for (let i = 0; i < results.multiHandLandmarks.length; i++) {
       const landmarks = results.multiHandLandmarks[i];
+      if (!Array.isArray(landmarks)) continue;
       const isPhysicalRight = (results.multiHandedness && results.multiHandedness[i]?.label === 'Left');
 
       const boneColor = isPhysicalRight ? 'rgba(132, 169, 140, 0.85)' : 'rgba(91, 192, 190, 0.85)';
@@ -583,6 +618,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       for (const [startIdx, endIdx] of HAND_CONNECTIONS) {
         const p1 = landmarks[startIdx];
         const p2 = landmarks[endIdx];
+        if (!p1 || !p2) continue;
         canvasCtx.moveTo(p1.x * w, p1.y * h);
         canvasCtx.lineTo(p2.x * w, p2.y * h);
       }
@@ -591,6 +627,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       // Draw joints
       for (let j = 0; j < landmarks.length; j++) {
         const p = landmarks[j];
+        if (!p) continue;
         const isTip = (j === THUMB_TIP || j === INDEX_TIP || j === MIDDLE_TIP || j === RING_TIP || j === PINKY_TIP);
 
         canvasCtx.beginPath();
