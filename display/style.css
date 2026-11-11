@@ -1373,3 +1373,34 @@ body.is-idle .camera-hud { z-index: 95; }
   background: repeating-linear-gradient(90deg, #99251C 0 4px, transparent 4px 8px) center / 100% 2px no-repeat;
 }
 .media-ctl { filter: url(#ink-line); }
+
+/* ── A1b: cornici, cursore e sottolineature con l'inchiostro sbavato ──
+   Solo il bordo passa sul filtro (::after), contenuto e QR restano nitidi. */
+.live-toast, .idle-qr, .camera-hud__status { border-color: transparent !important; }
+.idle-qr, .camera-hud__status, .camera-hud__viewport { position: relative; }
+.live-toast::after, .idle-qr::after, .camera-hud__status::after, .camera-hud__viewport::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 1.5px solid var(--border-card);
+  filter: url(#ink-line);
+  pointer-events: none;
+}
+.camera-hud__viewport { border-color: transparent; }
+.camera-hud__viewport::after { inset: 0; z-index: 2; }
+.live-toast__dot, .cursor-center { filter: url(#ink-line); }
+/* Cursore: tratti opachi + opacity (applicata dopo il filtro) */
+.cursor-bg { stroke: #99251C; opacity: 0.25; filter: url(#ink-line); }
+.cursor-fill { filter: url(#ink-line); }
+/* Link dei ricordi collegati: sottolineatura disegnata a inchiostro */
+.related-chip-link { position: relative; text-decoration: none; }
+.related-chip-link::after {
+  content: '';
+  position: absolute;
+  left: 4px; right: 4px; bottom: -2px;
+  height: 5px;
+  background: linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat;
+  filter: url(#ink-line);
+  pointer-events: none;
+}

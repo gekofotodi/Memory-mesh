@@ -18,6 +18,7 @@
 ## Fatto
 
 - [x] A1 - dettagli - elementi grafici coerenti all'estetica ink bleed: frecce, icone, rete della landing, chip e tasti (solo fondo e bordo), linee dei pannelli del display, comandi media (filtro #ink-line)
+- [x] A1b - cornici con inchiostro sbavato: campi, data, dropzone, tab foto/testo, editor testo, errore, rimuovi file (upload); toast, QR idle, webcam HUD, cursore virtuale, link ricordi collegati (display). Restano nitide le linee disegnate nel canvas della scena
 - [x] D1 !! - nuvola di nodi - inverti la direzione di rotazione della nuvola di nodi
 - [x] D2 !! - cluster - controlla che le linee del menu chiuso non escano dal bordo dello schermo
 - [x] D3 !! - animazione ricordo - modifica l'animazione dei testi, rendila coerente con lo stile ink bleed, tipo che le scritte compaiono allargandosi a macchia

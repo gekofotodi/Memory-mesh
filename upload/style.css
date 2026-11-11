@@ -1238,3 +1238,63 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 .dropzone__icon { color: var(--c-text); opacity: 0.7; }
+
+/* ── A1b: cornici di campi, dropzone, tab e avvisi con l'inchiostro sbavato ──
+   Stessa tecnica di .chip/.cta: il bordo e il fondo passano su un ::before filtrato,
+   il contenuto resta nitido. Colori di fondo opachi (la soglia alfa cancella i semitrasparenti). */
+.media-tabs, .date-segmented, .dropzone, .text-card-editor, .dropzone__remove, .submit-error, .field__wrap {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  --ink-bg: var(--c-surface);
+  --ink-bd: var(--c-border);
+  --ink-bw: 1.5px;
+  --ink-bs: solid;
+}
+.field__wrap > .field__input,
+.field__wrap > .field__textarea {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.media-tabs::before, .date-segmented::before, .dropzone::before, .text-card-editor::before,
+.dropzone__remove::before, .submit-error::before, .field__wrap::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--ink-bw));
+  z-index: -1;
+  border-radius: var(--ink-r, var(--r-sm));
+  border: var(--ink-bw) var(--ink-bs) var(--ink-bd);
+  background: var(--ink-bg);
+  filter: url(#ink-line);
+  pointer-events: none;
+  transition: background 200ms var(--ease), border-color 200ms var(--ease);
+}
+.field__wrap::before { inset: 0; }
+.media-tabs { --ink-bg: #F4ECE5; --ink-bw: 1px; --ink-r: var(--r-full); }
+.dropzone { --ink-bw: 2px; --ink-bs: dashed; --ink-r: var(--r-lg); }
+.dropzone:hover, .dropzone:focus-visible { --ink-bd: var(--c-text-accent); --ink-bg: #FBF4F0; }
+.dropzone.is-dragover { --ink-bd: var(--c-text-accent); --ink-bg: #F7ECE7; }
+.dropzone.has-file { --ink-bs: solid; --ink-bd: var(--c-border); --ink-bg: var(--c-surface); }
+.text-card-editor { --ink-bw: 2px; --ink-r: var(--r-lg); }
+.text-card-editor:focus-within,
+.date-segmented:focus-within,
+.field__wrap:focus-within { --ink-bd: var(--c-text-accent); }
+.date-segmented.is-invalid,
+.field__wrap:has(.is-invalid) { --ink-bd: var(--c-error); }
+.dropzone__remove { --ink-bg: transparent; --ink-bd: var(--c-error); --ink-r: var(--r-full); }
+.dropzone__remove:hover { --ink-bg: var(--c-error); }
+.submit-error { --ink-bg: #F6EAE5; --ink-bd: var(--c-error); --ink-bw: 1px; }
+.text-card-editor__footer { border-top: 0; position: relative; }
+.text-card-editor__footer::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: -3px;
+  height: 6px;
+  background: linear-gradient(#99251C, #99251C) center / 100% 1px no-repeat;
+  opacity: 0.15;
+  filter: url(#ink-line);
+  pointer-events: none;
+}
