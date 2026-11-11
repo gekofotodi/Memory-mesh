@@ -7,10 +7,7 @@
 
 ## Display
 
-
 ## Upload
-
-- [ ] U5 - scopri il progetto - modificare titoli e testi
 
 ## Kiosk / PC
 

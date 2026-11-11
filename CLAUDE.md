@@ -87,7 +87,7 @@ Policy: `anon` INSERT su memories se `privacy_consent = true`; `anon` SELECT tut
 
 **Vocabolari controllati** (devono restare allineati tra upload e display):
 - Tag tematici (`upload/index.html #theme-chips` ↔ `scene.js CLUSTER_PALETTE`): studio, evento, vita comune, fede, musica, amici, relax, cibo, arte, festa, carità.
-- Luoghi (`upload/index.html #location-chips` ↔ `scene.js FLOORS`): cucina, sala del re, studio, ghiacciaia, giardino, esterno (terra) · sala conferenze, camere (primo) · mansarda, cappellina (secondo).
+- Luoghi (`upload/index.html #location-chips` ↔ `scene.js FLOORS`): cucina, sala del re, studio, ghiacciaia, giardino, esterno (terra; 11/11: tolto dall'upload, resta nel display e nel CHECK per i 3 ricordi già salvati) · sala conferenze, camere (primo) · mansarda, cappellina (secondo).
 
 ## Regole di sviluppo
 
