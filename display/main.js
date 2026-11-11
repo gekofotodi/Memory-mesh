@@ -372,6 +372,7 @@ const state = {
   cursorX: window.innerWidth / 2,
   cursorY: window.innerHeight / 2,
   audioAnimId: null,
+  usingFallback: false, // A4: true quando sono visibili i ricordi demo
 };
 
 // ── Bootstrap App ──────────────────────────────────────────────
@@ -456,13 +457,16 @@ async function loadMemories() {
 
     if (data && data.length > 0) {
       state.memories = data;
+      state.usingFallback = false;
     } else {
+      state.usingFallback = true;
       console.log('[display] Supabase memories empty. Using Stoà curated memories.');
       state.memories = [...FALLBACK_MEMORIES];
     }
   } catch (err) {
     console.warn('[display] Could not fetch memories from Supabase, loading fallback:', err);
     state.memories = [...FALLBACK_MEMORIES];
+    state.usingFallback = true;
   }
   state.scene.setMemories(state.memories);
   activateLayout(state.currentLayout, true);
@@ -500,6 +504,8 @@ function setupRealtimeSubscription() {
       .subscribe((status) => {
         console.log('[display] Supabase realtime subscription status:', status);
         if (ch !== realtimeChannel) return; // canale vecchio: ignora
+        // A4: avvio senza rete → demo; appena il canale è attivo si ricaricano i ricordi reali
+        if (status === 'SUBSCRIBED') reloadIfFallback();
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           // Riconnessione silenziosa + riallineamento dati
           clearTimeout(realtimeRetryId);
@@ -514,6 +520,15 @@ function setupRealtimeSubscription() {
     console.warn('[display] Realtime subscription failed:', err);
   }
 }
+
+// A4: se sono visibili i ricordi demo (DB irraggiungibile all'avvio), riprova a caricare quelli reali
+let fallbackReloading = false;
+function reloadIfFallback() {
+  if (!state.usingFallback || fallbackReloading || navigator.onLine === false) return;
+  fallbackReloading = true;
+  loadMemories().finally(() => { fallbackReloading = false; });
+}
+window.addEventListener('online', reloadIfFallback);
 
 function showLiveToast() {
   if (!els.liveToast) return;

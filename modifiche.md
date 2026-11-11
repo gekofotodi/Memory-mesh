@@ -27,4 +27,6 @@
 - [x] D6 !! - timeline - limita lo zoom out nella visualizzazione con gli anni
 - [x] U1 !! - upload file 3D - inserisci dei comandi per rendere i modelli 3d aggiunti leggeri e gestibili dal sito
 
+- [x] R1 - revisione 11/11 - upload: messaggio chiaro per video oltre 10 MB e suggerimento dropzone corretto; "Invio in corso…" durante l'invio; il tasto Indietro del telefono naviga tra gli step invece di uscire. Display: dopo un avvio senza rete i ricordi reali si ricaricano appena torna la connessione
+
 <!-- Sposto qui le voci completate con l'ID, così non le rileggo -->

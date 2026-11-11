@@ -149,6 +149,21 @@ let currentStep = 'landing2';
 let previousStep = null;
 
 function bindNavigation() {
+  // A3: gli step entrano nella cronologia, così il tasto Indietro del telefono resta nel sito
+  history.replaceState({ step: currentStep }, '');
+  window.addEventListener('popstate', (e) => {
+    // Durante l'invio non si lascia il modulo
+    if (els.btnSubmit.disabled && currentStep === 'form') {
+      history.pushState({ step: 'form' }, '');
+      return;
+    }
+    if (!els.overlay.hidden) {
+      hideSuccess();
+      resetForm();
+    }
+    goToStep(e.state?.step || 'landing2', { fromHistory: true });
+  });
+
   // 2. Landing 2 navigation
   if (els.btnGoInfo) {
     els.btnGoInfo.addEventListener('click', () => goToStep('info'));
@@ -174,7 +189,7 @@ function bindNavigation() {
   }
 }
 
-function goToStep(target) {
+function goToStep(target, { fromHistory = false } = {}) {
   if (target === currentStep) return;
 
   const steps = {
@@ -200,6 +215,7 @@ function goToStep(target) {
 
   previousStep = currentStep;
   currentStep = target;
+  if (!fromHistory) history.pushState({ step: target }, '');
 }
 
 // ── Media Switcher (File vs Text) ──────────────────────────────
@@ -318,7 +334,11 @@ async function handleFileSelect(file) {
   // Strict limit of 10 MB for video, audio, 3D (i .glb si possono alleggerire: limite dopo)
   const isGlb = type === 'model3d' && /\.glb$/i.test(file.name);
   if (isGlb ? file.size > MAX_MODEL_INPUT_BYTES : file.size > MAX_UPLOAD_BYTES) {
-    showFieldError('file', `Il file supera il limite massimo di ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB.`);
+    const mb = (file.size / (1024 * 1024)).toFixed(0);
+    const max = (isGlb ? MAX_MODEL_INPUT_BYTES : MAX_UPLOAD_BYTES) / (1024 * 1024);
+    showFieldError('file', type === 'video'
+      ? `Video troppo pesante (${mb} MB, max ${max}). Scegline uno più corto, circa 10 secondi, o accorcialo dalla Galleria.`
+      : `Il file pesa ${mb} MB: il limite è ${max} MB.`);
     return;
   }
 
@@ -1044,6 +1064,8 @@ async function uploadFile(file) {
 // Requirement 6: Simply disable button without spinners or text oscillations
 function setLoading(loading) {
   els.btnSubmit.disabled = loading;
+  // A2: etichetta statica durante l'invio (niente spinner)
+  if (els.submitLabel) els.submitLabel.textContent = loading ? 'Invio in corso…' : 'Invia il ricordo';
 
   // Disable form interaction during upload
   const fields = els.form.querySelectorAll('input, textarea, button:not(#btn-submit)');
