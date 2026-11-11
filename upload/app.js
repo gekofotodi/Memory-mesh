@@ -43,7 +43,6 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 const els = {
   // Steps
-  stepLanding:  $('#step-landing'),
   stepLanding2: $('#step-landing2'),
   stepInfo:     $('#step-info'),
   stepForm:     $('#step-form'),
@@ -134,7 +133,7 @@ function preventZoom() {
 function init() {
   preventZoom();
   // U6: solo l'inchiostro statico a riposo, niente effetto dinamico al tocco (troppo pesante)
-  initInkBleed({ selector: '.action-btn__arrow, .landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title', hover: 'none' });
+  initInkBleed({ selector: '.action-btn__arrow, .landing2__title, .info-block__title, .header__title, .overlay__title', hover: 'none' });
   bindNavigation();
   bindMediaSwitcher();
   bindDropzone();
@@ -146,28 +145,10 @@ function init() {
 }
 
 // ── Navigation State & Logic ────────────────────────────────────
-let currentStep = 'landing';
+let currentStep = 'landing2';
 let previousStep = null;
-let landingTimer = null;
 
 function bindNavigation() {
-  // 1. Landing -> Landing 2 automatic timer after 2 seconds (2000ms)
-  landingTimer = setTimeout(() => {
-    if (currentStep === 'landing') {
-      goToStep('landing2', { fade: true });
-    }
-  }, 2000);
-
-  // Skip landing immediately on tap / click
-  if (els.stepLanding) {
-    els.stepLanding.addEventListener('click', () => {
-      if (currentStep === 'landing') {
-        if (landingTimer) clearTimeout(landingTimer);
-        goToStep('landing2', { fade: true });
-      }
-    });
-  }
-
   // 2. Landing 2 navigation
   if (els.btnGoInfo) {
     els.btnGoInfo.addEventListener('click', () => goToStep('info'));
@@ -193,11 +174,10 @@ function bindNavigation() {
   }
 }
 
-function goToStep(target, options = {}) {
+function goToStep(target) {
   if (target === currentStep) return;
 
   const steps = {
-    landing:  els.stepLanding,
     landing2: els.stepLanding2,
     info:     els.stepInfo,
     form:     els.stepForm,
@@ -207,25 +187,8 @@ function goToStep(target, options = {}) {
   const newStepEl = steps[target];
   if (!newStepEl) return;
 
-  // Fade transition between landing and landing2
-  if (currentStep === 'landing' && target === 'landing2' && options.fade) {
-    if (landingTimer) clearTimeout(landingTimer);
-
-    newStepEl.className = 'step step--landing2 step--fade-in';
-    oldStepEl.className = 'step step--landing step--fade-out';
-
-    setTimeout(() => {
-      oldStepEl.className = 'step step--landing step--prev';
-      newStepEl.className = 'step step--landing2 step--active';
-    }, 700);
-
-    previousStep = currentStep;
-    currentStep = target;
-    return;
-  }
-
   // Step directional order for slide transitions
-  const order = { landing: 0, landing2: 1, info: 2, form: 3 };
+  const order = { landing2: 1, info: 2, form: 3 };
   const goingForward = (order[target] ?? 0) >= (order[currentStep] ?? 0);
 
   if (oldStepEl) {

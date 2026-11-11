@@ -25,7 +25,8 @@ Lingua: UI e commenti in **italiano**. Rispondi all'utente in italiano.
 ```
 shared/supabase-config.js   (19)   createClient + URL/publishable key. Unica fonte credenziali.
 shared/inkBleed.js          (318)  Filtro SVG "ink bleed" per titoli/menu (uno per elemento), hover 'pointer' (upload) o 'manual' via setInkHoverPoint (display)
-upload/index.html           (355)  Step: landing → landing2 → info → form (+ overlay successo)
+upload/index.html           (345)  Step: landing2 (home, senza splash) → info → form (+ overlay successo)
+shared/brand/               favicon, apple-touch-icon, og-image.png: logo MM con ink bleed (link condivisi)
 upload/app.js               (1182) Navigazione step, dropzone, compressione, data AAAA-MM-GG, submit
 upload/style.css            (1188)
 display/index.html          (277)  canvas scena, video webcam, header, 2 wheel-dock, camera-hud, drawer info, modale dettaglio, toast, cursore virtuale

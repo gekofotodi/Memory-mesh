@@ -127,21 +127,6 @@ a { color: inherit; text-decoration: none; }
   z-index: 0;
 }
 
-.step--fade-out {
-  transform: none !important;
-  opacity: 0 !important;
-  transition: opacity 700ms var(--ease) !important;
-  pointer-events: none !important;
-  z-index: 2 !important;
-}
-
-.step--fade-in {
-  transform: none !important;
-  opacity: 1 !important;
-  transition: opacity 700ms var(--ease) !important;
-  z-index: 1 !important;
-}
-
 .step__inner {
   width: 100%;
   max-width: 520px;
@@ -151,66 +136,6 @@ a { color: inherit; text-decoration: none; }
 }
 
 
-
-/* ── Step: Landing (Splash 2s) ──────────────────────────────── */
-.step--landing {
-  background: #99251C;
-  color: #FFFDF9;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-}
-
-.landing__container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  padding: var(--s-xl) var(--s-lg);
-  box-sizing: border-box;
-}
-
-.landing__monogram {
-  font-family: var(--font-serif);
-  font-size: clamp(7.5rem, 30vw, 15rem);
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  color: #FFFDF9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-}
-
-.landing__monogram .mm-char--reg {
-  font-style: normal;
-}
-
-.landing__monogram .mm-char--ita {
-  font-style: italic;
-  margin-left: -0.04em;
-}
-
-.landing__footer {
-  position: absolute;
-  bottom: calc(var(--s-2xl) + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-family: var(--font-sans);
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #FFFDF9;
-  user-select: none;
-}
 
 /* ── Step: Landing 2 (Home principale) ──────────────────────── */
 .step--landing2 {
@@ -1171,7 +1096,6 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ── Titoli: Helvetica con ink bleed (shared/inkBleed.js) ─────────── */
-.landing__monogram,
 .landing2__title,
 .info-block__title,
 .header__title,
