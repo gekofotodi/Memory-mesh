@@ -20,51 +20,27 @@ Lingua: UI e commenti in **italiano**. Rispondi all'utente in italiano.
 - Dev locale con ricarica automatica: `npx live-server@1.2.2 --port=5173 --host=127.0.0.1 --no-browser` dalla root → http://127.0.0.1:5173/display/ e /upload/ (CSS iniettato a caldo, JS/HTML ricaricano la pagina). In locale `window.__mm` espone `{ state, showIdle() }` e `state.scene.debugInfo()` (accessibili solo dal contesto pagina).
 - Supabase **Free Tier**: risparmiare storage e banda è un requisito, non un'ottimizzazione.
 
-## Mappa dei file (righe ≈)
+## Mappa dei file
 
 ```
-shared/supabase-config.js   (19)   createClient + URL/publishable key. Unica fonte credenziali.
-shared/inkBleed.js          (318)  Filtro SVG "ink bleed" per titoli/menu (uno per elemento), hover 'pointer' (upload) o 'manual' via setInkHoverPoint (display)
-upload/index.html           (345)  Step: landing2 (home, senza splash) → info → form (+ overlay successo)
+shared/supabase-config.js   createClient + URL/publishable key. Unica fonte credenziali.
+shared/inkBleed.js          Filtro SVG "ink bleed" per titoli/menu (uno per elemento), hover 'pointer' (upload) o 'manual' via setInkHoverPoint (display)
+upload/index.html           Step: landing2 (home, senza splash) → info → form (+ overlay successo)
 shared/brand/               favicon, apple-touch-icon, og-image.png: logo MM con ink bleed (link condivisi)
-upload/app.js               (1182) Navigazione step, dropzone, compressione, data AAAA-MM-GG, submit
-upload/style.css            (1188)
-display/index.html          (277)  canvas scena, video webcam, header, 2 wheel-dock, camera-hud, drawer info, modale dettaglio, toast, cursore virtuale
-display/main.js             (1501) Orchestratore: Supabase fetch + realtime, callback gesture, menu, modali
-display/tracking.js         (836)  MediaPipe → eventi astratti; fallback mouse
-display/scene.js            (2704) Motore Canvas 2D: camera, nodi, 5 layout, render loop
-display/wheelMenu.js        (223)  Classe WheelMenu2D (voci radiali, setItems, selectValue)
-display/inkReveal.js        (122)  Testi della modale che compaiono/spariscono a macchia d'inchiostro (filtro SVG animato)
-upload/modelOptimizer.js    (87)   Alleggerimento .glb nel browser (glTF-Transform 4.5.1 + meshoptimizer 1.3.0, import dinamico)
-display/style.css           (1349)
-.antigravity/rules.md              Regole originali per Antigravity IDE (stesso contenuto di questo file, sezione Regole)
+upload/app.js               Navigazione step, dropzone, compressione, data AAAA-MM-GG, submit
+upload/style.css
+display/index.html          canvas scena, video webcam, header, 2 wheel-dock, camera-hud, drawer info, modale dettaglio, toast, cursore virtuale
+display/main.js             Orchestratore: Supabase fetch + realtime, callback gesture, menu, modali
+display/tracking.js         MediaPipe → eventi astratti; fallback mouse
+display/scene.js            Motore Canvas 2D: camera, nodi, 5 layout, render loop
+display/wheelMenu.js        Classe WheelMenu2D (voci radiali, setItems, selectValue)
+display/inkReveal.js        Testi della modale che compaiono/spariscono a macchia d'inchiostro (filtro SVG animato)
+upload/modelOptimizer.js    Alleggerimento .glb nel browser (glTF-Transform 4.5.1 + meshoptimizer 1.3.0, import dinamico)
+display/style.css
+.antigravity/rules.md       Regole originali per Antigravity IDE (stesso contenuto di questo file, sezione Regole)
 ```
 
-### `display/scene.js` — sezioni
-- 15 `FLOORS` (stanze per piano, coordinate mondo) · 50 `CLUSTER_PALETTE` (colore per tag)
-- 96 `initScene(canvas)` → stato camera/nodi · 304 fabric wave · 327 `parseMemoryDate`
-- 399 `setMemories` / 491 `addMemory` (preload immagini, primo frame video in `imageCache`)
-- 563 `recalculateLayoutTargets()` — uno `case` per layout: `nodi` (nuvola 3D), `cluster`, `planimetria`, `timeline`, `griglia`
-- 1006 `fitCurrentLayout` · 1037 mode switchers (`setLayout`, `setFloor`, `setTimelineYear`, `setClusterTag`, `setGridSort`)
-- 1210 `pan`/`zoom` · 1332 `hitTest` · 1356 `updateCloud` (nuvola nodi) · 1391 `update` · 1549 `render` (rAF)
-- 1622 `planPhase` (animazione piani) · 1679 disegno planimetria · 1938 contorni cluster · 2528 miniature
-
-### Contratto tracking → main (non legare la scena alle gesture)
-`initTracking({videoEl, canvasEl, callbacks})` emette: `onPointerMove(x,y)`, `onSelect()`, `onPan(dx,dy)`, `onZoom(factor)`, `onHandStateChange(left,right)`.
-- Mano **destra** fisica (label MediaPipe `Left`, camera specchiata): l'indice muove il puntatore (One Euro); pinch prolungato = pan con inerzia, puntatore congelato durante il pan (D19).
-- Mano **sinistra** fisica: pinch (isteresi 0.28/0.38, hold) = select sul punto del mirino; polso inclinato >20° a mano aperta = zoom continuo.
-- Mouse disattivato sul display (D18): eventi bloccati in cattura e cursore nascosto. Solo `/display/?mouse=1` lo riattiva per manutenzione/test (click = select, rotella = zoom).
-
-### Layout e menu destro contestuale (`main.js → activateLayout`)
-| Layout | Menu destro |
-|---|---|
-| `nodi` | nessuno (nascosto) |
-| `cluster` | tag presenti nei dati → `setClusterTag` |
-| `planimetria` | Piano Terra / Primo / Secondo → `setFloor` |
-| `timeline` | Tutti gli anni + anni → `setTimelineYear` |
-| `griglia` | ordina per Data / Media / Tag / Luogo → `setGridSort` |
-
-I menu compaiono per prossimità del puntatore ai bordi (enter 240px, leave 380px). Tasti kiosk: `1-5` layout, `I` info, `W` onda, `Esc` chiudi.
+Contratto tracking → main, gesture e menu per layout: vedi `display/CLAUDE.md` (si carica quando lavori in `display/`).
 
 ## Supabase (progetto `memory mesh`, ref `nkymnsfkrmpnkmdyrayd`, eu-west-1)
 
@@ -104,24 +80,13 @@ Policy: `anon` INSERT su memories se `privacy_consent = true`; `anon` SELECT tut
 
 ## Problemi noti (backlog — verificare prima di toccare queste aree)
 
-- [x] **Doppio inserimento realtime:** `scene.setMemories` tiene la stessa reference di `state.memories`; nel listener `main.js` fa `unshift` e poi `scene.addMemory` fa di nuovo `unshift` → ricordo duplicato nell'array e contatore +2. Anche l'onda parte due volte.
-- [x] **Related chip via gesture non funziona con id numerici:** `handleSelect` confronta `m.id === dataset.id` (numero vs stringa).
-- [x] **`sala del re` non esiste in `FLOORS`** → quei ricordi spariscono in planimetria. I ricordi di fallback usano luoghi inesistenti (Portico, Sala Studio, Salone) e tag fuori vocabolario.
-- [x] **Data:** modale e timeline usano `created_at` (invio) prima di `time_event` (evento).
-- [x] **`model3d` (glb/gltf)** accettato in upload ma non gestito nel display (modale prova a mostrarlo come immagine).
-- [x] **Card testo:** l'upload genera un'immagine della citazione, ma il display mostra solo il placeholder "MEMORIA".
 - [x] Video: autoplay muto in loop all'apertura (scelta di progetto). [ ] Audio: controlli nativi non azionabili con gesture.
 - [x] Miniature: l'upload crea `thumb_url` (~400px) per foto, card di testo e video; il display (`scene.js preloadMedia`) la usa al posto del file pieno. I ricordi precedenti hanno le miniature in `uploads/thumbs/<id>.webp`.
-- [x] CDN non versionate (`supabase-js`, `@mediapipe/*`) → un rilascio upstream può rompere il kiosk.
-- [x] Riconnessione realtime (retry 5s). [x] Webcam: riavvio automatico (track `ended`, watchdog 8s senza frame, retry 10s se assente). [x] Schermata di attesa dopo 45s (titolo + QR), chiusa salutando (tastiera per manutenzione); la webcam resta accesa e visibile sopra lo standby (D24).
+- [x] Riconnessione realtime (retry 5s). [x] Webcam: riavvio automatico (track `ended`, watchdog 8s senza frame, retry 10s se assente). [x] Schermata di attesa dopo 5 s senza mani (45 s con `?mouse=1`), titolo + QR + istruzioni, chiusa salutando (tastiera per manutenzione); la webcam resta accesa e visibile sopra lo standby (D24).
 - [x] Limiti server-side: bucket 10 MB + MIME ammessi (webp/jpeg, video mp4/mov/webm, audio, gltf); CHECK su `memories` (titolo ≤5 parole, tag/luoghi del vocabolario, media_type, URL del bucket). **Se aggiungi un tag o una stanza, aggiorna anche i CHECK `memories_tags_check` / `memories_location_check`.** Moderazione: **scelta di progetto, NESSUNA approvazione**.
 - [x] `alert()` sostituito da messaggio in pagina + 3 tentativi. [~] File orfani se l'insert fallisce: la vista `public.orphan_uploads` (solo dashboard, non esposta ad anon) li elenca; si cancellano a mano da Storage > uploads (Supabase blocca il DELETE via SQL).
 - [x] **Compressione:** Safari iOS non codifica WebP via canvas e restituiva PNG pesanti con estensione .webp → ora fallback JPEG verificando `blob.type`.
-- [x] Timeline/griglia/cluster: inquadratura automatica (`fitCameraToContent` in `scene.js`), cluster parte da "Tutti i temi".
-- [x] Anello progresso cursore: perimetro 125.6 calcolato con r=20 ma il cerchio SVG ha r=18.
-- [x] Fallback mouse di `tracking.js` non aggiunge più listener (li gestisce `main.js`).
 - [ ] **Planimetria provvisoria:** stanze e coordinate in `FLOORS` non definitive (la Sala del Re ha preso il posto del vecchio Salone Centrale, coordinate da rifare).
-- [x] README allineato all'implementazione (11/11).
 - [x] **Crash webcam/ricariche (11/11):** fotogrammi inviati solo con video pronto, errori di invii vecchi ignorati, 1-2 errori isolati tollerati, MediaPipe bloccato >6s = ricarica; dopo 5 ricariche in 10 min pausa e nuovo tentativo dopo 10 min; riavvio preventivo dopo 45 min solo in attesa; senza rete le ricariche aspettano che torni la connessione. Registro incidenti: `JSON.parse(localStorage['mm-incidents'])` nella console del kiosk.
 
 Quando risolvi un punto, spuntalo qui.
