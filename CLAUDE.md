@@ -24,30 +24,29 @@ Lingua: UI e commenti in **italiano**. Rispondi all'utente in italiano.
 
 ```
 shared/supabase-config.js   (19)   createClient + URL/publishable key. Unica fonte credenziali.
-shared/inkBleed.js          (190)  Filtro SVG "ink bleed" per titoli/menu (uno per elemento), hover 'pointer' (upload) o 'manual' via setInkHoverPoint (display)
-upload/index.html           (333)  Step: landing → landing2 → info → form (+ overlay successo)
-upload/app.js               (1064) Navigazione step, dropzone, compressione, data AAAA-MM-GG, submit
-upload/style.css            (1113)
-display/index.html          (269)  canvas scena, video webcam, header, 2 wheel-dock, camera-hud, drawer info, modale dettaglio, toast, cursore virtuale
-display/main.js             (1115) Orchestratore: Supabase fetch + realtime, callback gesture, menu, modali
-display/tracking.js         (524)  MediaPipe → eventi astratti; fallback mouse
-display/scene.js            (2242) Motore Canvas 2D: camera, nodi, 5 layout, render loop
-display/wheelMenu.js        (182)  Classe WheelMenu2D (voci radiali, setItems, selectValue)
-display/inkReveal.js        (130)  Testi della modale che compaiono/spariscono a macchia d'inchiostro (filtro SVG animato)
-upload/modelOptimizer.js    (90)   Alleggerimento .glb nel browser (glTF-Transform 4.5.1 + meshoptimizer 1.3.0, import dinamico)
-display/style.css           (1196)
+shared/inkBleed.js          (318)  Filtro SVG "ink bleed" per titoli/menu (uno per elemento), hover 'pointer' (upload) o 'manual' via setInkHoverPoint (display)
+upload/index.html           (355)  Step: landing → landing2 → info → form (+ overlay successo)
+upload/app.js               (1182) Navigazione step, dropzone, compressione, data AAAA-MM-GG, submit
+upload/style.css            (1188)
+display/index.html          (277)  canvas scena, video webcam, header, 2 wheel-dock, camera-hud, drawer info, modale dettaglio, toast, cursore virtuale
+display/main.js             (1501) Orchestratore: Supabase fetch + realtime, callback gesture, menu, modali
+display/tracking.js         (836)  MediaPipe → eventi astratti; fallback mouse
+display/scene.js            (2704) Motore Canvas 2D: camera, nodi, 5 layout, render loop
+display/wheelMenu.js        (223)  Classe WheelMenu2D (voci radiali, setItems, selectValue)
+display/inkReveal.js        (122)  Testi della modale che compaiono/spariscono a macchia d'inchiostro (filtro SVG animato)
+upload/modelOptimizer.js    (87)   Alleggerimento .glb nel browser (glTF-Transform 4.5.1 + meshoptimizer 1.3.0, import dinamico)
+display/style.css           (1349)
 .antigravity/rules.md              Regole originali per Antigravity IDE (stesso contenuto di questo file, sezione Regole)
 ```
 
 ### `display/scene.js` — sezioni
 - 15 `FLOORS` (stanze per piano, coordinate mondo) · 50 `CLUSTER_PALETTE` (colore per tag)
-- 96 `initScene(canvas)` → stato camera/nodi · 219 fabric wave · 297 `parseMemoryDate`
-- 381 `setMemories` / 467 `addMemory` (preload immagini, primo frame video in `imageCache`)
-- 538–915 `recalculateLayoutTargets()` — uno `case` per layout: `nodi`, `cluster`, `planimetria`, `timeline`, `griglia`
-- 916 mode switchers (`setLayout`, `setFloor`, `setTimelineYear`, `setClusterTag`, `setGridSort`)
-- 1020 `pan`/`zoom` · 1087 `hitTest` · 1130 `update` · 1171 clamp camera a molla · 1229 `render` (rAF)
-- 1282 disegno planimetria assonometrica · 1555–1745 cluster (convex hull + Chaikin) · 1747 timeline · 2021 filamenti · 2087 miniature · 2176 metadati griglia
-- 2206 API pubblica restituita da `initScene`
+- 96 `initScene(canvas)` → stato camera/nodi · 304 fabric wave · 327 `parseMemoryDate`
+- 399 `setMemories` / 491 `addMemory` (preload immagini, primo frame video in `imageCache`)
+- 563 `recalculateLayoutTargets()` — uno `case` per layout: `nodi` (nuvola 3D), `cluster`, `planimetria`, `timeline`, `griglia`
+- 1006 `fitCurrentLayout` · 1037 mode switchers (`setLayout`, `setFloor`, `setTimelineYear`, `setClusterTag`, `setGridSort`)
+- 1210 `pan`/`zoom` · 1332 `hitTest` · 1356 `updateCloud` (nuvola nodi) · 1391 `update` · 1549 `render` (rAF)
+- 1622 `planPhase` (animazione piani) · 1679 disegno planimetria · 1938 contorni cluster · 2528 miniature
 
 ### Contratto tracking → main (non legare la scena alle gesture)
 `initTracking({videoEl, canvasEl, callbacks})` emette: `onPointerMove(x,y)`, `onSelect()`, `onPan(dx,dy)`, `onZoom(factor)`, `onHandStateChange(left,right)`.

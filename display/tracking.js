@@ -294,6 +294,16 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     console.warn(`[tracking] ${reason}`, err || '');
     try {
       const log = JSON.parse(localStorage.getItem('mm-incidents') || '[]');
+      const msg = err ? String((err && err.message) || err).slice(0, 200) : '';
+      // Stesso errore entro 5 s: si incrementa il conteggio (un errore a ogni frame
+      // riempiva i 40 posti in poco più di un secondo cancellando la storia utile)
+      const last = log[log.length - 1];
+      if (last && last.reason === reason && last.err === msg && Date.now() - Date.parse(last.tLast || last.t) < 5000) {
+        last.n = (last.n || 1) + 1;
+        last.tLast = new Date().toISOString();
+        localStorage.setItem('mm-incidents', JSON.stringify(log));
+        return;
+      }
       log.push({
         t: new Date().toISOString(),
         reason,

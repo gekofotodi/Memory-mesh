@@ -170,7 +170,6 @@ const els = {
   cameraCanvas: $('#camera-canvas'),
 
   // Header & Counters
-  memoryCounter: $('#memory-counter'),
 
   // Wheel Menus
   wheelLeft: $('#wheel-left'),
@@ -179,11 +178,6 @@ const els = {
   wheelRightBtns: $$('#wheel-right .wheel-btn'),
 
   // Camera HUD
-  cameraBadge: $('#camera-badge'),
-  hudStatusDot: $('#hud-status-dot'),
-  hudStatusText: $('#hud-status-text'),
-  indRight: $('#ind-right'),
-  indLeft: $('#ind-left'),
 
   // Info Modal
   hudHeader: $('#hud-header'),
@@ -192,7 +186,6 @@ const els = {
   // Detail Modal (Riquadro di Selezione)
   modalDetail: $('#modal-detail'),
   modalDetailBox: $('#detail-modal-box'),
-  btnCloseDetail: $('#btn-close-detail'),
   mediaBoxPhoto: $('#media-box-photo'),
   mediaBoxVideo: $('#media-box-video'),
   mediaBoxAudio: $('#media-box-audio'),
@@ -471,8 +464,6 @@ async function loadMemories() {
     console.warn('[display] Could not fetch memories from Supabase, loading fallback:', err);
     state.memories = [...FALLBACK_MEMORIES];
   }
-
-  updateCounter();
   state.scene.setMemories(state.memories);
   activateLayout(state.currentLayout, true);
 }
@@ -503,7 +494,6 @@ function setupRealtimeSubscription() {
           state.scene.addMemory(newMemory);
 
           // 3. Update counter & show toast
-          updateCounter();
           showLiveToast();
         }
       )
@@ -522,12 +512,6 @@ function setupRealtimeSubscription() {
       });
   } catch (err) {
     console.warn('[display] Realtime subscription failed:', err);
-  }
-}
-
-function updateCounter() {
-  if (els.memoryCounter) {
-    els.memoryCounter.textContent = state.memories.length;
   }
 }
 
@@ -866,27 +850,8 @@ function handleZoom(factor) {
 }
 
 function handleHandStateChange(leftHand, rightHand) {
-  // Update Tracking Status text & dot in camera HUD (if present)
   const isTracking = leftHand.detected || rightHand.detected;
   if (isTracking) markActivity('mano rilevata'); // tiene sveglio il display (non chiude l'attesa: serve il saluto)
-  if (els.hudStatusDot) {
-    els.hudStatusDot.classList.toggle('is-tracking', isTracking);
-  }
-
-  if (els.hudStatusText) {
-    if (isTracking) {
-      const parts = [];
-      if (rightHand.detected) parts.push(rightHand.isPinching ? 'Destra: Sposta' : 'Destra: Puntatore');
-      if (leftHand.detected) parts.push(leftHand.isPinching ? 'Sinistra: Seleziona' : leftHand.isZooming ? 'Sinistra: Zoom' : 'Sinistra: Pronta');
-      els.hudStatusText.textContent = parts.join(' · ');
-    } else {
-      els.hudStatusText.textContent = 'In attesa delle mani';
-    }
-  }
-
-  // Indicator pills (if present)
-  if (els.indRight) els.indRight.classList.toggle('is-active', rightHand.detected);
-  if (els.indLeft) els.indLeft.classList.toggle('is-active', leftHand.detected);
 
   // Pinch progress ring on virtual cursor
   if (els.cursorProgressRing) {
@@ -957,9 +922,6 @@ function bindUIEvents() {
   });
 
   // Detail Modal Close (Chiusura via click esterno o Esc)
-  if (els.btnCloseDetail) {
-    els.btnCloseDetail.addEventListener('click', closeModals);
-  }
   els.modalDetail.addEventListener('click', (e) => {
     if (e.target === els.modalDetail) closeModals();
   });

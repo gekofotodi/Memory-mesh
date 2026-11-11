@@ -661,8 +661,8 @@ function getDateValue() {
   const monthNum = parseInt(m, 10);
   const dayNum = parseInt(d, 10);
 
-  if (yearNum < 1900 || yearNum > 2100) {
-    return { valid: false, message: 'Inserisci un anno valido tra il 1900 e il 2100.' };
+  if (yearNum < 1900 || yearNum > new Date().getFullYear()) {
+    return { valid: false, message: `Inserisci un anno valido tra il 1900 e il ${new Date().getFullYear()}.` };
   }
   if (monthNum < 1 || monthNum > 12) {
     return { valid: false, message: 'Inserisci un mese valido (01-12).' };
@@ -675,6 +675,12 @@ function getDateValue() {
   const dt = new Date(yearNum, monthNum - 1, dayNum);
   if (dt.getFullYear() !== yearNum || dt.getMonth() !== monthNum - 1 || dt.getDate() !== dayNum) {
     return { valid: false, message: 'Data non valida per il calendario.' };
+  }
+  // Il database rifiuta le date future (CHECK time_event <= oggi + 1)
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  if (dt > today) {
+    return { valid: false, message: 'La data del ricordo non può essere nel futuro.' };
   }
 
   const formatted = `${String(yearNum).padStart(4, '0')}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;

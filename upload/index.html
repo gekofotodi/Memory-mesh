@@ -221,7 +221,7 @@
         <div class="field" id="field-title">
           <label class="field__label" for="memory-title">Titolo della memoria</label>
           <div class="field__wrap">
-            <input type="text" id="memory-title" class="field__input" placeholder="Max. 5 parole" autocomplete="off" />
+            <input type="text" id="memory-title" class="field__input" placeholder="Max. 5 parole" autocomplete="off" maxlength="80" />
             <span class="field__counter" id="title-counter">0 / 5</span>
           </div>
           <p class="field__error" id="error-title" hidden>Il titolo può avere al massimo 5 parole.</p>
@@ -230,7 +230,7 @@
         <!-- 3. Descrizione -->
         <div class="field">
           <label class="field__label" for="memory-desc">Descrizione breve</label>
-          <textarea id="memory-desc" class="field__textarea" rows="3" placeholder="Racconta brevemente questo ricordo…"></textarea>
+          <textarea id="memory-desc" class="field__textarea" rows="3" placeholder="Racconta brevemente questo ricordo…" maxlength="1000"></textarea>
         </div>
 
         <!-- 4. Tag tematici -->

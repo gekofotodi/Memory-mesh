@@ -435,30 +435,6 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: var(--s-xl);
 }
 
-.logo {
-  color: var(--c-text);
-  transition: transform var(--dur) var(--ease);
-}
-.logo:hover { transform: rotate(15deg); }
-
-/* Hamburger icon — 3 lines */
-.header__menu {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 8px;
-  border-radius: var(--r-sm);
-  transition: background var(--dur) var(--ease);
-}
-.header__menu:hover { background: rgba(0,0,0,0.04); }
-.header__menu span {
-  display: block;
-  width: 22px;
-  height: 2px;
-  background: var(--c-text);
-  border-radius: 1px;
-}
-
 /* Form header variant */
 .header--form {
   gap: var(--s-md);
@@ -1180,15 +1156,6 @@ a { color: inherit; text-decoration: none; }
   }
   .card {
     padding: var(--s-xl);
-  }
-}
-
-@media (min-width: 640px) {
-  /* Le caselle bento rimangono sempre posizionate in colonna verticale */
-  .cards {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-md);
   }
 }
 

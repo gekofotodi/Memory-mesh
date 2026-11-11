@@ -40,8 +40,6 @@
 /* ── Regola Tipografica Fondamentale ─────────────────────────────────
    I testi in Instrument Serif non devono MAI essere completamente in caps lock */
 .header-title,
-.drawer-title,
-.magazine-title,
 .wheel-btn,
 .wheel-btn__text,
 [style*="font-family: var(--font-serif)"],
@@ -992,17 +990,6 @@ body.kiosk-body {
   stroke: var(--accent-red);
 }
 
-/* Responsive adjustments */
-@media (max-width: 900px) {
-  .magazine-layout {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-  .info-drawer {
-    width: 100vw;
-  }
-}
-
 /* ── Accessibilità: Rispetto preferenze di movimento ridotto (WCAG 2.3.3) ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1047,14 +1034,12 @@ body.kiosk-body {
    Il filtro SVG (bordi irregolari + espansione dell'inchiostro) è
    assegnato per elemento da shared/inkBleed.js; in hover aumenta. */
 .header-title,
-.drawer-title,
 .selection-title {
   font-weight: 700;
   letter-spacing: -0.035em;
 }
 
-.header-title em,
-.drawer-title em {
+.header-title em {
   font-style: normal;
 }
 

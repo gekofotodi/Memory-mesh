@@ -59,11 +59,6 @@ const CLUSTER_PALETTE = {
   arte:          { stroke: '#E84393', fill: 'rgba(232, 67, 147, 0.05)' },
   festa:         { stroke: '#C23616', fill: 'rgba(194, 54, 22, 0.05)' },
   carità:        { stroke: '#4B7BEC', fill: 'rgba(75, 123, 236, 0.05)' },
-  design:        { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.05)' },
-  social:        { stroke: '#26DE81', fill: 'rgba(38, 222, 129, 0.05)' },
-  talk:          { stroke: '#2E6BFF', fill: 'rgba(46, 107, 255, 0.05)' },
-  laboratorio:   { stroke: '#F39C12', fill: 'rgba(243, 156, 18, 0.05)' },
-  sport:         { stroke: '#E17055', fill: 'rgba(225, 112, 85, 0.05)' },
   default:       { stroke: '#99251C', fill: 'rgba(153, 37, 28, 0.05)' },
 };
 
@@ -277,13 +272,6 @@ export function initScene(canvas) {
     return {
       x: (sx - width / 2) / camera.zoom + camera.x,
       y: (sy - height / 2) / camera.zoom + camera.y,
-    };
-  }
-
-  function worldToScreen(wx, wy) {
-    return {
-      x: (wx - camera.x) * camera.zoom + width / 2,
-      y: (wy - camera.y) * camera.zoom + height / 2,
     };
   }
 
@@ -1917,55 +1905,6 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
-  // ── Cluster: Geometria ad Inviluppo Organico Morbido (Convex Hull & Bézier Spline) ──
-  function computeConvexHull(pts) {
-    if (pts.length <= 2) return pts.slice();
-    const sorted = pts.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
-    function crossProduct(o, a, b) {
-      return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-    }
-    const lower = [];
-    for (let i = 0; i < sorted.length; i++) {
-      while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], sorted[i]) <= 0) {
-        lower.pop();
-      }
-      lower.push(sorted[i]);
-    }
-    const upper = [];
-    for (let i = sorted.length - 1; i >= 0; i--) {
-      while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], sorted[i]) <= 0) {
-        upper.pop();
-      }
-      upper.push(sorted[i]);
-    }
-    lower.pop();
-    upper.pop();
-    return lower.concat(upper);
-  }
-
-  // ── Smoothing Chaikin per Archi e Tangenti Fluidi ─────────────
-  function chaikinSmooth(pts, iterations = 2) {
-    let current = pts.slice();
-    for (let it = 0; it < iterations; it++) {
-      const next = [];
-      const len = current.length;
-      for (let i = 0; i < len; i++) {
-        const p0 = current[i];
-        const p1 = current[(i + 1) % len];
-        next.push({
-          x: 0.75 * p0.x + 0.25 * p1.x,
-          y: 0.75 * p0.y + 0.25 * p1.y,
-        });
-        next.push({
-          x: 0.25 * p0.x + 0.75 * p1.x,
-          y: 0.25 * p0.y + 0.75 * p1.y,
-        });
-      }
-      current = next;
-    }
-    return current;
-  }
-
   // ── Contorni organici dei cluster (metaball + marching squares) ──
   // Ogni ricordo genera un "campo" che decresce con la distanza dal suo bordo;
   // la curva di livello 1 avvolge il ricordo a distanza R e, quando due ricordi
@@ -2170,23 +2109,6 @@ export function initScene(canvas) {
       const p1 = pts[i];
       const p2 = pts[(i + 1) % n];
       ctx.quadraticCurveTo(p1.x, p1.y, (p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-    }
-    ctx.closePath();
-  }
-
-  function drawSmoothClosedBlob(ctx, pts) {
-    if (pts.length < 3) return;
-    ctx.beginPath();
-    const mid0 = {
-      x: (pts[0].x + pts[pts.length - 1].x) / 2,
-      y: (pts[0].y + pts[pts.length - 1].y) / 2,
-    };
-    ctx.moveTo(mid0.x, mid0.y);
-    for (let i = 0; i < pts.length; i++) {
-      const p1 = pts[i];
-      const p2 = pts[(i + 1) % pts.length];
-      const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-      ctx.quadraticCurveTo(p1.x, p1.y, mid.x, mid.y);
     }
     ctx.closePath();
   }
