@@ -61,6 +61,7 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
+  touch-action: pan-x pan-y;     /* U3: niente pinch-zoom né doppio tap */
   scroll-behavior: smooth;
 }
 

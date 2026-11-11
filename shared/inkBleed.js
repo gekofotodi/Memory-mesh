@@ -72,18 +72,23 @@ function buildFilter(id) {
   return { filter: f, edgeNoise, displace, blur, thresh, grainMask };
 }
 
+// Scrive l'attributo solo se cambia: ogni scrittura fa ricalcolare tutto il filtro (U1)
+function setAttr(n, name, value) {
+  if (n.getAttribute(name) !== value) n.setAttribute(name, value);
+}
+
 /** Parametri del filtro per intensità k (0 = riposo, 1 = sbavatura piena). */
 function applyParams(nodes, fs, k) {
   k = Math.max(0, k);
-  nodes.edgeNoise.setAttribute('baseFrequency', String(Math.min(0.9, Math.max(0.22, 16 / fs))));
-  nodes.displace.setAttribute('scale', (fs * (0.06 + 0.06 * k)).toFixed(2));
-  nodes.blur.setAttribute('stdDeviation', (fs * (0.03 + 0.045 * k)).toFixed(2));
+  setAttr(nodes.edgeNoise, 'baseFrequency', String(Math.min(0.9, Math.max(0.22, 16 / fs))));
+  setAttr(nodes.displace, 'scale', (fs * (0.06 + 0.06 * k)).toFixed(2));
+  setAttr(nodes.blur, 'stdDeviation', (fs * (0.03 + 0.045 * k)).toFixed(2));
   // alpha' = A·a + B → soglia = -B/A; soglia più bassa = più inchiostro
   const A = 14;
   const threshold = 0.4 - 0.16 * k;
-  nodes.thresh.setAttribute('values', `1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${A} ${(-A * threshold).toFixed(2)}`);
+  setAttr(nodes.thresh, 'values', `1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${A} ${(-A * threshold).toFixed(2)}`);
   const th = 0.74 - 0.06 * k;
-  nodes.grainMask.setAttribute('values', `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  12 0 0 0 ${(-12 * th).toFixed(2)}`);
+  setAttr(nodes.grainMask, 'values', `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  12 0 0 0 ${(-12 * th).toFixed(2)}`);
 }
 
 function readFontSize(el, fallback = 24) {
@@ -108,9 +113,10 @@ function register(el) {
   // Filtro a riposo solo su titoli/menu (restSelector); il resto del testo sbava solo in hover
   if (!opts.restSelector || el.matches(opts.restSelector)) el.style.filter = `url(#${id})`;
   if (opts.hover === 'pointer') {
-    el.addEventListener('pointerenter', (e) => { hoverAt(el, e.clientX, e.clientY, true); });
-    el.addEventListener('pointermove', (e) => { hoverAt(el, e.clientX, e.clientY, false); });
-    el.addEventListener('pointerleave', () => setTarget(el, 0));
+    // Il dito è gestito a livello di documento (vedi bindTouch): qui solo mouse/penna
+    el.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') hoverAt(el, e.clientX, e.clientY, true); });
+    el.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') hoverAt(el, e.clientX, e.clientY, false); });
+    el.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') setTarget(el, 0); });
   }
 }
 
@@ -132,6 +138,8 @@ function scan(root = document) {
 /** Crea (o riallinea al contenuto attuale) il doppione del testo per la zona in hover. */
 function ensureOverlay(el, entry) {
   if (!entry.hot) entry.hot = buildFilter(`${entry.id}-hot`);
+  // Filtro della zona calda fisso: si muove solo la maschera, il filtro non va ricalcolato (U1)
+  applyParams(entry.hot, entry.fs, HOVER_STRENGTH);
   const cs = getComputedStyle(el);
   if (cs.position === 'static') el.style.position = 'relative';
   let ov = entry.overlay;
@@ -151,6 +159,7 @@ function ensureOverlay(el, entry) {
     `padding:${cs.padding}`, `text-align:${cs.textAlign}`,
     `filter:url(#${entry.id}-hot)`,
     '-webkit-mask-repeat:no-repeat', 'mask-repeat:no-repeat',
+    'will-change:mask-image,-webkit-mask-image',
   ].join(';');
   if (ov.parentNode !== el) el.appendChild(ov);
 }
@@ -201,18 +210,20 @@ function setTarget(el, target) {
 function renderHot(entry, now) {
   const ov = entry.overlay;
   if (!ov) return;
-  // Respirazione lenta mentre il puntatore resta sopra
-  const wobble = !reduceMotion && entry.target > 0 ? Math.sin(now / 420 + entry.fs) * 0.1 : 0;
-  applyParams(entry.hot, entry.fs, HOVER_STRENGTH * (1 + wobble));
   const r = entry.fs * HOVER_RADIUS_EM * (0.35 + 0.65 * entry.t);
   const mask = `radial-gradient(circle ${r.toFixed(1)}px at ${entry.lx.toFixed(1)}px ${entry.ly.toFixed(1)}px, rgba(0,0,0,${entry.t.toFixed(3)}) 0%, rgba(0,0,0,${(entry.t * 0.6).toFixed(3)}) 45%, transparent 100%)`;
   ov.style.webkitMaskImage = mask;
   ov.style.maskImage = mask;
 }
 
+let lastTick = 0;
 function tick(now) {
   rafId = 0;
   let active = false;
+  // Smorzamento indipendente dai fps (telefoni a 60/120 Hz o sotto carico): k60 = coefficiente a 60fps
+  const dt = Math.min(64, lastTick ? now - lastTick : 16.7);
+  lastTick = now;
+  const ease = (k60) => 1 - Math.pow(1 - k60, dt / 16.7);
   for (const [el, entry] of registry) {
     if (!el.isConnected) { unregister(el); continue; }
     if (entry.target === 0 && entry.t === 0) continue;
@@ -222,15 +233,16 @@ function tick(now) {
     } else {
       const d = entry.target - entry.t;
       // salita più rapida della discesa: l'inchiostro "assorbe" subito, si ritira piano
-      entry.t = Math.abs(d) < 0.003 ? entry.target : entry.t + d * (d > 0 ? 0.14 : 0.07);
-      entry.lx += (entry.px - entry.lx) * 0.22;
-      entry.ly += (entry.py - entry.ly) * 0.22;
+      entry.t = Math.abs(d) < 0.003 ? entry.target : entry.t + d * ease(d > 0 ? 0.12 : 0.06);
+      entry.lx += (entry.px - entry.lx) * ease(0.16);
+      entry.ly += (entry.py - entry.ly) * ease(0.16);
     }
     if (entry.t === 0) { removeOverlay(entry); continue; }
     renderHot(entry, now);
     if (!reduceMotion) active = true;
   }
   if (active) rafId = requestAnimationFrame(tick);
+  else lastTick = 0;
 }
 
 function isVisible(el) {
@@ -255,6 +267,26 @@ export function setInkHoverPoint(x, y) {
 }
 
 /**
+ * U2 — Da telefono: trascinando il dito (anche mentre la pagina scorre) la sbavatura
+ * segue il dito sulle scritte che attraversa; al rilascio si ritira piano.
+ * Listener passivi: non bloccano lo scorrimento.
+ */
+function bindTouch() {
+  const follow = (e) => {
+    const t = e.touches && e.touches[0];
+    if (t) setInkHoverPoint(t.clientX, t.clientY);
+  };
+  const release = () => {
+    if (hovered) setTarget(hovered, 0);
+    hovered = null;
+  };
+  document.addEventListener('touchstart', follow, { passive: true });
+  document.addEventListener('touchmove', follow, { passive: true });
+  document.addEventListener('touchend', release, { passive: true });
+  document.addEventListener('touchcancel', release, { passive: true });
+}
+
+/**
  * @param {object} o
  * @param {string} o.selector  elementi da trattare (anche aggiunti in seguito)
  * @param {string} [o.restSelector]  quali hanno anche il filtro a riposo (default: tutti)
@@ -263,6 +295,7 @@ export function setInkHoverPoint(x, y) {
 export function initInkBleed({ selector, restSelector = '', hover = 'pointer' }) {
   opts = { selector, restSelector, hover };
   scan();
+  if (hover === 'pointer') bindTouch();
   // Registra anche gli elementi creati dinamicamente (es. voci del wheel menu)
   const mo = new MutationObserver((muts) => {
     for (const m of muts) {

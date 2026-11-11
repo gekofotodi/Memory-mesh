@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="description" content="Memory Mesh — Condividi un ricordo per l'installazione interattiva del centro giovanile." />
   <title>Memory Mesh · Invia un ricordo</title>
 
@@ -260,19 +260,19 @@
           <p class="field__error" id="error-location" hidden>Seleziona il luogo della casa.</p>
         </div>
 
-        <!-- 6. Data del ricordo (Segmentata con trattini preimpostati) -->
+        <!-- 6. Data del ricordo: GG-MM-AAAA a schermo, salvata come AAAA-MM-GG (U4) -->
         <div class="field" id="field-date">
-          <label class="field__label" for="date-year">Data del ricordo <small class="field__hint">(opzionale)</small></label>
+          <label class="field__label" for="date-day">Data del ricordo <small class="field__hint">(opzionale)</small></label>
           <div class="date-segmented" id="date-segmented">
             <input 
               type="text" 
-              id="date-year" 
-              class="date-segment date-segment--year" 
-              placeholder="AAAA" 
+              id="date-day" 
+              class="date-segment date-segment--day" 
+              placeholder="GG" 
               inputmode="numeric" 
-              maxlength="4" 
+              maxlength="2" 
               autocomplete="off" 
-              aria-label="Anno a 4 cifre"
+              aria-label="Giorno a 2 cifre"
             />
             <span class="date-separator" aria-hidden="true">-</span>
             <input 
@@ -288,16 +288,16 @@
             <span class="date-separator" aria-hidden="true">-</span>
             <input 
               type="text" 
-              id="date-day" 
-              class="date-segment date-segment--day" 
-              placeholder="GG" 
+              id="date-year" 
+              class="date-segment date-segment--year" 
+              placeholder="AAAA" 
               inputmode="numeric" 
-              maxlength="2" 
+              maxlength="4" 
               autocomplete="off" 
-              aria-label="Giorno a 2 cifre"
+              aria-label="Anno a 4 cifre"
             />
           </div>
-          <p class="field__error" id="error-date" hidden>Inserisci una data valida (AAAA-MM-GG).</p>
+          <p class="field__error" id="error-date" hidden>Inserisci una data valida (GG-MM-AAAA).</p>
         </div>
 
         <!-- 7. Consenso privacy -->

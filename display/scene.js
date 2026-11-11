@@ -131,6 +131,8 @@ export function initScene(canvas) {
   let gridSortMode = 'data';
   let focusedTimelineYear = null;
   let focusedClusterTag = null;
+  let focusedRoom = null;      // D5: stanza aperta in planimetria (chiave di FLOORS[activeFloor].rooms)
+  let planZoomAccum = 1;       // D5: zoom accumulato in planimetria (soglie per entrare/uscire)
 
   let memories = [];
   let nodes = [];
@@ -649,64 +651,46 @@ export function initScene(canvas) {
           tagCenters.set(tag.toLowerCase(), pos);
         });
 
-        // Raggruppa le memorie per tag primario
-        const nodesByTag = new Map();
+        // D3: ogni ricordo si piazza tra i centri di TUTTI i suoi tag (firma = insieme dei tag):
+        // un solo tag → dentro la sua isola; più tag → nella zona di intersezione tra le isole.
+        const sigOf = (node) => {
+          const ts = [...new Set((Array.isArray(node.tags) && node.tags.length ? node.tags : [node.primaryTag])
+            .map((t) => String(t).toLowerCase().trim())
+            .filter((t) => tagCenters.has(t)))].sort();
+          return ts.length ? ts : ['default'];
+        };
+        const bySig = new Map();
         nodes.forEach((node) => {
-          const pTag = String(node.primaryTag || 'default').toLowerCase();
-          if (!nodesByTag.has(pTag)) nodesByTag.set(pTag, []);
-          nodesByTag.get(pTag).push(node);
+          const ts = sigOf(node);
+          const key = ts.join('|');
+          if (!bySig.has(key)) bySig.set(key, { tags: ts, nodes: [] });
+          bySig.get(key).nodes.push(node);
         });
-
-        // Distribuzione spaziale ampia e ordinata all'interno di ciascun cluster
-        nodesByTag.forEach((tagNodes, pTag) => {
-          const center = tagCenters.get(pTag) || { x: 0, y: 0 };
-          const K = tagNodes.length;
-
-          if (K === 1) {
-            tagNodes[0].targetX = center.x;
-            tagNodes[0].targetY = center.y;
-          } else if (K === 2) {
-            tagNodes[0].targetX = center.x - 76;
-            tagNodes[0].targetY = center.y;
-            tagNodes[1].targetX = center.x + 76;
-            tagNodes[1].targetY = center.y;
-          } else {
-            // Raggio dimensionato in modo che la distanza perimetrale sia sempre > 140px
-            const ringR = Math.max(95, 52 * K);
-            tagNodes.forEach((node, kIdx) => {
-              const theta = (kIdx / K) * Math.PI * 2;
-              node.targetX = center.x + Math.cos(theta) * ringR;
-              node.targetY = center.y + Math.sin(theta) * (ringR * 0.82);
-            });
-          }
-
-          // Lieve attrazione morbida se ci sono tag secondari
-          tagNodes.forEach((node) => {
-            const nodeTags = Array.isArray(node.tags) && node.tags.length ? node.tags : [node.primaryTag];
-            const otherTags = nodeTags.filter((t) => String(t).toLowerCase() !== pTag);
-            if (otherTags.length > 0) {
-              let sx = 0, sy = 0, sc = 0;
-              otherTags.forEach((t) => {
-                const c = tagCenters.get(String(t).toLowerCase());
-                if (c) { sx += c.x; sy += c.y; sc++; }
-              });
-              if (sc > 0) {
-                sx /= sc; sy /= sc;
-                const dx = sx - center.x;
-                const dy = sy - center.y;
-                const d = Math.hypot(dx, dy) || 1;
-                const nudge = Math.min(32, d * 0.12);
-                node.targetX += (dx / d) * nudge;
-                node.targetY += (dy / d) * nudge;
-              }
-            }
+        bySig.forEach((group) => {
+          let cx = 0, cy = 0, cc = 0;
+          group.tags.forEach((t) => { const c = tagCenters.get(t); if (c) { cx += c.x; cy += c.y; cc++; } });
+          if (cc) { cx /= cc; cy /= cc; }
+          group.cx = cx; group.cy = cy;
+          // Spirale a girasole: gruppo compatto e organico attorno al suo punto
+          group.nodes.forEach((node, k) => {
+            const r = group.nodes.length === 1 ? 0 : 70 * Math.sqrt(k + 0.5);
+            const a = k * 2.39996;
+            node.targetX = cx + Math.cos(a) * r;
+            node.targetY = cy + Math.sin(a) * r * 0.82;
+            node.clusterHome = group;
             node.targetScale = 1.0;
             node.targetAlpha = 1.0;
           });
         });
 
         // Passata di rilassamento fisico anti-sovrapposizione (garantisce zero overlap)
-        for (let iter = 0; iter < 24; iter++) {
+        for (let iter = 0; iter < 40; iter++) {
+          // Coesione: ogni ricordo resta vicino al punto della sua firma di tag
+          nodes.forEach((n) => {
+            if (!n.clusterHome) return;
+            n.targetX += (n.clusterHome.cx - n.targetX) * 0.06;
+            n.targetY += (n.clusterHome.cy - n.targetY) * 0.06;
+          });
           for (let i = 0; i < nodes.length; i++) {
             for (let j = i + 1; j < nodes.length; j++) {
               const nA = nodes[i];
@@ -754,24 +738,47 @@ export function initScene(canvas) {
 
       // 3. Planimetria — Spaccato assonometrico e stanze del piano attivo
       case 'planimetria': {
-        // Ogni ricordo sta solo nella sua stanza e solo nel piano di quella stanza (D23):
-        // gli altri spariscono. Dentro la stanza i ricordi si dispongono a griglia.
+        // Ogni ricordo sta solo nella sua stanza e solo nel piano di quella stanza (D23).
+        // D4: chi non c'è più sparisce sul posto (niente scorrimento); chi entra compare già
+        // nella sua stanza quando il piano si è fermato (vedi update()).
         const currentFloorObj = FLOORS[activeFloor] || FLOORS.terra;
         const byRoom = new Map();
 
         nodes.forEach((node) => {
           const loc = (node.memory.location_tag || '').toLowerCase().trim();
           node.planBase = null;
-          if (!currentFloorObj.rooms[loc]) {
+          const inFloor = !!currentFloorObj.rooms[loc];
+          if (!inFloor || (focusedRoom && loc !== focusedRoom)) {
             node.targetAlpha = 0.0;
-            node.targetScale = 0.3;
-            node.targetX = 0;
-            node.targetY = -800;
+            node.targetX = node.x;
+            node.targetY = node.y;
             return;
           }
           if (!byRoom.has(loc)) byRoom.set(loc, []);
           byRoom.get(loc).push(node);
         });
+
+        if (focusedRoom) {
+          // D5: dentro la stanza i suoi ricordi si aprono a griglia, a grandezza piena
+          const roomNodes = byRoom.get(focusedRoom) || [];
+          const K = roomNodes.length;
+          const cols = Math.max(1, Math.ceil(Math.sqrt(K * 1.7)));
+          const rows = Math.ceil(K / cols);
+          const cellW = 170, cellH = 165;
+          roomNodes.forEach((node, k) => {
+            const c = k % cols;
+            const r = Math.floor(k / cols);
+            const inRow = r === rows - 1 ? K - r * cols : cols; // ultima riga centrata
+            const x = (c - (inRow - 1) / 2) * cellW;
+            const y = (r - (rows - 1) / 2) * cellH;
+            node.planBase = { x, y };
+            node.targetAlpha = 1.0;
+            node.targetScale = 1.15;
+            node.targetX = x;
+            node.targetY = y;
+          });
+          break;
+        }
 
         byRoom.forEach((roomNodes, loc) => {
           const room = currentFloorObj.rooms[loc];
@@ -789,7 +796,7 @@ export function initScene(canvas) {
             node.targetAlpha = 1.0;
             node.targetScale = scale;
             node.targetX = iso.x;
-            node.targetY = iso.y - 16 - planFloorZ(performance.now());
+            node.targetY = iso.y - 16;
           });
         });
         break;
@@ -1046,6 +1053,8 @@ export function initScene(canvas) {
 
     if (layoutName === 'planimetria') {
       planimetriaEntranceTime = performance.now();
+      focusedRoom = null;
+      planZoomAccum = 1;
       camera.targetX = 0;
       camera.targetY = 0;
       camera.targetZoom = 1.0;
@@ -1066,11 +1075,58 @@ export function initScene(canvas) {
   function setFloor(floorKey) {
     if (!FLOORS[floorKey]) return;
     activeFloor = floorKey;
+    focusedRoom = null;
+    planZoomAccum = 1;
     if (currentLayout === 'planimetria') recalculateLayoutTargets(); // prima i ricordi restavano quelli del piano precedente
     camera.targetX = 0;
     camera.targetY = 0;
+    camera.targetZoom = 1.0;
     // Transizione morbida di scorrimento verso il nuovo piano selezionato
     planimetriaEntranceTime = performance.now() - 2400;
+  }
+
+  // D5: entra in una stanza (o torna al piano con null), come l'anno aperto della timeline
+  function setPlanRoom(roomKey) {
+    if (currentLayout !== 'planimetria') return;
+    const rooms = (FLOORS[activeFloor] || FLOORS.terra).rooms;
+    focusedRoom = roomKey && rooms[roomKey] ? roomKey : null;
+    planZoomAccum = 1;
+    recalculateLayoutTargets();
+    if (focusedRoom) {
+      fitCameraToContent({ filter: (n) => !!n.planBase, margin: 100, maxZoom: 1.5 });
+      if (!nodes.some((n) => n.planBase)) { camera.targetX = 0; camera.targetY = 0; camera.targetZoom = 1.0; }
+    } else {
+      camera.targetX = 0;
+      camera.targetY = 0;
+      camera.targetZoom = 1.0;
+    }
+  }
+
+  // Stanza del piano attivo sotto un punto dello schermo (null se fuori o se il piano si muove)
+  function hitTestRoom(screenX, screenY, nearest = false) {
+    if (currentLayout !== 'planimetria' || focusedRoom) return null;
+    const fz = planFloorZ(performance.now());
+    const w = screenToWorld(screenX, screenY);
+    const rooms = (FLOORS[activeFloor] || FLOORS.terra).rooms;
+    let best = null, bestD = Infinity;
+    for (const [key, room] of Object.entries(rooms)) {
+      const pts = [
+        toIso(room.x - room.w / 2, room.y - room.h / 2, fz),
+        toIso(room.x + room.w / 2, room.y - room.h / 2, fz),
+        toIso(room.x + room.w / 2, room.y + room.h / 2, fz),
+        toIso(room.x - room.w / 2, room.y + room.h / 2, fz),
+      ];
+      let inside = false;
+      for (let i = 0, j = 3; i < 4; j = i++) {
+        if ((pts[i].y > w.y) !== (pts[j].y > w.y) &&
+            w.x < ((pts[j].x - pts[i].x) * (w.y - pts[i].y)) / (pts[j].y - pts[i].y) + pts[i].x) inside = !inside;
+      }
+      if (inside) return key;
+      const c = toIso(room.x, room.y, fz);
+      const d = Math.hypot(c.x - w.x, c.y - w.y);
+      if (d < bestD) { bestD = d; best = key; }
+    }
+    return nearest ? best : null;
   }
 
   let onTimelineYearChange = null;
@@ -1142,6 +1198,7 @@ export function initScene(canvas) {
 
   // ── Camera Manipulation ──────────────────────────────────────
   function pan(dx, dy) {
+    if (currentLayout === 'planimetria') return; // D5: vista fissa
     // In griglia: pan solo verticale, larghezza fissa allo schermo
     if (currentLayout === 'griglia') {
       camera.targetY -= dy / camera.zoom;
@@ -1154,6 +1211,21 @@ export function initScene(canvas) {
   function zoom(factor, screenX, screenY) {
     // In griglia zoom disattivato o molto controllato
     if (currentLayout === 'griglia') return;
+
+    // D5: in planimetria lo zoom non sposta la vista: avvicinarsi apre la stanza
+    // sotto il mirino (o la più vicina), allontanarsi torna al piano
+    if (currentLayout === 'planimetria') {
+      planZoomAccum *= factor;
+      if (!focusedRoom && planZoomAccum >= 1.3) {
+        const key = hitTestRoom(screenX ?? width / 2, screenY ?? height / 2, true);
+        if (key) setPlanRoom(key);
+        planZoomAccum = 1;
+      } else if (focusedRoom && planZoomAccum <= 0.77) {
+        setPlanRoom(null);
+      }
+      planZoomAccum = Math.min(1.3, Math.max(0.77, planZoomAccum));
+      return;
+    }
 
     const oldZoom = camera.targetZoom;
     camera.targetZoom = Math.min(camera.maxZoom, Math.max(camera.minZoom, camera.targetZoom * factor));
@@ -1263,8 +1335,26 @@ export function initScene(canvas) {
     updateForces();
 
     if (currentLayout === 'planimetria') {
-      const fz = planFloorZ(performance.now());
-      nodes.forEach((node) => { if (node.planBase) node.targetY = node.planBase.y - fz; });
+      // D4: i ricordi non seguono il piano che scorre: restano nascosti finché il piano
+      // non è fermo, poi compaiono direttamente al loro posto (niente scivolamento)
+      const settled = focusedRoom || Math.abs(planFloorZ(performance.now())) < 18;
+      nodes.forEach((node) => {
+        if (!node.planBase) return;
+        if (settled) {
+          if (node.alpha < 0.05) {
+            node.x = node.planBase.x;
+            node.y = node.planBase.y;
+            node.scale = node.targetScale * 0.92;
+          }
+          node.targetX = node.planBase.x;
+          node.targetY = node.planBase.y;
+          node.targetAlpha = 1.0;
+        } else {
+          node.targetX = node.x;
+          node.targetY = node.y;
+          node.targetAlpha = 0.0;
+        }
+      });
     }
 
     nodes.forEach((node) => {
@@ -1353,6 +1443,27 @@ export function initScene(canvas) {
   }
 
   // ── Render Loop (60 FPS) ─────────────────────────────────────
+  // Grana: tessera 256px di puntini bordeaux a opacità casuale bassa, generata una volta
+  const grainPattern = (() => {
+    try {
+      const size = 256;
+      const tile = document.createElement('canvas');
+      tile.width = tile.height = size;
+      const g = tile.getContext('2d');
+      const img = g.createImageData(size, size);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const r = Math.random();
+        if (r < 0.45) continue;
+        img.data[i] = 153; img.data[i + 1] = 37; img.data[i + 2] = 28;
+        img.data[i + 3] = Math.round((r - 0.45) * 52); // alfa max ≈ 28/255
+      }
+      g.putImageData(img, 0, 0);
+      return ctx.createPattern(tile, 'repeat');
+    } catch (e) {
+      return null;
+    }
+  })();
+
   function render() {
     update();
     const now = performance.now();
@@ -1364,6 +1475,12 @@ export function initScene(canvas) {
     ctx.fillStyle = '#F9F6F0';
     ctx.fillRect(0, 0, width, height);
 
+    // D1: leggera grana rossa, fissa sullo schermo e sotto ai ricordi
+    if (grainPattern) {
+      ctx.fillStyle = grainPattern;
+      ctx.fillRect(0, 0, width, height);
+    }
+
     // Camera transform
     ctx.translate(width / 2, height / 2);
     ctx.scale(camera.zoom, camera.zoom);
@@ -1371,7 +1488,8 @@ export function initScene(canvas) {
 
     // 1. Guides and Background Layouts
     if (currentLayout === 'planimetria') {
-      drawPlanimetriaAssonometria(now);
+      if (focusedRoom) drawPlanRoomView();
+      else drawPlanimetriaAssonometria(now);
     } else if (currentLayout === 'timeline') {
       drawTimelineGuides();
     } else if (currentLayout === 'cluster') {
@@ -1414,6 +1532,45 @@ export function initScene(canvas) {
     if (elapsed >= 4800) return 0;
     const t = (elapsed - 2400) / 2400;
     return bZ * (1 - (0.5 - 0.5 * Math.cos(t * Math.PI)));
+  }
+
+  // D5: vista dentro una stanza — nome della stanza sopra la griglia dei suoi ricordi
+  function drawPlanRoomView() {
+    const floor = FLOORS[activeFloor] || FLOORS.terra;
+    const room = floor.rooms[focusedRoom];
+    if (!room) return;
+    let minX = -120, maxX = 120, minY = -60, maxY = 60;
+    nodes.forEach((n) => {
+      if (!n.planBase) return;
+      const hw = (n.w * (n.targetScale || 1)) / 2, hh = (n.h * (n.targetScale || 1)) / 2;
+      minX = Math.min(minX, n.planBase.x - hw); maxX = Math.max(maxX, n.planBase.x + hw);
+      minY = Math.min(minY, n.planBase.y - hh); maxY = Math.max(maxY, n.planBase.y + hh);
+    });
+    const pad = 46;
+    ctx.save();
+    // Pavimento e pareti della stanza come cornice
+    ctx.fillStyle = 'rgba(153, 37, 28, 0.035)';
+    ctx.strokeStyle = 'rgba(153, 37, 28, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.fillRect(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2);
+    ctx.strokeRect(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2);
+    ctx.fillStyle = '#99251C';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '700 12px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(floor.label, minX - pad, minY - pad - 34);
+    ctx.globalAlpha = 1;
+    ctx.font = '700 26px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillText(room.label, minX - pad, minY - pad - 8);
+    if (!nodes.some((n) => n.planBase)) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '500 15px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.globalAlpha = 0.7;
+      ctx.fillText('Ancora nessun ricordo in questa stanza', (minX + maxX) / 2, (minY + maxY) / 2);
+    }
+    ctx.restore();
   }
 
   // ── Planimetria: Spaccato Assonometrico Esploso a 3 Piani ────
@@ -1759,11 +1916,38 @@ export function initScene(canvas) {
     return f;
   }
 
-  function computeClusterContours(rects, R) {
+  // Distanza² punto–segmento (per i ponti tra ricordi dello stesso tag)
+  function segDist2(px, py, a, b) {
+    const vx = b.x - a.x, vy = b.y - a.y;
+    const l2 = vx * vx + vy * vy || 1;
+    const t = Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / l2));
+    const dx = px - (a.x + vx * t), dy = py - (a.y + vy * t);
+    return dx * dx + dy * dy;
+  }
+
+  function computeClusterContours(rects, R, edges = [], others = []) {
     for (const r of rects) {
       const rad = R + Math.hypot(r.hw * 0.7, r.hh * 0.7);
       r.r2 = rad * rad;
     }
+    for (const o of others) {
+      const rad = Math.hypot(o.hw, o.hh) * 0.7 + 14;
+      o.r2 = rad * rad;
+    }
+    const E2 = (R * 0.9 + 14) ** 2; // corridoio dei ponti
+    const fieldAt = (px, py) => {
+      let f = clusterFieldAt(px, py, rects);
+      for (let i = 0; i < edges.length; i++) {
+        f += (0.6 * E2) / (segDist2(px, py, edges[i][0], edges[i][1]) + E2 * 0.02);
+      }
+      for (let i = 0; i < others.length; i++) {
+        const o = others[i];
+        const dx = Math.max(Math.abs(px - o.x) - o.hw * 0.3, 0);
+        const dy = Math.max(Math.abs(py - o.y) - o.hh * 0.3, 0);
+        f -= (3 * o.r2) / (dx * dx + dy * dy + o.r2 * 0.02);
+      }
+      return f;
+    };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const r of rects) {
       minX = Math.min(minX, r.x - r.hw); maxX = Math.max(maxX, r.x + r.hw);
@@ -1779,7 +1963,7 @@ export function initScene(canvas) {
     for (let j = 0; j < rows; j++) {
       const y = minY + j * CONTOUR_CELL;
       for (let i = 0; i < cols; i++) {
-        field[j * cols + i] = clusterFieldAt(minX + i * CONTOUR_CELL, y, rects) - 1;
+        field[j * cols + i] = fieldAt(minX + i * CONTOUR_CELL, y) - 1;
       }
     }
 
@@ -1843,21 +2027,65 @@ export function initScene(canvas) {
       }
       if (loop.length >= 6) loops.push(loop);
     }
-    return loops;
+    // Scarta eventuali isolette senza ricordi del tag (restano i buchi attorno agli esclusi)
+    const inside = (pt, poly) => {
+      let c = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        if ((poly[i].y > pt.y) !== (poly[j].y > pt.y) &&
+            pt.x < ((poly[j].x - poly[i].x) * (pt.y - poly[i].y)) / (poly[j].y - poly[i].y) + poly[i].x) c = !c;
+      }
+      return c;
+    };
+    const kept = loops.filter((l) => rects.some((r) => inside(r, l)));
+    const holes = loops.filter((l) => !kept.includes(l) && kept.some((k) => inside(l[0], k)));
+    return kept.length ? kept.concat(holes) : loops;
   }
 
+  // D3: campo "a bolle" (Bubble Sets semplificato) — un'unica isola per tag:
+  // + i ricordi del tag, + i ponti dell'albero minimo che li collega (connessione garantita),
+  // − i ricordi che NON hanno il tag (restano fuori dal contorno).
   function getClusterContours(tagLower, tagNodes, tagIndex) {
-    // Raggio diverso per tag: i contorni di tag condivisi non si sovrappongono esattamente
     const R = 22 + (tagIndex % 4) * 10;
-    const rects = tagNodes.map((n) => ({
+    const toRect = (n) => ({
       x: n.x, y: n.y,
       hw: (n.w * (n.scale || 1)) / 2,
       hh: (n.h * (n.scale || 1)) / 2,
-    }));
-    const key = R + '|' + rects.map((r) => `${Math.round(r.x / 3)},${Math.round(r.y / 3)},${Math.round(r.hw / 3)},${Math.round(r.hh / 3)}`).join(';');
+    });
+    const rects = tagNodes.map(toRect);
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    rects.forEach((r) => { bx0 = Math.min(bx0, r.x); bx1 = Math.max(bx1, r.x); by0 = Math.min(by0, r.y); by1 = Math.max(by1, r.y); });
+    const near = 160;
+    const others = nodes
+      .filter((n) => n.alpha > 0.3 && !tagNodes.includes(n) && n.x > bx0 - near && n.x < bx1 + near && n.y > by0 - near && n.y < by1 + near)
+      .map(toRect);
+
+    const q = (v) => Math.round(v / 3);
+    const key = R + '|' + rects.map((r) => `${q(r.x)},${q(r.y)},${q(r.hw)},${q(r.hh)}`).join(';') +
+      '|-' + others.map((r) => `${q(r.x)},${q(r.y)}`).join(';');
     const cached = clusterContourCache.get(tagLower);
     if (cached && cached.key === key) return cached.loops;
-    const loops = computeClusterContours(rects, R);
+
+    // Albero ricoprente minimo (Prim) tra i ricordi del tag
+    const edges = [];
+    if (rects.length > 1) {
+      const inTree = new Array(rects.length).fill(false);
+      const best = new Array(rects.length).fill(Infinity);
+      const from = new Array(rects.length).fill(-1);
+      best[0] = 0;
+      for (let it = 0; it < rects.length; it++) {
+        let u = -1;
+        for (let i = 0; i < rects.length; i++) if (!inTree[i] && (u < 0 || best[i] < best[u])) u = i;
+        inTree[u] = true;
+        if (from[u] >= 0) edges.push([rects[from[u]], rects[u]]);
+        for (let v = 0; v < rects.length; v++) {
+          if (inTree[v]) continue;
+          const d = Math.hypot(rects[u].x - rects[v].x, rects[u].y - rects[v].y);
+          if (d < best[v]) { best[v] = d; from[v] = u; }
+        }
+      }
+    }
+
+    const loops = computeClusterContours(rects, R, edges, others);
     clusterContourCache.set(tagLower, { key, loops });
     return loops;
   }
@@ -2255,7 +2483,7 @@ export function initScene(canvas) {
         const wave1 = fabricWave.active ? getWaveOffset(n1.x, n1.y, now) : { dx: 0, dy: 0 };
         const wave2 = fabricWave.active ? getWaveOffset(n2.x, n2.y, now) : { dx: 0, dy: 0 };
         const line = [n1.x + wave1.dx, n1.y + wave1.dy, n2.x + wave2.dx, n2.y + wave2.dy];
-        const color = getTagPalette(shared).stroke;
+        const color = '#99251C'; // D2: collegamenti sempre bordeaux, non per tema
 
         if (hoveredNode && (hoveredNode === n1 || hoveredNode === n2)) {
           activeLines.push({ line, color, tag: shared });
@@ -2452,6 +2680,9 @@ export function initScene(canvas) {
     setHoverPoint,
     hitTest,
     hitTestTimeline,
+    hitTestRoom,
+    setPlanRoom,
+    getFocusedRoom: () => focusedRoom,
     setOnTimelineYearChange: (fn) => { onTimelineYearChange = fn; },
     getFocusedTimelineYear: () => focusedTimelineYear,
     getHoveredTimelineItem: () => hoveredTimelineItem,

@@ -113,8 +113,22 @@ const els = {
   btnNew:     $('#btn-new'),
 };
 
+// ── U3: niente zoom (Safari iOS ignora user-scalable=no) ─────────
+function preventZoom() {
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) =>
+    document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastTouchEnd = 0; // doppio tap
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd < 300 && !e.target.closest('input, textarea, select, button, label')) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+}
+
 // ── Initialise ─────────────────────────────────────────────────
 function init() {
+  preventZoom();
   initInkBleed({ selector: '.landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title' });
   bindNavigation();
   bindMediaSwitcher();
@@ -455,7 +469,7 @@ function showModelPreview(file) {
   }
 }
 
-// ── Segmented Date Input (AAAA - MM - GG) ─────────────────────
+// ── Segmented Date Input (GG - MM - AAAA a schermo, U4) ───────────
 function bindDateInput() {
   const y = els.dateYear;
   const m = els.dateMonth;
@@ -464,7 +478,7 @@ function bindDateInput() {
 
   if (!y || !m || !d || !container) return;
 
-  const segments = [y, m, d];
+  const segments = [d, m, y]; // ordine di inserimento italiano
 
   // Common input sanitization & auto-advance
   segments.forEach((input, idx) => {
@@ -524,9 +538,9 @@ function handleDatePaste(e) {
       els.dateMonth.value = digits.slice(2, 4);
       els.dateYear.value = digits.slice(4, 8);
     } else {
-      els.dateYear.value = digits.slice(0, 4);
-      els.dateMonth.value = digits.slice(4, 6);
-      els.dateDay.value = digits.slice(6, 8);
+      els.dateDay.value = digits.slice(0, 2);
+      els.dateMonth.value = digits.slice(2, 4);
+      els.dateYear.value = digits.slice(4, 8);
     }
 
     hideFieldError('date');
@@ -546,7 +560,7 @@ function getDateValue() {
 
   // If partially entered
   if (y.length < 4 || m.length < 1 || d.length < 1) {
-    return { valid: false, message: 'Completa tutti i campi della data (AAAA-MM-GG).' };
+    return { valid: false, message: 'Completa tutti i campi della data (GG-MM-AAAA).' };
   }
 
   const yearNum = parseInt(y, 10);

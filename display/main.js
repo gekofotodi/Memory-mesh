@@ -292,9 +292,8 @@ function setPanelHover(host, on) {
 
 function togglePanelPinned(host) {
   if (!host) return;
-  const pin = !host.classList.contains('is-pinned');
-  hudPanelHosts().forEach((p) => p.host.classList.remove('is-pinned'));
-  host.classList.toggle('is-pinned', pin);
+  // D6: ogni pannello resta aperto finché non si ri-clicca il suo titolo/webcam
+  host.classList.toggle('is-pinned');
   syncPanelAria();
 }
 
@@ -658,7 +657,8 @@ function handlePointerMove(x, y) {
     if (!state.activeModal) {
       state.scene.setHoverPoint(px, py);
       const isNodeHovered = !!state.scene.getHoveredNode();
-      const isTimelineHovered = (state.currentLayout === 'timeline' && !!state.scene.hitTestTimeline && !!state.scene.hitTestTimeline(px, py));
+      const isTimelineHovered = (state.currentLayout === 'timeline' && !!state.scene.hitTestTimeline && !!state.scene.hitTestTimeline(px, py)) ||
+        (state.currentLayout === 'planimetria' && !!state.scene.hitTestRoom && !!state.scene.hitTestRoom(px, py));
       if (isNodeHovered || isTimelineHovered) {
         isHoveringInteractive = true;
       }
@@ -751,15 +751,15 @@ function handleSelect() {
     if (el.closest('.project-panel') || el.closest('.gesture-panel')) return;
   }
 
-  // Pinch altrove: chiude i pannelli fissati
-  closeHudPanels();
-
   // 3. Check Scene Nodes
   const clickedNode = state.scene.hitTest(x, y);
   if (clickedNode) {
     openDetailModal(clickedNode.memory);
     return;
   }
+
+  // 3b. Planimetria (D5): pinch su una stanza = entra · pinch fuori dai ricordi = torna al piano
+  if (handlePlanSelect(x, y)) return;
 
   // 4. Check Timeline elements (Year stems, banner)
   if (state.currentLayout === 'timeline' && state.scene.hitTestTimeline) {
@@ -774,6 +774,17 @@ function handleSelect() {
       }
     }
   }
+}
+
+function handlePlanSelect(x, y) {
+  if (state.currentLayout !== 'planimetria' || !state.scene.setPlanRoom) return false;
+  if (state.scene.getFocusedRoom()) {
+    state.scene.setPlanRoom(null);
+    return true;
+  }
+  const room = state.scene.hitTestRoom(x, y);
+  if (room) { state.scene.setPlanRoom(room); return true; }
+  return false;
 }
 
 function handlePan(dx, dy) {
@@ -866,9 +877,6 @@ function bindUIEvents() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanelPinned(host); }
     });
   });
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#hud-header, #camera-hud')) closeHudPanels();
-  });
 
   // Comandi audio/video della modale (click solo con ?mouse=1)
   els.modalDetail.addEventListener('click', (e) => {
@@ -942,6 +950,7 @@ function bindUIEvents() {
       openDetailModal(clicked.memory);
       return;
     }
+    if (handlePlanSelect(e.clientX, e.clientY)) return;
 
     // 2. Clic su elementi Timeline (Anno o Chiusura vista mensile)
     if (state.currentLayout === 'timeline' && state.scene.hitTestTimeline) {
@@ -1157,7 +1166,7 @@ function openDetailModal(memory) {
   if (els.detailModelEl) els.detailModelEl.removeAttribute('src');
 
   if ((mType === 'model3d' || /\.(glb|gltf)$/i.test(mUrl)) && mUrl && els.mediaBoxModel && els.detailModelEl) {
-    // ── 0. MODELLO 3D: model-viewer con rotazione automatica
+    // ── 0. MODELLO 3D: model-viewer, inclinato verso il puntatore (D7)
     els.detailModelEl.setAttribute('src', mUrl);
     els.detailModelEl.setAttribute('alt', memory.title ? `Modello 3D: ${memory.title}` : 'Modello 3D del ricordo');
     els.mediaBoxModel.classList.add('is-active');
@@ -1307,6 +1316,17 @@ function updateMediaTilt(x, y) {
   if (state.activeModal !== 'detail') return;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+  // D7: il modello 3D non ruota da solo, si inclina verso il puntatore come le altre card
+  const model = document.querySelector('.media-box--model.is-active .media-model');
+  if (model) {
+    const r = model.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    const nx = Math.max(-1, Math.min(1, (x - (r.left + r.width / 2)) / (window.innerWidth * 0.45)));
+    const ny = Math.max(-1, Math.min(1, (y - (r.top + r.height / 2)) / (window.innerHeight * 0.45)));
+    model.setAttribute('camera-orbit', `${(-nx * 28).toFixed(1)}deg ${(75 - ny * 14).toFixed(1)}deg auto`);
+    return;
+  }
+
   const tiltCard = document.querySelector('.media-box.is-active .media-tilt-card') ||
                    document.querySelector('.media-box.is-active .media-photo') ||
                    document.querySelector('.media-box.is-active .media-video');
@@ -1341,6 +1361,7 @@ function updateMediaTilt(x, y) {
 }
 
 function resetMediaTilt() {
+  if (els.detailModelEl) els.detailModelEl.setAttribute('camera-orbit', '0deg 75deg auto');
   const tiltCards = document.querySelectorAll('.media-tilt-card, .media-photo, .media-video');
   tiltCards.forEach((card) => {
     card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
