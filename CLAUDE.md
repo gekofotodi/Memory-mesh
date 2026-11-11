@@ -33,6 +33,8 @@ display/main.js             (1115) Orchestratore: Supabase fetch + realtime, cal
 display/tracking.js         (524)  MediaPipe → eventi astratti; fallback mouse
 display/scene.js            (2242) Motore Canvas 2D: camera, nodi, 5 layout, render loop
 display/wheelMenu.js        (182)  Classe WheelMenu2D (voci radiali, setItems, selectValue)
+display/inkReveal.js        (130)  Testi della modale che compaiono/spariscono a macchia d'inchiostro (filtro SVG animato)
+upload/modelOptimizer.js    (90)   Alleggerimento .glb nel browser (glTF-Transform 4.5.1 + meshoptimizer 1.3.0, import dinamico)
 display/style.css           (1196)
 .antigravity/rules.md              Regole originali per Antigravity IDE (stesso contenuto di questo file, sezione Regole)
 ```

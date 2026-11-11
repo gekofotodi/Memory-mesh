@@ -176,6 +176,16 @@
                   </div>
                   <p id="preview-model-name" class="dropzone__model-name"></p>
                   <span class="dropzone__model-badge">Modello 3D</span>
+                  <!-- 11/11 U1: alleggerimento del modello prima dell'invio -->
+                  <div class="model-opt" id="model-opt" hidden>
+                    <span class="model-opt__label" id="model-opt-label">Alleggerisci il modello</span>
+                    <div class="model-opt__choices" role="radiogroup" aria-labelledby="model-opt-label">
+                      <button type="button" class="chip" role="radio" data-level="light" aria-checked="false">Molto</button>
+                      <button type="button" class="chip is-selected" role="radio" data-level="medium" aria-checked="true">Un po'</button>
+                      <button type="button" class="chip" role="radio" data-level="original" aria-checked="false">Originale</button>
+                    </div>
+                    <p class="model-opt__info" id="model-opt-info" aria-live="polite"></p>
+                  </div>
                 </div>
                 <button type="button" class="dropzone__remove" id="btn-remove-file">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>

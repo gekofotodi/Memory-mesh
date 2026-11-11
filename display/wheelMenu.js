@@ -143,11 +143,18 @@ export class WheelMenu2D {
   renderTicks(poses, edgeMargin) {
     const isLeft = (this.side === 'left');
     const inset = 14; // distanza dal bordo dello schermo
+    // Con molte voci (tag del Cluster) l'arco si allontana dal bordo: le linee estreme
+    // finivano fuori dallo schermo. Si ancora la più esterna a `inset` e si comprime
+    // l'altezza dentro lo schermo, mantenendo la curvatura.
+    const minX = Math.min(...poses.map((p) => p.x));
+    const maxAbsY = Math.max(1, ...poses.map((p) => Math.abs(p.y)));
+    const limitY = Math.max(60, (window.innerHeight || 900) / 2 - 40);
+    const ky = Math.min(1, limitY / maxAbsY);
     this.ticks = poses.map((p) => {
       const tick = document.createElement('span');
       tick.className = 'wheel-tick';
-      const x = p.x - edgeMargin + inset;
-      tick.style.transform = `translate3d(${(isLeft ? x : -x).toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${p.rot.toFixed(2)}deg)`;
+      const x = Math.max(inset, p.x - Math.min(minX, edgeMargin) + inset);
+      tick.style.transform = `translate3d(${(isLeft ? x : -x).toFixed(1)}px, ${(p.y * ky).toFixed(1)}px, 0) rotate(${p.rot.toFixed(2)}deg)`;
       return tick;
     });
     this.ticksEl.replaceChildren(...this.ticks);

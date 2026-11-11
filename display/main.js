@@ -16,6 +16,22 @@ import { initScene } from './scene.js';
 import { initWheelMenu } from './wheelMenu.js';
 import { initInkBleed, setInkHoverPoint } from '../shared/inkBleed.js';
 import { loadPeaks, drawWave } from './audioWave.js';
+import { inkReveal, resetInkReveal } from './inkReveal.js';
+
+// 11/11 D3: testi del ricordo che compaiono/spariscono a macchia d'inchiostro
+const REDUCE_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function detailTextItems(dir) {
+  const box = els.modalDetail;
+  const list = [
+    box.querySelector('.selection-title'),
+    box.querySelector('.selection-desc'),
+    ...box.querySelectorAll('.meta-col'),
+    box.querySelector('.selection-related-row'),
+  ].filter(Boolean);
+  if (dir === 'in') return list.map((el, i) => ({ el, delay: 620 + i * 90, dur: 700 }));
+  // uscita: ordine inverso, rapido, entro l'animazione di chiusura
+  return list.reverse().map((el, i) => ({ el, delay: i * 25, dur: 260 }));
+}
 
 // ── Fallback Memories (Centro Giovanile Stoà) ───────────────────
 // Displayed when database is empty or offline so the kiosk is vibrant
@@ -1307,6 +1323,7 @@ function openDetailModal(memory) {
 
   els.modalDetail.classList.add('is-open');
   els.modalDetail.setAttribute('aria-hidden', 'false');
+  if (!REDUCE_MOTION) inkReveal(detailTextItems('in'), 'in');
   if (els.detailTitle) {
     els.detailTitle.focus();
   }
@@ -1352,12 +1369,14 @@ function closeModals() {
   if (!open || reduce) { finishCloseModals(); return; }
   if (closeTimer) return;
   els.modalDetail.classList.add('is-closing');
+  inkReveal(detailTextItems('out'), 'out');
   if (els.detailVideoEl) els.detailVideoEl.pause();
   if (els.detailAudioEl) els.detailAudioEl.pause();
   closeTimer = setTimeout(() => { closeTimer = null; finishCloseModals(); }, CLOSE_ANIM_MS);
 }
 
 function finishCloseModals() {
+  resetInkReveal();
   els.modalDetail.classList.remove('is-open', 'is-closing');
   els.modalDetail.setAttribute('aria-hidden', 'true');
 

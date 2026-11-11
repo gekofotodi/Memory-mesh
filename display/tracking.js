@@ -51,10 +51,6 @@ const POINTER_Y_RANGE = [0.12, 0.76];
 const WAVE_MIN_SWINGS = 2;            // inversioni di direzione (destra-sinistra-destra)
 const WAVE_MIN_AMPLITUDE = 0.035;     // ampiezza minima di ogni oscillazione (frazione della larghezza webcam)
 const WAVE_WINDOW_MS = 1600;
-// Immagine webcam: luminosità e contrasto (anteprima + regolazione hardware se la webcam lo permette)
-const PREVIEW_FILTER = 'brightness(1.45) contrast(1.2)';
-const CAMERA_BRIGHTNESS = 0.62;       // posizione nell'intervallo della webcam (0.5 = predefinito tipico)
-const CAMERA_CONTRAST = 0.6;
 const PINCH_ENTER_DIST = 0.28;        // Normalized threshold to start pinch
 const PINCH_EXIT_DIST = 0.38;         // Hysteresis threshold to release pinch
 const PINCH_HOLD_MS_TO_SELECT = 120;  // Milliseconds of held pinch before selection triggers
@@ -583,17 +579,12 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     // 1. Draw mirrored video background
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, w, h);
-    canvasCtx.filter = PREVIEW_FILTER;
+    // 11/11: immagine della webcam così com'è (tolti filtro luminosità/contrasto e velatura)
     if (results.image) {
       canvasCtx.drawImage(results.image, 0, 0, w, h);
     } else if (videoEl && videoEl.readyState >= 2) {
       canvasCtx.drawImage(videoEl, 0, 0, w, h);
     }
-    canvasCtx.filter = 'none';
-
-    // Velatura leggera per far leggere lo scheletro (prima 0.45: immagine troppo scura)
-    canvasCtx.fillStyle = 'rgba(9, 12, 16, 0.12)';
-    canvasCtx.fillRect(0, 0, w, h);
 
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
       canvasCtx.restore();
@@ -720,7 +711,6 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
       // Webcam scollegata (cavo USB, driver): il track termina
       const stream = videoEl && videoEl.srcObject;
-      tuneCameraImage(stream);
       if (stream && stream.getVideoTracks) {
         stream.getVideoTracks().forEach((t) => t.addEventListener('ended', () => scheduleRestart('webcam scollegata')));
       }
@@ -731,24 +721,6 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       enableMouseFallback();
       scheduleRestart('avvio fallito', RETRY_MS);
     }
-  }
-
-  // Alza luminosità e contrasto direttamente sulla webcam, se il driver lo consente
-  // (molte webcam USB su Windows sì; le fotocamere dei Mac di solito no: resta il filtro anteprima)
-  function tuneCameraImage(stream) {
-    try {
-      const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
-      if (!track || typeof track.getCapabilities !== 'function') return;
-      const caps = track.getCapabilities();
-      const adv = {};
-      const pick = (c, t) => c.min + (c.max - c.min) * t;
-      if (caps.brightness) adv.brightness = pick(caps.brightness, CAMERA_BRIGHTNESS);
-      if (caps.contrast) adv.contrast = pick(caps.contrast, CAMERA_CONTRAST);
-      if (Object.keys(adv).length === 0) return;
-      track.applyConstraints({ advanced: [adv] })
-        .then(() => console.log('[tracking] Webcam regolata:', adv))
-        .catch((err) => console.warn('[tracking] Regolazione webcam non applicata:', err));
-    } catch (_) {}
   }
 
   function stopCamera() {

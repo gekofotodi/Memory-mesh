@@ -5,6 +5,8 @@
      Priorità: !! = prima dell'evento, ! = utile, niente = dopo
      Testi definitivi tra "virgolette". Immagini solo in inspo/, citate col nome file. -->
 
+- [ ] A1 - dettagli - controlla su tutto il sito che gli elementi grafici siano coerenti all'estetica ink bleed (le frecce, i tasti, le linee ecc)
+
 ## Display
 
 
@@ -16,10 +18,12 @@
 
 ## Fatto
 
-- [x] D1 !! - istruzioni e info - quando premo fuori dalle info o istruzioni devono sparire
-- [x] D2 !! - animazioni dettaglio ricordo - aggiungi una breve animazioni anche ai testi in entrata
-- [x] D3 !! - animazioni dettaglio ricordo - aggiungi le stesse animazioni in uscita
-- [x] D4 !! - nodi - rendi la nuvola di nodi tridimensionale e fissala al centro dello schermo, il pinch non fa muovere la visuale, ma fa ruotare la nuvola. i ricordi devono sempre essere rivolti verso lo spettatore
-- [x] D5 !! - sfondo - lo sfondo non deve essere fisso, ma agganciato alle visualizzazioni (tranne nei visualizzazione a nodi)
+- [x] D1 !! - nuvola di nodi - inverti la direzione di rotazione della nuvola di nodi
+- [x] D2 !! - cluster - controlla che le linee del menu chiuso non escano dal bordo dello schermo
+- [x] D3 !! - animazione ricordo - modifica l'animazione dei testi, rendila coerente con lo stile ink bleed, tipo che le scritte compaiono allargandosi a macchia
+- [x] D4 !! - webcam - elimina gli effetti sulla luminosità precedentemente applicati
+- [x] D5 !! - animazione planimetria - fai in modo che quando si cambia piano non riappare l'animazione dal'inizio con il nuovo piano al centro, ma si svolge l'animazione al contrario, passando dal piano corrente a quello nuovo
+- [x] D6 !! - timeline - limita lo zoom out nella visualizzazione con gli anni
+- [x] U1 !! - upload file 3D - inserisci dei comandi per rendere i modelli 3d aggiunti leggeri e gestibili dal sito
 
 <!-- Sposto qui le voci completate con l'ID, così non le rileggo -->

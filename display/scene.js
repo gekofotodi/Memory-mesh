@@ -128,6 +128,8 @@ export function initScene(canvas) {
   let currentFilter = 'all';
   let activeFloor = 'terra';
   let planimetriaEntranceTime = 0;
+  // 11/11 D5: cambio piano = il piano corrente torna nell'esploso, poi scende il nuovo
+  let floorSwitch = null; // { from, e0, start, dur }
   let gridSortMode = 'data';
   let focusedTimelineYear = null;
   let focusedClusterTag = null;
@@ -1053,6 +1055,7 @@ export function initScene(canvas) {
       camera.targetY = 0;
     } else if (layoutName === 'planimetria') {
       planimetriaEntranceTime = performance.now();
+      floorSwitch = null;
       focusedRoom = null;
       planZoomAccum = 1;
       camera.targetX = 0;
@@ -1074,6 +1077,8 @@ export function initScene(canvas) {
 
   function setFloor(floorKey) {
     if (!FLOORS[floorKey]) return;
+    const now = performance.now();
+    const prev = planPhase(now);
     activeFloor = floorKey;
     focusedRoom = null;
     planZoomAccum = 1;
@@ -1081,8 +1086,22 @@ export function initScene(canvas) {
     camera.targetX = 0;
     camera.targetY = 0;
     camera.targetZoom = 1.0;
-    // Transizione morbida di scorrimento verso il nuovo piano selezionato
-    planimetriaEntranceTime = performance.now() - 2400;
+    if (currentLayout !== 'planimetria') {
+      planimetriaEntranceTime = now - 2400;
+      floorSwitch = null;
+    } else if (prev.ease > 0.02 && prev.key !== floorKey) {
+      // Il piano corrente risale nell'esploso (animazione al contrario), poi il nuovo
+      // scende al centro: la fase "verso il centro" parte appena finisce il ritorno
+      const dur = 700 + 1300 * prev.ease;
+      floorSwitch = { from: prev.key, e0: prev.ease, start: now, dur };
+      planimetriaEntranceTime = now + dur - 2400;
+    } else if (prev.ease <= 0.02) {
+      // Ancora nell'esploso iniziale: il nuovo piano scende quando previsto
+      floorSwitch = null;
+    } else {
+      floorSwitch = null;
+      planimetriaEntranceTime = now - 2400;
+    }
   }
 
   // D5: entra in una stanza (o torna al piano con null), come l'anno aperto della timeline
@@ -1204,7 +1223,7 @@ export function initScene(canvas) {
     if (currentLayout === 'planimetria') return; // D5: vista fissa
     if (currentLayout === 'nodi') {
       // D4: la vista resta ferma, il trascinamento ruota la nuvola
-      cloudRotY += dx * 0.0045;
+      cloudRotY -= dx * 0.0045; // 11/11: verso invertito, la nuvola segue la mano
       cloudRotX = Math.max(-1.1, Math.min(1.1, cloudRotX - dy * 0.0045));
       cloudTouchedAt = performance.now();
       return;
@@ -1270,7 +1289,9 @@ export function initScene(canvas) {
     }
 
     const oldZoom = camera.targetZoom;
-    camera.targetZoom = Math.min(camera.maxZoom, Math.max(camera.minZoom, camera.targetZoom * factor));
+    // 11/11: nella timeline con tutti gli anni non ci si allontana oltre la vista d'insieme
+    const minZ = currentLayout === 'timeline' ? Math.max(camera.minZoom, fitZoom * 0.9) : camera.minZoom;
+    camera.targetZoom = Math.min(camera.maxZoom, Math.max(minZ, camera.targetZoom * factor));
 
     if (currentLayout === 'timeline') {
       // Zoom semantico: se si ingrandisce (targetZoom >= 1.20) e nessun anno è aperto,
@@ -1369,7 +1390,7 @@ export function initScene(canvas) {
   function updateForces() {
     if (currentLayout !== 'nodi') return;
     // Rotazione lentissima quando nessuno tocca la nuvola: si legge la profondità
-    if (performance.now() - cloudTouchedAt > 4000) cloudRotY += 0.0009;
+    if (performance.now() - cloudTouchedAt > 4000) cloudRotY -= 0.0009; // 11/11: verso invertito
     updateCloud();
   }
   let cloudTouchedAt = 0;
@@ -1608,13 +1629,23 @@ export function initScene(canvas) {
 
   // Quota Z del piano attivo nell'animazione: esploso (0–2.4s), discesa al centro (2.4–4.8s), fermo
   const PLAN_FLOOR_BASE_Z = { secondo: 220, primo: 0, terra: -220 };
+  // Fase dell'animazione: quale piano si muove (key) e quanto è sceso al centro
+  // (ease 0 = esploso, 1 = al centro). Durante un cambio piano il precedente torna indietro.
+  function planPhase(now) {
+    const smooth = (t) => 0.5 - 0.5 * Math.cos(Math.max(0, Math.min(1, t)) * Math.PI);
+    if (floorSwitch) {
+      const t = (now - floorSwitch.start) / floorSwitch.dur;
+      if (t < 1) return { key: floorSwitch.from, ease: floorSwitch.e0 * (1 - smooth(t)) };
+      floorSwitch = null;
+    }
+    const elapsed = now - planimetriaEntranceTime;
+    return { key: activeFloor, ease: elapsed <= 2400 ? 0 : smooth((elapsed - 2400) / 2400) };
+  }
   function planFloorZ(now) {
     const bZ = PLAN_FLOOR_BASE_Z[activeFloor] !== undefined ? PLAN_FLOOR_BASE_Z[activeFloor] : -220;
-    const elapsed = now - planimetriaEntranceTime;
-    if (elapsed <= 2400) return bZ;
-    if (elapsed >= 4800) return 0;
-    const t = (elapsed - 2400) / 2400;
-    return bZ * (1 - (0.5 - 0.5 * Math.cos(t * Math.PI)));
+    const ph = planPhase(now);
+    if (ph.key !== activeFloor) return bZ || 220; // piano precedente ancora in movimento
+    return bZ * (1 - ph.ease);
   }
 
   // D5: vista dentro una stanza — nome della stanza sopra la griglia dei suoi ricordi
@@ -1658,7 +1689,6 @@ export function initScene(canvas) {
 
   // ── Planimetria: Spaccato Assonometrico Esploso a 3 Piani ────
   function drawPlanimetriaAssonometria(now) {
-    const elapsed = now - planimetriaEntranceTime;
     ctx.save();
 
     // Dimensioni 2D della soletta del piano
@@ -1675,67 +1705,25 @@ export function initScene(canvas) {
       terra: -220,
     };
 
-    const activeBaseZ = floorBaseZ[activeFloor] !== undefined ? floorBaseZ[activeFloor] : -220;
-
-    // ── Calcolo dinamico dell'esploso e transizione (tempi lenti e contemplativi) ──
-    // 0 -> 2400ms: tutti e tre i piani visibili nell'esploso verticale
-    // 2400ms -> 4800ms: i due piani non selezionati scivolano via e sfumano lentamente
-    // > 4800ms: rimane visibile al centro solo il piano selezionato
-    let guideOpacity = 0.0;
+    // Fasi (tempi lenti e contemplativi): esploso a 3 piani (0–2.4 s), poi il piano
+    // selezionato scende al centro e gli altri scivolano via (2.4–4.8 s), poi fermo.
+    // 11/11 D5: cambiando piano la stessa animazione va al contrario per il piano corrente.
+    const phase = planPhase(now);
+    const movingKey = phase.key;
+    const ease = phase.ease;
+    const activeBaseZ = floorBaseZ[movingKey] !== undefined ? floorBaseZ[movingKey] : -220;
+    const guideOpacity = Math.max(0, 1.0 - ease * 1.2);
     const floorStates = {};
-
     const floorOrder = ['terra', 'primo', 'secondo'];
-
-    if (elapsed <= 2400) {
-      // Fase 1: Esploso stabile a 3 piani (2.4s per apprezzare l'edificio nella sua interezza)
-      guideOpacity = 1.0;
-      floorOrder.forEach((fKey) => {
-        const isActive = (fKey === activeFloor);
-        floorStates[fKey] = {
-          z: floorBaseZ[fKey],
-          opacity: isActive ? 1.0 : 0.88,
-          isActive,
-        };
-      });
-    } else if (elapsed <= 4800) {
-      // Fase 2: Transizione lenta e maestosa (2.4s)
-      const t = (elapsed - 2400) / 2400;
-      const ease = 0.5 - 0.5 * Math.cos(t * Math.PI); // easeInOut
-      guideOpacity = Math.max(0, 1.0 - ease * 1.2);
-
-      floorOrder.forEach((fKey) => {
-        const isActive = (fKey === activeFloor);
-        const bZ = floorBaseZ[fKey];
-
-        if (isActive) {
-          // Il piano attivo si porta verso il centro (z = 0)
-          floorStates[fKey] = {
-            z: bZ + (0 - bZ) * ease,
-            opacity: 1.0,
-            isActive: true,
-          };
-        } else {
-          // I piani non attivi scivolano via e sfumano dolcemente
-          const dir = bZ > activeBaseZ ? 1 : -1;
-          floorStates[fKey] = {
-            z: bZ + dir * ease * 300,
-            opacity: Math.max(0, (1 - ease) * 0.88),
-            isActive: false,
-          };
-        }
-      });
-    } else {
-      // Fase 3: Solo piano attivo al centro
-      guideOpacity = 0.0;
-      floorOrder.forEach((fKey) => {
-        const isActive = (fKey === activeFloor);
-        floorStates[fKey] = {
-          z: 0,
-          opacity: isActive ? 1.0 : 0.0,
-          isActive,
-        };
-      });
-    }
+    floorOrder.forEach((fKey) => {
+      const bZ = floorBaseZ[fKey];
+      if (fKey === movingKey) {
+        floorStates[fKey] = { z: bZ * (1 - ease), opacity: 1.0, isActive: true };
+      } else {
+        const dir = bZ > activeBaseZ ? 1 : -1;
+        floorStates[fKey] = { z: bZ + dir * ease * 300, opacity: Math.max(0, (1 - ease) * 0.88), isActive: false };
+      }
+    });
 
     // ── 1. Linee guida d'asse verticali tratteggiate dell'esploso ─
     if (guideOpacity > 0.02) {

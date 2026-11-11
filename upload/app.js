@@ -22,6 +22,8 @@ const IMAGE_QUALITY_MIN = 0.3;
 const IMAGE_QUALITY_STEP = 0.1;
 const MAX_FILE_BYTES = 1024 * 1024;        // 1 MB target for images
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB strict limit for video, audio, 3D
+// U1: un .glb più pesante si accetta se, alleggerito, rientra nei 10 MB
+const MAX_MODEL_INPUT_BYTES = 80 * 1024 * 1024;
 const MAX_TITLE_WORDS = 5;
 const MAX_THEME_TAGS = 3;
 
@@ -71,6 +73,8 @@ const els = {
   previewAudioName: $('#preview-audio-name'),
   previewModelWrap: $('#preview-model-wrap'),
   previewModelName: $('#preview-model-name'),
+  modelOpt: $('#model-opt'),
+  modelOptInfo: $('#model-opt-info'),
   btnRemoveFile:    $('#btn-remove-file'),
   errorFile:        $('#error-file'),
 
@@ -348,8 +352,9 @@ async function handleFileSelect(file) {
     return;
   }
 
-  // Strict limit of 10 MB for video, audio, 3D
-  if (file.size > MAX_UPLOAD_BYTES) {
+  // Strict limit of 10 MB for video, audio, 3D (i .glb si possono alleggerire: limite dopo)
+  const isGlb = type === 'model3d' && /\.glb$/i.test(file.name);
+  if (isGlb ? file.size > MAX_MODEL_INPUT_BYTES : file.size > MAX_UPLOAD_BYTES) {
     showFieldError('file', `Il file supera il limite massimo di ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB.`);
     return;
   }
@@ -378,6 +383,7 @@ async function handleFileSelect(file) {
   } else if (type === 'model3d') {
     state.file = file;
     showModelPreview(file);
+    setupModelOptions(file);
   }
 
   // Update dropzone appearance
@@ -409,7 +415,94 @@ function hideAllPreviews() {
   }
 }
 
+// ── U1: alleggerimento modelli 3D ─────────────────────────────
+// Livello scelto: 'light' | 'medium' | 'original'. Il file ottimizzato sostituisce state.file;
+// l'invio attende l'ottimizzazione in corso (state.modelJob).
+let modelLevel = 'medium';
+let modelJobId = 0;
+const formatMB = (b) => `${(b / 1048576).toLocaleString('it-IT', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} MB`;
+
+function setupModelOptions(file) {
+  const box = els.modelOpt;
+  if (!box) return;
+  const isGlb = /\.glb$/i.test(file.name);
+  box.hidden = !isGlb; // i .gltf con file esterni non si possono elaborare qui
+  if (!isGlb) return;
+  if (!box.dataset.bound) {
+    box.dataset.bound = '1';
+    box.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-level]');
+      if (!btn || btn.disabled) return;
+      e.stopPropagation();
+      if (state.originalFile) applyModelLevel(state.originalFile, btn.dataset.level);
+    });
+  }
+  applyModelLevel(file, file.size > 2 * 1048576 ? 'medium' : 'original');
+}
+
+function applyModelLevel(file, level) {
+  modelLevel = level;
+  const info = els.modelOptInfo;
+  els.modelOpt.querySelectorAll('[data-level]').forEach((b) => {
+    const on = b.dataset.level === level;
+    b.classList.toggle('is-selected', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+  info.classList.remove('is-error');
+  const jobId = ++modelJobId;
+
+  if (level === 'original') {
+    state.file = file;
+    state.modelJob = null;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      info.textContent = `${formatMB(file.size)}: troppo pesante, scegli "Un po'" o "Molto".`;
+      info.classList.add('is-error');
+    } else {
+      info.textContent = `${formatMB(file.size)}, invariato`;
+    }
+    return;
+  }
+
+  info.textContent = 'Sto alleggerendo il modello…';
+  const buttons = els.modelOpt.querySelectorAll('[data-level]');
+  buttons.forEach((b) => { b.disabled = true; });
+  state.modelJob = import('./modelOptimizer.js')
+    .then(({ optimizeModel }) => optimizeModel(file, level))
+    .then((out) => {
+      if (jobId !== modelJobId) return;
+      // Se non conviene (modello già leggero) resta l'originale
+      const best = out.size < file.size ? out : file;
+      state.file = best;
+      const pct = Math.round((1 - best.size / file.size) * 100);
+      if (best.size > MAX_UPLOAD_BYTES) {
+        info.textContent = `${formatMB(best.size)}: ancora troppo pesante, prova "Molto".`;
+        info.classList.add('is-error');
+      } else {
+        info.textContent = best === file
+          ? `${formatMB(file.size)}: già leggero, lo invio così`
+          : `${formatMB(file.size)} → ${formatMB(best.size)} (−${pct}%)`;
+      }
+    })
+    .catch((err) => {
+      if (jobId !== modelJobId) return;
+      console.warn('[upload] ottimizzazione 3D non riuscita:', err);
+      state.file = file;
+      info.textContent = file.size > MAX_UPLOAD_BYTES
+        ? 'Non riesco ad alleggerire questo modello e supera i 10 MB.'
+        : 'Non riesco ad alleggerirlo: invio il modello originale.';
+      if (file.size > MAX_UPLOAD_BYTES) info.classList.add('is-error');
+    })
+    .finally(() => {
+      if (jobId !== modelJobId) return;
+      buttons.forEach((b) => { b.disabled = false; });
+      state.modelJob = null;
+    });
+}
+
 function clearFile() {
+  modelJobId++;
+  state.modelJob = null;
+  if (els.modelOpt) els.modelOpt.hidden = true;
   state.file = null;
   state.originalFile = null;
   state.mediaType = (state.mode === 'text') ? 'text' : null;
@@ -870,6 +963,11 @@ async function submitMemory() {
   setLoading(true);
 
   try {
+    // U1: attende l'alleggerimento del modello 3D ancora in corso
+    if (state.modelJob) await state.modelJob;
+    if (state.mediaType === 'model3d' && state.file && state.file.size > MAX_UPLOAD_BYTES) {
+      throw new Error('size: modello 3D oltre 10 MB');
+    }
     let fileToUpload = state.file;
 
     // In text mode, generate high-res text card image
