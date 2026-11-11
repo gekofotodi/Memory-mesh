@@ -29,4 +29,6 @@
 
 - [x] R1 - revisione 11/11 - upload: messaggio chiaro per video oltre 10 MB e suggerimento dropzone corretto; "Invio in corso…" durante l'invio; il tasto Indietro del telefono naviga tra gli step invece di uscire. Display: dopo un avvio senza rete i ricordi reali si ricaricano appena torna la connessione
 
+- [x] R2 - revisione 11/11 (C, D) - redirect da / a /upload/; messaggio di successo che rimanda all'installazione; contatore "N ricordi raccolti finora" nella home; miniature leggere per i nodi del display (thumb_url); vista orphan_uploads per i file rimasti nel bucket
+
 <!-- Sposto qui le voci completate con l'ID, così non le rileggo -->

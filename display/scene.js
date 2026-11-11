@@ -395,38 +395,58 @@ export function initScene(canvas) {
     });
   }
 
+  // ── Precaricamento media dei nodi ────────────────────────────
+  // D1: se c'è thumb_url si scarica la miniatura (~400px) invece del file pieno.
+  // La cache resta indicizzata per media_url, così il resto della scena non cambia.
+  function onMediaReady(m, w, h) {
+    const n = nodes.find((node) => node.memory.media_url === m.media_url);
+    if (n && w && h) applyNodeAspectRatio(n, w / h);
+  }
+
+  function preloadMedia(m) {
+    const mType = (m.media_type || '').toLowerCase();
+    if ((mType === 'image' || mType === 'text') && m.media_url && !imageCache.has(m.media_url)) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        imageCache.set(m.media_url, img);
+        onMediaReady(m, img.naturalWidth, img.naturalHeight);
+      };
+      // Miniatura irraggiungibile → ripiega sul file pieno
+      img.onerror = () => {
+        if (m.thumb_url && img.src === m.thumb_url) img.src = m.media_url;
+      };
+      img.src = m.thumb_url || m.media_url;
+    } else if (mType === 'text' && !m.media_url && !imageCache.has(textCardKey(m))) {
+      // D30: card in corsivo calligrafico generata qui, trattata come un'immagine 2D
+      ensureTextCardFont().then(() => {
+        imageCache.set(textCardKey(m), renderTextCard(m.description || '', m.title || ''));
+      });
+    } else if (mType === 'video' && m.media_url && !imageCache.has(m.media_url)) {
+      const fromVideo = () => extractVideoFirstFrame(m.media_url, (c) => onMediaReady(m, c.width, c.height));
+      if (!m.thumb_url) { fromVideo(); return; }
+      // Copertina dalla miniatura, copiata su canvas come fa extractVideoFirstFrame (getVideoPoster la legge così)
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        imageCache.set(m.media_url, c);
+        onMediaReady(m, c.width, c.height);
+      };
+      img.onerror = fromVideo;
+      img.src = m.thumb_url;
+    }
+  }
+
   // ── Sync Memories ────────────────────────────────────────────
   function setMemories(memoriesList) {
     memories = memoriesList || [];
 
     // Precaricamento media (Immagini e Primo Frame dei Video)
-    memories.forEach((m) => {
-      const mType = (m.media_type || '').toLowerCase();
-      if ((mType === 'image' || mType === 'text') && m.media_url && !imageCache.has(m.media_url)) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = m.media_url;
-        img.onload = () => {
-          imageCache.set(m.media_url, img);
-          const n = nodes.find((node) => node.memory.media_url === m.media_url);
-          if (n && img.naturalWidth && img.naturalHeight) {
-            applyNodeAspectRatio(n, img.naturalWidth / img.naturalHeight);
-          }
-        };
-      } else if (mType === 'text' && !m.media_url && !imageCache.has(textCardKey(m))) {
-        // D30: card in corsivo calligrafico generata qui, trattata come un'immagine 2D
-        ensureTextCardFont().then(() => {
-          imageCache.set(textCardKey(m), renderTextCard(m.description || '', m.title || ''));
-        });
-      } else if (mType === 'video' && m.media_url && !imageCache.has(m.media_url)) {
-        extractVideoFirstFrame(m.media_url, (offCanvas) => {
-          const n = nodes.find((node) => node.memory.media_url === m.media_url);
-          if (n && offCanvas.width && offCanvas.height) {
-            applyNodeAspectRatio(n, offCanvas.width / offCanvas.height);
-          }
-        });
-      }
-    });
+    memories.forEach(preloadMedia);
 
     nodes = memories.map((m, index) => {
       const existing = nodes.find((n) => n.id === m.id);
@@ -492,27 +512,7 @@ export function initScene(canvas) {
     memories.unshift(newMem);
     const mType = (newMem.media_type || '').toLowerCase();
 
-    if (newMem.media_url && !imageCache.has(newMem.media_url)) {
-      if (mType === 'image' || mType === 'text') {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = newMem.media_url;
-        img.onload = () => {
-          imageCache.set(newMem.media_url, img);
-          const n = nodes.find((node) => node.memory.media_url === newMem.media_url);
-          if (n && img.naturalWidth && img.naturalHeight) {
-            applyNodeAspectRatio(n, img.naturalWidth / img.naturalHeight);
-          }
-        };
-      } else if (mType === 'video') {
-        extractVideoFirstFrame(newMem.media_url, (offCanvas) => {
-          const n = nodes.find((node) => node.memory.media_url === newMem.media_url);
-          if (n && offCanvas.width && offCanvas.height) {
-            applyNodeAspectRatio(n, offCanvas.width / offCanvas.height);
-          }
-        });
-      }
-    }
+    preloadMedia(newMem);
 
     const rawTags = Array.isArray(newMem.tags) ? newMem.tags.map((t) => t.toLowerCase().trim()) : ['amici'];
     const primaryTag = rawTags[0] || 'amici';

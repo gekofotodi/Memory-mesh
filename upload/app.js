@@ -25,6 +25,8 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB strict limit for video, audi
 // U1: un .glb più pesante si accetta se, alleggerito, rientra nei 10 MB
 const MAX_MODEL_INPUT_BYTES = 80 * 1024 * 1024;
 const MAX_TITLE_WORDS = 5;
+const THUMB_SIDE = 400;     // D1: miniatura per i nodi del display (lato lungo, px)
+const THUMB_QUALITY = 0.75;
 const MAX_THEME_TAGS = 3;
 
 // ── State ──────────────────────────────────────────────────────
@@ -111,6 +113,9 @@ const els = {
   btnSubmit:    $('#btn-submit'),
   submitLabel:  $('#submit-label'),
 
+  // Home
+  memoryCount: $('#memory-count'),
+
   // Success
   overlay:    $('#success-overlay'),
   btnNew:     $('#btn-new'),
@@ -141,7 +146,28 @@ function init() {
   bindFormFields();
   bindSubmit();
   bindSuccess();
+  loadMemoryCount();
   console.log('[upload] app ready — supabase client loaded');
+}
+
+// ── C3: contatore ricordi nella home ─────────────────────────
+let memoryCount = null;
+function renderMemoryCount() {
+  if (!els.memoryCount || !memoryCount) return;
+  els.memoryCount.textContent = memoryCount === 1 ? '1 ricordo raccolto finora' : `${memoryCount} ricordi raccolti finora`;
+  els.memoryCount.hidden = false;
+}
+
+async function loadMemoryCount() {
+  try {
+    // Solo il conteggio: nessun contenuto scaricato
+    const { count, error } = await supabase.from('memories').select('id', { count: 'exact', head: true });
+    if (error) throw error;
+    memoryCount = count || 0;
+    renderMemoryCount();
+  } catch (err) {
+    console.warn('[upload] conteggio ricordi non disponibile:', err); // il contatore resta nascosto
+  }
 }
 
 // ── Navigation State & Logic ────────────────────────────────────
@@ -746,6 +772,72 @@ function compressImage(file) {
   });
 }
 
+// ── D1: Miniatura leggera per il display ─────────────────────
+// Il display disegna i nodi a ~86-240px: scaricare il file pieno (fino a 1920px o un video intero) è uno spreco.
+function drawThumb(source, srcW, srcH) {
+  return new Promise((resolve) => {
+    const k = Math.min(1, THUMB_SIDE / Math.max(srcW, srcH));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(srcW * k));
+    canvas.height = Math.max(1, Math.round(srcH * k));
+    canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    // WebP dove possibile, JPEG su Safari iOS (non codifica WebP via canvas)
+    const exportAs = (mime) => canvas.toBlob((blob) => {
+      if (blob && blob.type !== mime && mime === 'image/webp') { exportAs('image/jpeg'); return; }
+      if (!blob) { resolve(null); return; }
+      const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+      resolve(new File([blob], `thumb.${ext}`, { type: blob.type }));
+    }, mime, THUMB_QUALITY);
+    exportAs('image/webp');
+  });
+}
+
+function imageThumb(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); drawThumb(img, img.naturalWidth, img.naturalHeight).then(resolve); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+function videoThumb(file) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    let done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    const timer = setTimeout(() => finish(null), 5000); // senza miniatura il display estrae il frame da sé
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.addEventListener('loadeddata', () => {
+      try { video.currentTime = Math.min(0.1, (video.duration || 1) * 0.05); } catch (_) { finish(null); }
+    }, { once: true });
+    video.addEventListener('seeked', () => {
+      if (!video.videoWidth) { finish(null); return; }
+      drawThumb(video, video.videoWidth, video.videoHeight).then(finish, () => finish(null));
+    }, { once: true });
+    video.addEventListener('error', () => finish(null), { once: true });
+    video.src = url;
+  });
+}
+
+async function makeThumb(file, mediaType) {
+  if (mediaType === 'image' || mediaType === 'text') return imageThumb(file);
+  if (mediaType === 'video') return videoThumb(file);
+  return null; // audio e 3D hanno un'icona disegnata dal display
+}
+
 // ── Canvas Text Card Image Generator ───────────────────────────
 async function generateTextCardImage(text, title = '') {
   // D30: stessa card del display (testo in corsivo calligrafico)
@@ -968,6 +1060,16 @@ async function submitMemory() {
 
     // 1. Upload file to Supabase Storage
     const mediaUrl = await uploadFile(fileToUpload);
+    const mediaType = state.mode === 'text' ? 'text' : state.mediaType;
+
+    // 1b. Miniatura per il display: facoltativa, un errore qui non blocca l'invio
+    let thumbUrl = null;
+    try {
+      const thumb = await makeThumb(fileToUpload, mediaType);
+      if (thumb) thumbUrl = await uploadFile(thumb);
+    } catch (err) {
+      console.warn('[upload] miniatura non creata:', err);
+    }
 
     // 2. Insert record into 'memories' table
     const dateResult = getDateValue();
@@ -978,7 +1080,8 @@ async function submitMemory() {
       location_tag: state.locationTag,
       time_event: dateResult.value,
       media_url: mediaUrl,
-      media_type: state.mode === 'text' ? 'text' : state.mediaType,
+      thumb_url: thumbUrl,
+      media_type: mediaType,
       privacy_consent: true,
     };
 
@@ -988,6 +1091,7 @@ async function submitMemory() {
     });
 
     // 3. Show success
+    if (memoryCount !== null) { memoryCount += 1; renderMemoryCount(); }
     showSuccess();
   } catch (err) {
     console.error('[upload] submit failed:', err);

@@ -15,7 +15,7 @@ Lingua: UI e commenti in **italiano**. Rispondi all'utente in italiano.
 
 - Vanilla HTML5 + CSS3 + ES Modules nativi. **Niente framework, niente bundler, niente npm build.**
 - Dipendenze solo via CDN **con versione fissata**: `@supabase/supabase-js@2.118.0` (+esm, jsDelivr), `@mediapipe/hands@0.4.1675469240` + `@mediapipe/camera_utils@0.3.1675466862`, `@google/model-viewer@3.5.0` (modelli 3D nella modale) (script globali `window.Hands`, `window.Camera`), Google Fonts (Instrument Sans; Instrument Serif solo per la card citazione generata in `upload/app.js`).
-- Hosting: Vercel statico (`vercel.json`: `cleanUrls`, `trailingSlash`). HTTPS obbligatorio per la webcam. Produzione pubblica: **https://memory-mesh-eight.vercel.app** (deploy automatico da push su `main`; l'alias `memory-mesh-geko10` è protetto da login Vercel). Il QR della schermata di attesa (`display/qr-upload.svg`) punta a `/upload/` di questo dominio: se cambia, rigeneralo con `npx qrcode@1.5.4 -t svg -e M -q 1 -d 99251CFF -l 00000000 -o display/qr-upload.svg "<url>/upload/"`.
+- Hosting: Vercel statico (`vercel.json`: `cleanUrls`, `trailingSlash`, redirect `/` → `/upload/`). HTTPS obbligatorio per la webcam. Produzione pubblica: **https://memory-mesh-eight.vercel.app** (deploy automatico da push su `main`; l'alias `memory-mesh-geko10` è protetto da login Vercel). Il QR della schermata di attesa (`display/qr-upload.svg`) punta a `/upload/` di questo dominio: se cambia, rigeneralo con `npx qrcode@1.5.4 -t svg -e M -q 1 -d 99251CFF -l 00000000 -o display/qr-upload.svg "<url>/upload/"`.
 - Kiosk Windows: `kiosk/avvia-memory-mesh.bat` (Chrome `--kiosk`, profilo dedicato, webcam concessa).
 - Dev locale con ricarica automatica: `npx live-server@1.2.2 --port=5173 --host=127.0.0.1 --no-browser` dalla root → http://127.0.0.1:5173/display/ e /upload/ (CSS iniettato a caldo, JS/HTML ricaricano la pagina). In locale `window.__mm` espone `{ state, showIdle() }` e `state.scene.debugInfo()` (accessibili solo dal contesto pagina).
 - Supabase **Free Tier**: risparmiare storage e banda è un requisito, non un'ottimizzazione.
@@ -76,6 +76,7 @@ Tabella `public.memories` (RLS on, in pubblicazione `supabase_realtime`):
 | title | text | max 5 parole (validato solo client) |
 | description | text | |
 | media_url | text | URL pubblico bucket `uploads` |
+| thumb_url | text | miniatura ~400px (WebP/JPEG) usata dal display per i nodi; null per audio/3D o se la creazione fallisce (il display ripiega su media_url) |
 | media_type | text | `image` · `video` · `audio` · `text` · `model3d` |
 | tags | text[] | 1–3 tag tematici minuscoli |
 | location_tag | text | stanza (minuscolo) |
@@ -110,11 +111,11 @@ Policy: `anon` INSERT su memories se `privacy_consent = true`; `anon` SELECT tut
 - [x] **`model3d` (glb/gltf)** accettato in upload ma non gestito nel display (modale prova a mostrarlo come immagine).
 - [x] **Card testo:** l'upload genera un'immagine della citazione, ma il display mostra solo il placeholder "MEMORIA".
 - [x] Video: autoplay muto in loop all'apertura (scelta di progetto). [ ] Audio: controlli nativi non azionabili con gesture.
-- [ ] Miniature caricano il file pieno (fino a 1920px) per disegnare ~86px; nessuna thumbnail dedicata.
+- [x] Miniature: l'upload crea `thumb_url` (~400px) per foto, card di testo e video; il display (`scene.js preloadMedia`) la usa al posto del file pieno. I ricordi precedenti hanno le miniature in `uploads/thumbs/<id>.webp`.
 - [x] CDN non versionate (`supabase-js`, `@mediapipe/*`) → un rilascio upstream può rompere il kiosk.
 - [x] Riconnessione realtime (retry 5s). [x] Webcam: riavvio automatico (track `ended`, watchdog 8s senza frame, retry 10s se assente). [x] Schermata di attesa dopo 45s (titolo + QR), chiusa salutando (tastiera per manutenzione); la webcam resta accesa e visibile sopra lo standby (D24).
 - [x] Limiti server-side: bucket 10 MB + MIME ammessi (webp/jpeg, video mp4/mov/webm, audio, gltf); CHECK su `memories` (titolo ≤5 parole, tag/luoghi del vocabolario, media_type, URL del bucket). **Se aggiungi un tag o una stanza, aggiorna anche i CHECK `memories_tags_check` / `memories_location_check`.** Moderazione: **scelta di progetto, NESSUNA approvazione**.
-- [x] `alert()` sostituito da messaggio in pagina + 3 tentativi. [ ] File orfani se l'insert fallisce (serve una policy DELETE: non aperta ad anon per sicurezza).
+- [x] `alert()` sostituito da messaggio in pagina + 3 tentativi. [~] File orfani se l'insert fallisce: la vista `public.orphan_uploads` (solo dashboard, non esposta ad anon) li elenca; si cancellano a mano da Storage > uploads (Supabase blocca il DELETE via SQL).
 - [x] **Compressione:** Safari iOS non codifica WebP via canvas e restituiva PNG pesanti con estensione .webp → ora fallback JPEG verificando `blob.type`.
 - [x] Timeline/griglia/cluster: inquadratura automatica (`fitCameraToContent` in `scene.js`), cluster parte da "Tutti i temi".
 - [x] Anello progresso cursore: perimetro 125.6 calcolato con r=20 ma il cerchio SVG ha r=18.
