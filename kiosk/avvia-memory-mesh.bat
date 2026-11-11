@@ -15,5 +15,8 @@ start "" %CHROME% ^
   --autoplay-policy=no-user-gesture-required ^
   --no-first-run ^
   --disable-session-crashed-bubble ^
-  --disable-features=Translate ^
+  --disable-features=Translate,CalculateNativeWinOcclusion ^
+  --disable-background-timer-throttling ^
+  --disable-renderer-backgrounding ^
+  --disable-backgrounding-occluded-windows ^
   --overscroll-history-navigation=0

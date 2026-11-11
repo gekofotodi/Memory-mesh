@@ -322,8 +322,22 @@ function closeHudPanels() {
   syncPanelAria();
 }
 
+// Riavvio preventivo del kiosk: dopo 45 minuti la pagina si ricarica, ma solo durante
+// l'attesa (da almeno 20 s, nessuno davanti): libera memoria e GPU di MediaPipe prima che
+// si blocchino e facciano ripartire la webcam mentre qualcuno la sta usando.
+const PREVENTIVE_RELOAD_MS = 45 * 60 * 1000;
+let idleShownAt = 0;
 function idleWatch() {
-  if (!idle.visible && performance.now() - idle.lastActivity > IDLE_MS) showIdleOverlay();
+  const now = performance.now();
+  if (!idle.visible && now - idle.lastActivity > IDLE_MS) showIdleOverlay();
+  if (!idle.visible) idleShownAt = 0;
+  else if (!idleShownAt) idleShownAt = now;
+  if (idle.visible && now > PREVENTIVE_RELOAD_MS && now - idleShownAt > 20000 && navigator.onLine !== false) {
+    console.log('[display] Riavvio preventivo durante l\'attesa');
+    try { sessionStorage.setItem('mm-start-idle', '1'); } catch (_) {}
+    location.reload();
+    return;
+  }
   setTimeout(idleWatch, 1000);
 }
 
@@ -409,6 +423,13 @@ async function init() {
   setupRealtimeSubscription();
 
   // 7. Schermata di attesa dopo 45s di inattività
+  // Dopo un riavvio preventivo si riparte direttamente dalla schermata di attesa
+  try {
+    if (sessionStorage.getItem('mm-start-idle')) {
+      sessionStorage.removeItem('mm-start-idle');
+      showIdleOverlay();
+    }
+  } catch (_) {}
   idleWatch();
 
   console.log('[display] Ready and listening.');

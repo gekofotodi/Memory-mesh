@@ -245,17 +245,55 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   }
   // Gli errori di un'istanza Hands già sostituita (chiusa durante un riavvio) vanno ignorati,
   // altrimenti ogni riavvio ne provoca un altro
+  // Webcam: errori più frequenti trovati nel codice
+  // - fotogramma inviato a MediaPipe mentre il video non ha ancora dati (durante un riavvio
+  //   o dopo un singhiozzo USB): MediaPipe va in errore e la pagina si ricaricava;
+  // - errori di un invio partito PRIMA di un riavvio della webcam, che facevano ricaricare;
+  // - invio bloccato (MediaPipe non risponde più): ora riconosciuto in 6 s.
+  let camGen = 0;            // generazione della webcam (cresce a ogni riavvio)
+  let sendPendingSince = 0;  // inizio dell'invio in corso (0 = nessuno)
+  let sendErrors = [];       // errori MediaPipe recenti
+  function videoReady() {
+    return !!videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0 && videoEl.videoHeight > 0;
+  }
   function timedSend() {
+    if (!videoReady()) return Promise.resolve(); // niente dati: salta il fotogramma
     const t0 = performance.now();
     const h = hands;
+    const gen = camGen;
+    sendPendingSince = t0;
     return h.send({ image: videoEl }).then(() => {
+      sendPendingSince = 0;
       perf.sendMsTotal += performance.now() - t0;
       perf.sends++;
     }, (err) => {
-      if (h !== hands || restartTimer) return;
-      console.warn('[tracking] Errore MediaPipe:', err);
+      sendPendingSince = 0;
+      if (h !== hands || gen !== camGen || restartTimer) return; // invio di una webcam già riavviata
+      logIncident('errore MediaPipe', err);
+      // Un errore isolato (fotogramma corrotto) non giustifica una ricarica: solo se si ripete
+      const now = performance.now();
+      sendErrors = sendErrors.filter((t) => now - t < 10000);
+      sendErrors.push(now);
+      if (sendErrors.length < 3) return;
       throw err;
     });
+  }
+
+  // Registro persistente degli incidenti (localStorage 'mm-incidents', ultimi 40):
+  // sul kiosk si legge dalla console con  JSON.parse(localStorage['mm-incidents'])
+  function logIncident(reason, err) {
+    console.warn(`[tracking] ${reason}`, err || '');
+    try {
+      const log = JSON.parse(localStorage.getItem('mm-incidents') || '[]');
+      log.push({
+        t: new Date().toISOString(),
+        reason,
+        err: err ? String((err && err.message) || err).slice(0, 200) : '',
+        uptimeMin: Math.round(performance.now() / 60000),
+        heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
+      });
+      localStorage.setItem('mm-incidents', JSON.stringify(log.slice(-40)));
+    } catch (_) {}
   }
 
   // Ultima risorsa per il kiosk: ricarica la pagina (tutto riparte pulito).
@@ -268,15 +306,18 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     const now = Date.now();
     log = log.filter((t) => now - t < 10 * 60 * 1000);
     if (log.length >= 5) {
-      console.warn(`[tracking] ${reason}: troppe ricariche, resto in modalità mouse`);
+      // Troppe ricariche: pausa di 10 minuti, poi si riprova (prima restava senza webcam per sempre)
+      logIncident(`${reason}: troppe ricariche, riprovo tra 10 minuti`);
+      reloading = true;
       stopCamera();
       enableMouseFallback();
+      setTimeout(() => location.reload(), 10 * 60 * 1000);
       return;
     }
     reloading = true;
     log.push(now);
     try { sessionStorage.setItem('mm-reloads', JSON.stringify(log)); } catch (_) {}
-    console.warn(`[tracking] ${reason}: ricarico la pagina tra 2s`);
+    logIncident(`ricarica pagina: ${reason}`);
     if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('reconnecting');
     setTimeout(() => location.reload(), 2000);
   }
@@ -674,6 +715,8 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   }
 
   function stopCamera() {
+    camGen++;
+    sendPendingSince = 0;
     state.active = false;
     state.webcamRunning = false;
     try { if (mpCamera) mpCamera.stop(); } catch (_) {}
@@ -691,6 +734,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     perf.lastRestart = reason;
     restartLog.push(performance.now());
     while (restartLog.length && performance.now() - restartLog[0] > 120000) restartLog.shift();
+    logIncident(`riavvio webcam: ${reason}`);
     if (restartLog.length > 3) { reloadPage('troppi riavvii webcam'); return; }
     state.right.detected = false;
     state.left.detected = false;
@@ -705,10 +749,14 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
   // Controlla periodicamente che arrivino frame (catena di setTimeout, nessun polling di rete)
   function watchdog() {
-    if (state.webcamRunning && !restartTimer && performance.now() - lastFrameAt > STALL_MS) {
+    const now = performance.now();
+    if (state.webcamRunning && !restartTimer && sendPendingSince && now - sendPendingSince > 6000) {
+      // MediaPipe non risponde (di solito GPU/WebGL perso): riavviare la webcam non basta
+      reloadPage('MediaPipe bloccato');
+    } else if (state.webcamRunning && !restartTimer && now - lastFrameAt > STALL_MS) {
       scheduleRestart('nessun frame');
     }
-    setTimeout(watchdog, 4000);
+    setTimeout(watchdog, 2000);
   }
 
   async function setupDirectWebcam(hands) {
