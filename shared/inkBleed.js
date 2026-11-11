@@ -293,8 +293,32 @@ function bindTouch() {
  * @param {string} [o.restSelector]  quali hanno anche il filtro a riposo (default: tutti)
  * @param {'pointer'|'manual'|'none'} [o.hover]
  */
+/**
+ * A1 — Filtro statico condiviso per gli elementi grafici (frecce, icone, tasti, linee):
+ * stessa logica del testo (bordi irregolari + espansione con soglia), senza grana per
+ * non spezzare i tratti sottili. Si usa da CSS con  filter: url(#ink-line).
+ * I tratti devono essere opachi: la trasparenza va data con `opacity` sull'elemento,
+ * altrimenti la soglia alfa li cancella.
+ */
+function buildGraphicFilter() {
+  if (document.getElementById('ink-line')) return;
+  const f = make('filter', {
+    id: 'ink-line',
+    x: '-20%', y: '-40%', width: '140%', height: '180%',
+    'color-interpolation-filters': 'sRGB',
+  });
+  f.append(
+    make('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.35', numOctaves: '2', seed: '7', result: 'n' }),
+    make('feDisplacementMap', { in: 'SourceGraphic', in2: 'n', scale: '1.8', xChannelSelector: 'R', yChannelSelector: 'G', result: 'rough' }),
+    make('feGaussianBlur', { in: 'rough', stdDeviation: '0.55', result: 'blur' }),
+    make('feColorMatrix', { in: 'blur', type: 'matrix', values: '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -4.2' }),
+  );
+  ensureDefs().appendChild(f);
+}
+
 export function initInkBleed({ selector, restSelector = '', hover = 'pointer' }) {
   opts = { selector, restSelector, hover };
+  buildGraphicFilter();
   scan();
   if (hover === 'pointer') bindTouch();
   // Registra anche gli elementi creati dinamicamente (es. voci del wheel menu)

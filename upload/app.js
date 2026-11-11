@@ -134,7 +134,7 @@ function preventZoom() {
 function init() {
   preventZoom();
   // U6: solo l'inchiostro statico a riposo, niente effetto dinamico al tocco (troppo pesante)
-  initInkBleed({ selector: '.landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title', hover: 'none' });
+  initInkBleed({ selector: '.action-btn__arrow, .landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title', hover: 'none' });
   bindNavigation();
   bindMediaSwitcher();
   bindDropzone();

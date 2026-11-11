@@ -1347,3 +1347,29 @@ html.no-mouse, html.no-mouse * { cursor: none !important; }
 
 /* D24: durante l'attesa la webcam resta visibile sopra lo standby, per vedere il saluto */
 body.is-idle .camera-hud { z-index: 95; }
+
+/* ── A1: linee e tasti con l'inchiostro sbavato (filtro #ink-line di shared/inkBleed.js) ──
+   I bordi diventano pseudo-elementi alti 6px con una riga opaca al centro: la soglia alfa
+   del filtro cancellerebbe le righe semitrasparenti, quindi la trasparenza va su opacity. */
+.project-panel, .gesture-panel { border-top: 0; border-bottom: 0; }
+.project-panel::before, .project-panel::after,
+.gesture-panel::before, .gesture-panel::after,
+.project-panel__row::before, .gesture-row::before, .selection-related-row::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 6px;
+  background: linear-gradient(#99251C, #99251C) center / 100% 2px no-repeat;
+  filter: url(#ink-line);
+  pointer-events: none;
+}
+.project-panel::before, .gesture-panel::before { top: -3px; opacity: 0.85; }
+.project-panel::after, .gesture-panel::after { bottom: -3px; opacity: 0.3; }
+.project-panel__row, .gesture-row, .selection-related-row { position: relative; border-top: 0; }
+.project-panel__row::before, .gesture-row::before { top: -3px; opacity: 0.25; }
+.selection-related-row::before {
+  top: -3px;
+  opacity: 0.3;
+  background: repeating-linear-gradient(90deg, #99251C 0 4px, transparent 4px 8px) center / 100% 2px no-repeat;
+}
+.media-ctl { filter: url(#ink-line); }

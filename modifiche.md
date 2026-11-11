@@ -5,7 +5,6 @@
      Priorità: !! = prima dell'evento, ! = utile, niente = dopo
      Testi definitivi tra "virgolette". Immagini solo in inspo/, citate col nome file. -->
 
-- [ ] A1 - dettagli - controlla su tutto il sito che gli elementi grafici siano coerenti all'estetica ink bleed (le frecce, i tasti, le linee ecc)
 
 ## Display
 
@@ -18,6 +17,7 @@
 
 ## Fatto
 
+- [x] A1 - dettagli - elementi grafici coerenti all'estetica ink bleed: frecce, icone, rete della landing, chip e tasti (solo fondo e bordo), linee dei pannelli del display, comandi media (filtro #ink-line)
 - [x] D1 !! - nuvola di nodi - inverti la direzione di rotazione della nuvola di nodi
 - [x] D2 !! - cluster - controlla che le linee del menu chiuso non escano dal bordo dello schermo
 - [x] D3 !! - animazione ricordo - modifica l'animazione dei testi, rendila coerente con lo stile ink bleed, tipo che le scritte compaiono allargandosi a macchia
