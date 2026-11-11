@@ -1090,6 +1090,7 @@ body.kiosk-body {
   margin: 0;
 }
 .idle-title em { font-style: normal; }
+.idle-title { margin-bottom: 28px; } /* D2: senza sottotitolo, aria tra titolo e QR */
 .idle-subtitle {
   font-family: var(--font-sans);
   font-size: clamp(0.8rem, 1.1vw, 1rem);
@@ -1403,4 +1404,48 @@ body.is-idle .camera-hud { z-index: 95; }
   background: linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat;
   filter: url(#ink-line);
   pointer-events: none;
+}
+
+/* ── D1: X di chiusura del dettaglio ricordo (in alto a destra, dentro il riquadro) ── */
+.detail-close {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  z-index: 31;
+  width: 64px;              /* bersaglio ampio per il pinch */
+  height: 64px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-red);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.detail-close svg {
+  width: 34px;
+  height: 34px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  filter: url(#ink-line);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-backdrop.is-open .detail-close { opacity: 1; transform: none; transition-delay: 0.45s; }
+.modal-backdrop.is-open.is-closing .detail-close { opacity: 0; transition-delay: 0s; transition-duration: 0.15s; }
+.detail-close:hover svg,
+.detail-close.is-hover svg { transform: scale(1.18) rotate(90deg); }
+/* La colonna di destra lascia spazio alla X */
+.selection-content-col { padding-right: 96px; }
+
+/* ── D5: cornice del QR della schermata di attesa con l'inchiostro sbavato, ben visibile ── */
+.idle-qr { box-shadow: none; }
+.idle-qr::after {
+  inset: -2px;
+  border: 3px solid var(--accent-red);
 }

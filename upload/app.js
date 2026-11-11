@@ -774,13 +774,15 @@ function compressImage(file) {
 
 // ── D1: Miniatura leggera per il display ─────────────────────
 // Il display disegna i nodi a ~86-240px: scaricare il file pieno (fino a 1920px o un video intero) è uno spreco.
-function drawThumb(source, srcW, srcH) {
+function drawThumb(source, srcW, srcH, background = '') {
   return new Promise((resolve) => {
     const k = Math.min(1, THUMB_SIDE / Math.max(srcW, srcH));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(srcW * k));
     canvas.height = Math.max(1, Math.round(srcH * k));
-    canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    if (background) { ctx.fillStyle = background; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
     // WebP dove possibile, JPEG su Safari iOS (non codifica WebP via canvas)
     const exportAs = (mime) => canvas.toBlob((blob) => {
       if (blob && blob.type !== mime && mime === 'image/webp') { exportAs('image/jpeg'); return; }
@@ -832,10 +834,47 @@ function videoThumb(file) {
   });
 }
 
+// D6: anteprima 2D del modello 3D, fotografata con model-viewer (caricato solo qui, on demand)
+const MODEL_VIEWER_URL = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
+const THUMB_BG = '#F8F3EC'; // stesso fondo dei nodi del display
+
+async function modelThumb(file) {
+  await import(MODEL_VIEWER_URL);
+  await customElements.whenDefined('model-viewer');
+  const url = URL.createObjectURL(file);
+  const mv = document.createElement('model-viewer');
+  // Nel viewport ma invisibile: fuori schermo model-viewer non disegna
+  mv.style.cssText = 'position:fixed;left:0;top:0;width:480px;height:360px;opacity:0;pointer-events:none;z-index:-1';
+  mv.setAttribute('camera-orbit', '30deg 75deg auto');
+  mv.setAttribute('shadow-intensity', '0.6');
+  mv.setAttribute('exposure', '1');
+  mv.setAttribute('interaction-prompt', 'none');
+  mv.setAttribute('loading', 'eager');
+  document.body.appendChild(mv);
+  try {
+    const loaded = new Promise((resolve, reject) => {
+      mv.addEventListener('load', resolve, { once: true });
+      mv.addEventListener('error', reject, { once: true });
+      setTimeout(() => reject(new Error('timeout modello 3D')), 15000);
+    });
+    mv.src = url;
+    await loaded;
+    // Due frame per essere sicuri che la scena sia disegnata
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const blob = await mv.toBlob({ mimeType: 'image/png', idealAspect: true });
+    const bmp = await createImageBitmap(blob);
+    return drawThumb(bmp, bmp.width, bmp.height, THUMB_BG);
+  } finally {
+    mv.remove();
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function makeThumb(file, mediaType) {
   if (mediaType === 'image' || mediaType === 'text') return imageThumb(file);
   if (mediaType === 'video') return videoThumb(file);
-  return null; // audio e 3D hanno un'icona disegnata dal display
+  if (mediaType === 'model3d') return modelThumb(file).catch((err) => { console.warn('[upload] anteprima 3D non creata:', err); return null; });
+  return null; // l'audio ha un'icona disegnata dal display
 }
 
 // ── Canvas Text Card Image Generator ───────────────────────────

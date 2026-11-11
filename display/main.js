@@ -693,6 +693,8 @@ function handlePointerMove(x, y) {
     setInkHoverPoint(px, py);
     setPanelHover(els.hudHeader, !!(elUnderCursor && elUnderCursor.closest('#hud-header')));
     setPanelHover(els.cameraHud, !!(elUnderCursor && elUnderCursor.closest('#camera-hud')));
+    const closeBtn = els.modalDetail && els.modalDetail.querySelector('.detail-close');
+    if (closeBtn) closeBtn.classList.toggle('is-hover', !!(elUnderCursor && closeBtn.contains(elUnderCursor)));
     document.querySelectorAll('.media-box.is-active .media-hover').forEach((h) => {
       h.classList.toggle('is-hover', !!(elUnderCursor && h.contains(elUnderCursor)));
     });
@@ -938,7 +940,7 @@ function bindUIEvents() {
 
   // Detail Modal Close (Chiusura via click esterno o Esc)
   els.modalDetail.addEventListener('click', (e) => {
-    if (e.target === els.modalDetail) closeModals();
+    if (e.target === els.modalDetail || e.target.closest('.detail-close')) closeModals();
   });
 
   // Canvas Mouse Drag, Wheel Zoom & Click Handling

@@ -14,7 +14,7 @@ Lingua: UI e commenti in **italiano**. Rispondi all'utente in italiano.
 ## Stack e vincoli
 
 - Vanilla HTML5 + CSS3 + ES Modules nativi. **Niente framework, niente bundler, niente npm build.**
-- Dipendenze solo via CDN **con versione fissata**: `@supabase/supabase-js@2.118.0` (+esm, jsDelivr), `@mediapipe/hands@0.4.1675469240` + `@mediapipe/camera_utils@0.3.1675466862`, `@google/model-viewer@3.5.0` (modelli 3D nella modale) (script globali `window.Hands`, `window.Camera`), Google Fonts (Instrument Sans; Instrument Serif solo per la card citazione generata in `upload/app.js`).
+- Dipendenze solo via CDN **con versione fissata**: `@supabase/supabase-js@2.118.0` (+esm, jsDelivr), `@mediapipe/hands@0.4.1675469240` + `@mediapipe/camera_utils@0.3.1675466862`, `@google/model-viewer@3.5.0` (modelli 3D nella modale) (script globali `window.Hands`, `window.Camera`), Google Fonts (Instrument Sans). Le card dei ricordi di testo (`shared/textCard.js`) usano Helvetica con inchiostro sbavato calcolato sui pixel del canvas (funziona anche su Safari iOS).
 - Hosting: Vercel statico (`vercel.json`: `cleanUrls`, `trailingSlash`, redirect `/` → `/upload/`). HTTPS obbligatorio per la webcam. Produzione pubblica: **https://memory-mesh-eight.vercel.app** (deploy automatico da push su `main`; l'alias `memory-mesh-geko10` è protetto da login Vercel). Il QR della schermata di attesa (`display/qr-upload.svg`) punta a `/upload/` di questo dominio: se cambia, rigeneralo con `npx qrcode@1.5.4 -t svg -e M -q 1 -d 99251CFF -l 00000000 -o display/qr-upload.svg "<url>/upload/"`.
 - Kiosk Windows: `kiosk/avvia-memory-mesh.bat` (Chrome `--kiosk`, profilo dedicato, webcam concessa).
 - Dev locale con ricarica automatica: `npx live-server@1.2.2 --port=5173 --host=127.0.0.1 --no-browser` dalla root → http://127.0.0.1:5173/display/ e /upload/ (CSS iniettato a caldo, JS/HTML ricaricano la pagina). In locale `window.__mm` espone `{ state, showIdle() }` e `state.scene.debugInfo()` (accessibili solo dal contesto pagina).
@@ -76,7 +76,7 @@ Tabella `public.memories` (RLS on, in pubblicazione `supabase_realtime`):
 | title | text | max 5 parole (validato solo client) |
 | description | text | |
 | media_url | text | URL pubblico bucket `uploads` |
-| thumb_url | text | miniatura ~400px (WebP/JPEG) usata dal display per i nodi; null per audio/3D o se la creazione fallisce (il display ripiega su media_url) |
+| thumb_url | text | miniatura ~400px (WebP/JPEG) usata dal display per i nodi: foto, card di testo, primo frame dei video, anteprima 2D dei modelli 3D (model-viewer all'invio); null per l'audio o se la creazione fallisce (il display ripiega su media_url o sulla card "3D") |
 | media_type | text | `image` · `video` · `audio` · `text` · `model3d` |
 | tags | text[] | 1–3 tag tematici minuscoli |
 | location_tag | text | stanza (minuscolo) |

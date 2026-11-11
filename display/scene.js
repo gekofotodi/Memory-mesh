@@ -422,6 +422,15 @@ export function initScene(canvas) {
       ensureTextCardFont().then(() => {
         imageCache.set(textCardKey(m), renderTextCard(m.description || '', m.title || ''));
       });
+    } else if (mType === 'model3d' && m.thumb_url && m.media_url && !imageCache.has(m.media_url)) {
+      // D6: anteprima 2D del modello (fotografata all'invio); senza, resta la card "3D"
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        imageCache.set(m.media_url, img);
+        onMediaReady(m, img.naturalWidth, img.naturalHeight);
+      };
+      img.src = m.thumb_url;
     } else if (mType === 'video' && m.media_url && !imageCache.has(m.media_url)) {
       const fromVideo = () => extractVideoFirstFrame(m.media_url, (c) => onMediaReady(m, c.width, c.height));
       if (!m.thumb_url) { fromVideo(); return; }
@@ -1212,7 +1221,7 @@ export function initScene(canvas) {
     if (currentLayout === 'nodi') {
       // D4: la vista resta ferma, il trascinamento ruota la nuvola
       cloudRotY -= dx * 0.0045; // 11/11: verso invertito, la nuvola segue la mano
-      cloudRotX = Math.max(-1.1, Math.min(1.1, cloudRotX - dy * 0.0045));
+      cloudRotX = Math.max(-1.1, Math.min(1.1, cloudRotX + dy * 0.0045)); // D3 (11/11 sera): alto/basso invertito
       cloudTouchedAt = performance.now();
       return;
     }
@@ -2559,7 +2568,7 @@ export function initScene(canvas) {
       const mediaUrl = node.memory.media_url || (mediaType === 'text' ? textCardKey(node.memory) : '');
 
       // Disegno del media a spigoli vivi (nessun bordo stondato, nessuna cornice panna)
-      if ((mediaType === 'image' || mediaType === 'video' || mediaType === 'text') && imageCache.has(mediaUrl)) {
+      if ((mediaType === 'image' || mediaType === 'video' || mediaType === 'text' || mediaType === 'model3d') && imageCache.has(mediaUrl)) {
         const img = imageCache.get(mediaUrl);
         const natW = img.naturalWidth || img.width;
         const natH = img.naturalHeight || img.height;
@@ -2572,6 +2581,14 @@ export function initScene(canvas) {
         // Se è un video, mostra indicatore play elegante sul primo frame
         if (mediaType === 'video') {
           drawVideoBadge(ctx, nx, ny, w, h, isHover);
+        } else if (mediaType === 'model3d') {
+          // D6: etichetta "3D" nell'angolo, il modello resta riconoscibile
+          ctx.shadowColor = 'transparent';
+          ctx.fillStyle = '#99251C';
+          ctx.font = '700 9px "Helvetica Neue", Helvetica, Arial, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText('3D', x0 + w - 5, y0 + h - 5);
         }
       } else if (mediaType === 'video') {
         // Fallback video se il frame non è ancora estratto

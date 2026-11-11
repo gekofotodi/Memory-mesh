@@ -16,7 +16,7 @@
   <!-- Google Fonts — Instrument Sans (Testi); titoli in Helvetica di sistema -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
 
   <!-- MediaPipe Hands & Camera Utils CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
@@ -49,7 +49,6 @@
   <header class="kiosk-header" id="hud-header">
     <div class="header-minimal" id="hud-title" role="button" tabindex="0" aria-expanded="false" aria-controls="project-panel">
       <h1 class="header-title">Memory <em>Mesh</em></h1>
-      <span class="header-subtitle">CENTRO GIOVANILE STOÀ</span>
     </div>
 
     <!-- Info progetto: si apre con hover o click sul titolo -->
@@ -161,6 +160,11 @@
       <div class="selection-cross selection-cross--bl" aria-hidden="true"></div>
       <div class="selection-cross selection-cross--br" aria-hidden="true"></div>
 
+      <!-- D1: chiusura in alto a destra (pinch sopra la X), tratto a inchiostro sbavato -->
+      <button type="button" class="bento-close-btn detail-close" aria-label="Chiudi il ricordo">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 9l22 22M31 9L9 31"/></svg>
+      </button>
+
       <div class="selection-layout">
         <!-- Metà Sinistra: Contenitori Media Dedicati e Separati (Mutuamente Esclusivi) -->
         <div class="selection-media-col" id="detail-media-wrap">
@@ -260,7 +264,6 @@
   <div class="idle-overlay" id="idle-overlay" aria-hidden="true">
     <div class="idle-overlay__content">
       <h2 class="idle-title">Memory <em>Mesh</em></h2>
-      <p class="idle-subtitle">CENTRO GIOVANILE STOÀ</p>
       <div class="idle-qr">
         <img src="./qr-upload.svg" width="220" height="220" alt="QR code per aggiungere un ricordo" />
       </div>
