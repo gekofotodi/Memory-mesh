@@ -319,6 +319,13 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
   // Ultima risorsa per il kiosk: ricarica la pagina (tutto riparte pulito).
   // Al massimo 5 ricariche in 10 minuti, poi resta il fallback mouse per non andare in loop.
   let reloading = false;
+  // Senza rete una ricarica lascerebbe il kiosk sulla pagina d'errore di Chrome:
+  // si aspetta che la connessione torni (intanto resta la scena già caricata).
+  function reloadWhenOnline() {
+    if (navigator.onLine !== false) { location.reload(); return; }
+    logIncident('ricarica rimandata: rete assente');
+    window.addEventListener('online', () => setTimeout(() => location.reload(), 3000), { once: true });
+  }
   function reloadPage(reason) {
     if (reloading) return;
     let log = [];
@@ -331,7 +338,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       reloading = true;
       stopCamera();
       enableMouseFallback();
-      setTimeout(() => location.reload(), 10 * 60 * 1000);
+      setTimeout(reloadWhenOnline, 10 * 60 * 1000);
       return;
     }
     reloading = true;
@@ -339,7 +346,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     try { sessionStorage.setItem('mm-reloads', JSON.stringify(log)); } catch (_) {}
     logIncident(`ricarica pagina: ${reason}`);
     if (typeof callbacks.onTrackingStatus === 'function') callbacks.onTrackingStatus('reconnecting');
-    setTimeout(() => location.reload(), 2000);
+    setTimeout(reloadWhenOnline, 2000);
   }
   // Fotogrammi reali consegnati dalla webcam (indipendenti da MediaPipe)
   let tickGen = 0;
