@@ -17,13 +17,15 @@ const FLOORS = {
     id: 'terra',
     label: 'Piano Terra',
     elevation: 0,
+    // Stanze affiancate dentro la soletta (x -310..310, y -180..180), con corridoi di 10px.
+    // Disposizione schematica: la pianta reale non c'è ancora; se arriva, basta cambiare qui.
     rooms: {
-      'sala del re': { x: -50,  y: 30,   w: 220, h: 160, label: 'Sala del Re' }, // TODO: coordinate provvisorie, planimetria da aggiornare
-      cucina:      { x: -250, y: -80,  w: 160, h: 140, label: 'Cucina' },
-      studio:      { x: 150,  y: -70,  w: 170, h: 130, label: 'Studio' },
-      ghiacciaia:  { x: -250, y: 110,  w: 150, h: 120, label: 'Ghiacciaia' },
-      giardino:    { x: 300,  y: 90,   w: 240, h: 190, label: 'Giardino' },
-      esterno:     { x: -70,  y: 250,  w: 280, h: 130, label: 'Esterno' },
+      cucina:        { x: -205, y: -85, w: 170, h: 150, label: 'Cucina' },
+      'sala del re': { x: 5,    y: -60, w: 230, h: 200, label: 'Sala del Re' },
+      studio:        { x: 210,  y: -85, w: 160, h: 150, label: 'Studio' },
+      ghiacciaia:    { x: -205, y: 80,  w: 170, h: 160, label: 'Ghiacciaia' },
+      esterno:       { x: 5,    y: 105, w: 230, h: 110, label: 'Esterno' },
+      giardino:      { x: 210,  y: 80,  w: 160, h: 160, label: 'Giardino' },
     }
   },
   primo: {
@@ -31,8 +33,8 @@ const FLOORS = {
     label: 'Primo Piano',
     elevation: 1,
     rooms: {
-      'sala conferenze': { x: -80, y: 0, w: 290, h: 200, label: 'Sala Conferenze' },
-      camere:            { x: 190, y: 0, w: 230, h: 200, label: 'Camere' },
+      'sala conferenze': { x: -125, y: 0, w: 330, h: 320, label: 'Sala Conferenze' },
+      camere:            { x: 170,  y: 0, w: 240, h: 320, label: 'Camere' },
     }
   },
   secondo: {
@@ -40,8 +42,8 @@ const FLOORS = {
     label: 'Secondo Piano',
     elevation: 2,
     rooms: {
-      mansarda:   { x: -80, y: 0, w: 270, h: 190, label: 'Mansarda' },
-      cappellina: { x: 180, y: 0, w: 190, h: 190, label: 'Cappellina' },
+      mansarda:   { x: -100, y: 0, w: 380, h: 320, label: 'Mansarda' },
+      cappellina: { x: 195,  y: 0, w: 190, h: 320, label: 'Cappellina' },
     }
   }
 };
@@ -776,8 +778,9 @@ export function initScene(canvas) {
           roomNodes.forEach((node, k) => {
             const c = k % cols;
             const r = Math.floor(k / cols);
+            // l'etichetta sta sul bordo anteriore: i ricordi occupano la parte retrostante
             const rx = room.x + ((c + 0.5) / cols - 0.5) * room.w * 0.62;
-            const ry = room.y + ((r + 0.5) / rows - 0.5) * room.h * 0.62;
+            const ry = room.y - room.h * 0.1 + ((r + 0.5) / rows - 0.5) * room.h * 0.5;
             const iso = toIso(rx, ry, 0);
             node.planBase = { x: iso.x, y: iso.y - 16 };
             node.targetAlpha = 1.0;
@@ -1604,6 +1607,7 @@ export function initScene(canvas) {
 
     // 3. Thumbnails (solo bordo caldo, no cornice panna)
     drawThumbnails(now);
+    if (currentLayout === 'planimetria' && !focusedRoom) drawPlanRoomLabels();
 
     // 4. Overlays & Griglia metadata
     if (currentLayout === 'griglia') {
@@ -1684,8 +1688,30 @@ export function initScene(canvas) {
     ctx.restore();
   }
 
+  // Etichette delle stanze raccolte durante il disegno dei piani, stampate sopra le miniature
+  let planRoomLabels = [];
+  function drawPlanRoomLabels() {
+    if (!planRoomLabels.length) return;
+    ctx.save();
+    ctx.font = '700 12px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255, 253, 249, 0.92)';
+    ctx.fillStyle = '#99251C';
+    planRoomLabels.forEach((l) => {
+      ctx.globalAlpha = l.alpha;
+      ctx.strokeText(l.text, l.x, l.y);
+      ctx.fillText(l.text, l.x, l.y);
+    });
+    ctx.restore();
+    planRoomLabels = [];
+  }
+
   // ── Planimetria: Spaccato Assonometrico Esploso a 3 Piani ────
   function drawPlanimetriaAssonometria(now) {
+    planRoomLabels = [];
     ctx.save();
 
     // Dimensioni 2D della soletta del piano
@@ -1890,14 +1916,11 @@ export function initScene(canvas) {
         ctx.fill();
         ctx.stroke();
 
-        // 3. Etichetta stanza (Solo Nome, nessun numero o livello)
-        const mid = toIso(room.x, room.y, z);
+        // 3. Etichetta stanza sul bordo anteriore, così le miniature non la coprono
+        const mid = toIso(room.x, y2 - 16, z);
 
-        ctx.fillStyle = '#99251C';
-        ctx.font = '700 11.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(room.label, mid.x, mid.y);
+        // disegnata dopo le miniature (drawPlanRoomLabels), così nessuna la copre
+        planRoomLabels.push({ text: room.label, x: mid.x, y: mid.y, alpha: state.opacity });
       });
 
       // E) Intestazione del piano a bordo soletta (Solo Nome Piano, nessun codice di livello)
