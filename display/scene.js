@@ -133,6 +133,12 @@ export function initScene(canvas) {
   let focusedClusterTag = null;
   let focusedRoom = null;      // D5: stanza aperta in planimetria (chiave di FLOORS[activeFloor].rooms)
   let planZoomAccum = 1;       // D5: zoom accumulato in planimetria (soglie per entrare/uscire)
+  // D14: anno aperto — lo scorrimento orizzontale passa all'anno prima/dopo, l'anno resta centrato
+  let tlSwipe = 0;             // trascinamento accumulato (px schermo)
+  let tlSwipeAt = 0;           // ultimo pan ricevuto
+  let tlYearCamX = 0;          // posizione camera dell'anno centrato
+  let tlSwitchAt = 0;          // ultimo cambio anno da trascinamento
+  let tlZoomOut = 1;           // D12: zoom-out accumulato per tornare a tutti gli anni
 
   let memories = [];
   let nodes = [];
@@ -1158,6 +1164,9 @@ export function initScene(canvas) {
       fitZoom = camera.targetZoom;
     }
     camera.targetX = (OPEN_YEAR_GAP + 60) / 2; // mesi + anno scritto a destra, centrati
+    tlYearCamX = camera.targetX;
+    tlSwipe = 0;
+    tlZoomOut = 1;
     // Stessa altezza della linea del tempo generale (D26)
     if (timelineBaselineScreenY !== null) {
       camera.targetY = 220 - (timelineBaselineScreenY - height / 2) / camera.targetZoom;
@@ -1199,6 +1208,31 @@ export function initScene(canvas) {
   // ── Camera Manipulation ──────────────────────────────────────
   function pan(dx, dy) {
     if (currentLayout === 'planimetria') return; // D5: vista fissa
+    if (currentLayout === 'timeline') {
+      // D13: solo orizzontale
+      if (focusedTimelineYear === null) {
+        camera.targetX -= dx / camera.zoom;
+        return;
+      }
+      // D14: anno aperto — oltre la soglia si passa all'anno vicino, mai a metà
+      const now = performance.now();
+      if (now - tlSwitchAt < 650) return; // l'inerzia del pan non salta un secondo anno
+      const years = getDistinctYears();
+      const idx = years.indexOf(focusedTimelineYear);
+      tlSwipe += dx;
+      tlSwipeAt = now;
+      const SWIPE = Math.min(260, width * 0.16);
+      if (tlSwipe <= -SWIPE && idx >= 0 && idx < years.length - 1) {
+        tlSwitchAt = now;
+        setTimelineYear(years[idx + 1]);
+      } else if (tlSwipe >= SWIPE && idx > 0) {
+        tlSwitchAt = now;
+        setTimelineYear(years[idx - 1]);
+      } else {
+        tlSwipe = Math.max(-SWIPE * 1.2, Math.min(SWIPE * 1.2, tlSwipe));
+      }
+      return;
+    }
     // In griglia: pan solo verticale, larghezza fissa allo schermo
     if (currentLayout === 'griglia') {
       camera.targetY -= dy / camera.zoom;
@@ -1211,6 +1245,13 @@ export function initScene(canvas) {
   function zoom(factor, screenX, screenY) {
     // In griglia zoom disattivato o molto controllato
     if (currentLayout === 'griglia') return;
+
+    // D12: nell'anno aperto niente zoom; allontanandosi si torna a tutti gli anni
+    if (currentLayout === 'timeline' && focusedTimelineYear !== null) {
+      tlZoomOut = factor < 1 ? tlZoomOut * factor : Math.min(1, tlZoomOut * factor);
+      if (tlZoomOut <= 0.78) setTimelineYear(null);
+      return;
+    }
 
     // D5: in planimetria lo zoom non sposta la vista: avvicinarsi apre la stanza
     // sotto il mirino (o la più vicina), allontanarsi torna al piano
@@ -1321,11 +1362,20 @@ export function initScene(canvas) {
   }
 
   // ── Update Logic (Movimenti reattivi e fluidi) ───────────────
+  // D9: smorzamenti basati sul tempo reale, non sui frame: se un frame arriva in ritardo
+  // (MediaPipe, decodifica immagini) il movimento recupera senza scatti né rallentamenti
+  let lastUpdateAt = 0;
+  let frameEase = (k) => k;
   function update() {
-    // Interpolazione camera velocizzata: 0.042 → 0.14 (≈3.3× più rapida)
-    camera.x += (camera.targetX - camera.x) * 0.14;
-    camera.y += (camera.targetY - camera.y) * 0.14;
-    camera.zoom += (camera.targetZoom - camera.zoom) * 0.14;
+    const tNow = performance.now();
+    const dt = Math.min(50, lastUpdateAt ? tNow - lastUpdateAt : 16.7);
+    lastUpdateAt = tNow;
+    const r = dt / 16.7;
+    frameEase = (k) => 1 - Math.pow(1 - k, r);
+    const kCam = frameEase(0.11);
+    camera.x += (camera.targetX - camera.x) * kCam;
+    camera.y += (camera.targetY - camera.y) * kCam;
+    camera.zoom += (camera.targetZoom - camera.zoom) * kCam;
 
     // ── Camera Bounds Clamping ──────────────────────────────────
     // Calcola il bounding box di tutti i nodi visibili e blocca la camera
@@ -1333,6 +1383,13 @@ export function initScene(canvas) {
     clampCameraBounds();
 
     updateForces();
+
+    // D14: la vista segue un po' il trascinamento e torna centrata sull'anno quando ci si ferma
+    if (currentLayout === 'timeline' && focusedTimelineYear !== null) {
+      if (performance.now() - tlSwipeAt > 140) tlSwipe *= 0.82;
+      if (Math.abs(tlSwipe) < 0.5) tlSwipe = 0;
+      camera.targetX = tlYearCamX - (tlSwipe * 0.35) / Math.max(0.1, camera.zoom);
+    }
 
     if (currentLayout === 'planimetria') {
       // D4: i ricordi non seguono il piano che scorre: restano nascosti finché il piano
@@ -1357,21 +1414,21 @@ export function initScene(canvas) {
       });
     }
 
+    const kPos = frameEase(0.1), kScale = frameEase(0.16), kAlpha = frameEase(0.12);
     nodes.forEach((node) => {
-      // Interpolazione nodi velocizzata: 0.038 → 0.13 (≈3.4× più rapida)
-      node.x += (node.targetX - node.x) * 0.13;
-      node.y += (node.targetY - node.y) * 0.13;
+      node.x += (node.targetX - node.x) * kPos;
+      node.y += (node.targetY - node.y) * kPos;
 
       const isHover = (hoveredNode === node);
       let targetS = isHover ? node.targetScale * 1.25 : node.targetScale;
-      node.scale += (targetS - node.scale) * 0.16;
+      node.scale += (targetS - node.scale) * kScale;
 
       // Alpha: combina il targetAlpha del layout con il filtro attivo
       // Il più restrittivo tra layout e filtro vince (min)
       let targetA = node.targetAlpha !== undefined ? node.targetAlpha : 1.0;
       if (!isNodeMatchingFilter(node)) targetA = Math.min(targetA, 0.35);
 
-      node.alpha += (targetA - node.alpha) * 0.12;
+      node.alpha += (targetA - node.alpha) * kAlpha;
     });
 
     if (pointerScreen.x > 0 && pointerScreen.y > 0) {

@@ -129,7 +129,8 @@ function preventZoom() {
 // ── Initialise ─────────────────────────────────────────────────
 function init() {
   preventZoom();
-  initInkBleed({ selector: '.landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title' });
+  // U6: solo l'inchiostro statico a riposo, niente effetto dinamico al tocco (troppo pesante)
+  initInkBleed({ selector: '.landing__monogram, .landing2__title, .info-block__title, .header__title, .overlay__title', hover: 'none' });
   bindNavigation();
   bindMediaSwitcher();
   bindDropzone();

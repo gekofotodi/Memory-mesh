@@ -58,6 +58,9 @@ const CAMERA_CONTRAST = 0.6;
 const PINCH_ENTER_DIST = 0.28;        // Normalized threshold to start pinch
 const PINCH_EXIT_DIST = 0.38;         // Hysteresis threshold to release pinch
 const PINCH_HOLD_MS_TO_SELECT = 120;  // Milliseconds of held pinch before selection triggers
+const LEFT_PINCH_ENTER = 0.34;        // D15: pinch sinistro (distanza 2D / dimensione mano)
+const LEFT_PINCH_EXIT = 0.46;
+const LEFT_LOST_GRACE_MS = 180;       // D15: mano persa per pochi frame = pinch non rilasciato
 const TILT_ZOOM_THRESHOLD_DEG = 20;   // Wrist tilt in degrees to activate zoom
 const INERTIA_DECAY = 0.92;           // Inertia damping coefficient
 
@@ -376,13 +379,16 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     const indexTip = landmarks[INDEX_TIP];
     const thumbTip = landmarks[THUMB_TIP];
 
-    // Pinch sinistro = seleziona sotto il mirino (D19), con isteresi e breve tenuta
-    const pinchDist = distance3D(thumbTip, indexTip) / handScale;
-    if (!l.isPinching && pinchDist < PINCH_ENTER_DIST) {
+    // Pinch sinistro = seleziona sotto il mirino (D19), con isteresi e breve tenuta.
+    // D15: distanza 2D (la z di MediaPipe è rumorosa e faceva perdere pinch reali)
+    // e soglie un po' più larghe solo per la sinistra
+    const pinchDist = distance2D(thumbTip, indexTip) / handScale;
+    l.lastSeen = now;
+    if (!l.isPinching && pinchDist < LEFT_PINCH_ENTER) {
       l.isPinching = true;
       l.pinchStartTime = now;
       l.hasTriggeredSelect = false;
-    } else if (l.isPinching && pinchDist > PINCH_EXIT_DIST) {
+    } else if (l.isPinching && pinchDist > LEFT_PINCH_EXIT) {
       l.isPinching = false;
       l.pinchProgress = 0;
       l.hasTriggeredSelect = false;
@@ -452,16 +458,23 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     renderSkeleton(results);
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      for (let i = 0; i < results.multiHandLandmarks.length; i++) {
-        const landmarks = results.multiHandLandmarks[i];
+      const all = results.multiHandLandmarks;
+      const labels = all.map((_, i) =>
+        (results.multiHandedness && results.multiHandedness[i] && results.multiHandedness[i].label) || 'Right');
+      // D15: con due mani MediaPipe a volte dà la stessa etichetta a entrambe e la sinistra
+      // finiva trattata come destra (il pinch diventava pan). Si decide dalla posizione:
+      // nell'immagine non specchiata la mano destra fisica sta a sinistra (x minore).
+      if (all.length === 2 && labels[0] === labels[1]) {
+        const firstIsRight = all[0][WRIST].x < all[1][WRIST].x;
+        labels[0] = firstIsRight ? 'Left' : 'Right';
+        labels[1] = firstIsRight ? 'Right' : 'Left';
+      }
+      for (let i = 0; i < all.length; i++) {
+        const landmarks = all[i];
         if (i === 0) trackWave(landmarks, now);
-        let label = 'Right'; // default fallback
-
-        if (results.multiHandedness && results.multiHandedness[i]) {
-          // MediaPipe labels: In selfie/mirrored webcam mode,
-          // 'Left' returned by MediaPipe corresponds to physical Right Hand.
-          label = results.multiHandedness[i].label;
-        }
+        // MediaPipe labels: In selfie/mirrored webcam mode,
+        // 'Left' returned by MediaPipe corresponds to physical Right Hand.
+        const label = labels[i];
 
         // In mirrored camera mode:
         // 'Left' detection = physical Right Hand (Pointer & Pan)
@@ -476,7 +489,7 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
 
     // Mano uscita dall'inquadratura durante un pinch: rilascia
     if (!state.right.detected) releaseRightPan();
-    if (!state.left.detected && state.left.isPinching) {
+    if (!state.left.detected && state.left.isPinching && now - (state.left.lastSeen || 0) > LEFT_LOST_GRACE_MS) {
       state.left.isPinching = false;
       state.left.pinchProgress = 0;
     }

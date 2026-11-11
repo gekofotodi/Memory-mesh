@@ -278,16 +278,34 @@ function hudPanelHosts() {
 }
 
 function syncPanelAria() {
+  let anyOpen = false;
   hudPanelHosts().forEach(({ host, trigger }) => {
     const open = host.classList.contains('is-hover') || host.classList.contains('is-pinned');
+    if (open) anyOpen = true;
     trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
+  document.body.classList.toggle('hud-panel-open', anyOpen); // D16: sfoca lo sfondo
 }
 
+// D16: aperto in hover, il pannello resta visibile 5 s dopo che il mirino se ne va
+const PANEL_LINGER_MS = 5000;
+const panelLeaveTimers = new Map();
 function setPanelHover(host, on) {
-  if (!host || host.classList.contains('is-hover') === on) return;
-  host.classList.toggle('is-hover', on);
-  syncPanelAria();
+  if (!host) return;
+  if (on) {
+    clearTimeout(panelLeaveTimers.get(host));
+    panelLeaveTimers.delete(host);
+    if (host.classList.contains('is-hover')) return;
+    host.classList.add('is-hover');
+    syncPanelAria();
+    return;
+  }
+  if (!host.classList.contains('is-hover') || panelLeaveTimers.has(host)) return;
+  panelLeaveTimers.set(host, setTimeout(() => {
+    panelLeaveTimers.delete(host);
+    host.classList.remove('is-hover');
+    syncPanelAria();
+  }, PANEL_LINGER_MS));
 }
 
 function togglePanelPinned(host) {
@@ -298,6 +316,8 @@ function togglePanelPinned(host) {
 }
 
 function closeHudPanels() {
+  panelLeaveTimers.forEach((t) => clearTimeout(t));
+  panelLeaveTimers.clear();
   hudPanelHosts().forEach((p) => p.host.classList.remove('is-pinned', 'is-hover'));
   syncPanelAria();
 }

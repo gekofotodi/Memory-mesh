@@ -336,9 +336,11 @@ body.kiosk-body {
 
 /* Contenitore Riquadro di Selezione (+15% più grande: 1240x690) */
 .selection-box {
+  --box-w: min(1240px, 94vw);
+  --box-h: min(690px, 88vh);
   position: relative;
-  width: min(1240px, 94vw);
-  height: min(690px, 88vh);
+  width: var(--box-w);
+  height: var(--box-h);
   max-width: 94vw;
   max-height: 88vh;
   box-sizing: border-box;
@@ -353,11 +355,12 @@ body.kiosk-body {
 /* 4 Crocini di selezione agli angoli (+ in bordeaux Pantone 99251c) */
 .selection-cross {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  width: 54px;   /* D11: croci più grandi, con l'inchiostro sbavato dei titoli */
+  height: 54px;
   pointer-events: none;
   z-index: 30;
   opacity: 0;
+  filter: url(#ink-cross);
 }
 
 .selection-cross::before,
@@ -372,7 +375,7 @@ body.kiosk-body {
   top: 50%;
   left: 0;
   width: 100%;
-  height: 2px;
+  height: 3px;
   transform: translateY(-50%);
 }
 
@@ -380,7 +383,7 @@ body.kiosk-body {
 .selection-cross::after {
   left: 50%;
   top: 0;
-  width: 2px;
+  width: 3px;
   height: 100%;
   transform: translateX(-50%);
 }
@@ -416,9 +419,8 @@ body.kiosk-body {
   grid-template-columns: 1fr 1fr;
   width: 100%;
   height: 100%;
-  background: var(--bg-page); /* Sfondo panna identico alla pagina */
-  backdrop-filter: blur(28px) saturate(135%);
-  -webkit-backdrop-filter: blur(28px) saturate(135%);
+  background: var(--bg-page); /* Sfondo panna identico alla pagina (opaco: niente backdrop-filter, D10) */
+  will-change: clip-path;
   border: none !important;
   border-radius: 0 !important;
   box-sizing: border-box;
@@ -426,9 +428,24 @@ body.kiosk-body {
   clip-path: inset(0 100% 100% 0); /* Chiuso di partenza nell'angolo top-left */
 }
 
-/* Animazione di apertura da angolo top-left ad angolo opposto bottom-right (ritmo più lento: 0.85s) */
+/* Apertura da angolo top-left ad angolo bottom-right (D10: più lenta e leggibile, contenuti
+   che entrano dopo il riquadro; croce in basso a destra mossa con transform, non con left/top) */
 .modal-backdrop.is-open .selection-layout {
-  animation: selectionBoxDraw 0.85s var(--ease-expo) forwards;
+  animation: selectionBoxDraw 1.05s cubic-bezier(0.65, 0, 0.25, 1) forwards;
+}
+.selection-media-col,
+.selection-content-col {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.modal-backdrop.is-open .selection-media-col {
+  animation: selectionContentIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.55s forwards;
+}
+.modal-backdrop.is-open .selection-content-col {
+  animation: selectionContentIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards;
+}
+@keyframes selectionContentIn {
+  to { opacity: 1; transform: none; }
 }
 
 .modal-backdrop.is-open .selection-cross--tl {
@@ -438,12 +455,12 @@ body.kiosk-body {
 /* Le croci in alto a destra e in basso a sinistra appaiono solo alla fine dell'animazione */
 .modal-backdrop.is-open .selection-cross--tr,
 .modal-backdrop.is-open .selection-cross--bl {
-  animation: crossAppearAtEnd 0.85s var(--ease-expo) forwards;
+  animation: crossAppearAtEnd 1.05s cubic-bezier(0.65, 0, 0.25, 1) forwards;
 }
 
 /* La croce in basso a destra scorre diagonalmente assieme all'apertura del riquadro */
 .modal-backdrop.is-open .selection-cross--br {
-  animation: crossSlideBr 0.85s var(--ease-expo) forwards;
+  animation: crossSlideBr 1.05s cubic-bezier(0.65, 0, 0.25, 1) forwards;
 }
 
 @keyframes selectionBoxDraw {
@@ -475,13 +492,11 @@ body.kiosk-body {
 
 @keyframes crossSlideBr {
   0% {
-    left: 0;
-    top: 0;
-    opacity: 0.5;
+    transform: translate(calc(-50% - var(--box-w)), calc(-50% - var(--box-h)));
+    opacity: 0.6;
   }
   100% {
-    left: 100%;
-    top: 100%;
+    transform: translate(-50%, -50%);
     opacity: 1;
   }
 }
@@ -809,6 +824,8 @@ body.kiosk-body {
 /* Responsività tablet / piccoli schermi */
 @media (max-width: 860px) {
   .selection-box {
+    --box-w: 94vw;
+    --box-h: 88vh;
     width: 94vw;
     height: 88vh;
     max-height: 88vh;
@@ -962,6 +979,12 @@ body.kiosk-body {
   }
   .selection-layout {
     clip-path: none !important;
+    animation: none !important;
+  }
+  .selection-media-col,
+  .selection-content-col {
+    opacity: 1 !important;
+    transform: none !important;
     animation: none !important;
   }
   .selection-cross {
@@ -1125,9 +1148,7 @@ body.kiosk-body {
 .project-panel,
 .gesture-panel {
   position: absolute;
-  background: rgba(249, 246, 240, 0.94);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: transparent; /* D16: niente fondo bianco, sfoca lo sfondo .hud-blur */
   border-top: 1px solid #99251C;
   border-bottom: 1px solid rgba(153, 37, 28, 0.25);
   color: #99251C;
@@ -1178,14 +1199,14 @@ body.kiosk-body {
 .gesture-panel {
   left: 0;
   bottom: calc(100% + 14px);
-  width: 340px;
+  width: 400px;
   padding: 16px 4px 10px;
   transform: translate(0, 8px);
 }
 .gesture-list { margin: 0; }
 .gesture-row {
   display: grid;
-  grid-template-columns: 128px 1fr;
+  grid-template-columns: 150px 1fr;
   gap: 12px;
   padding: 9px 0;
   border-top: 1px solid rgba(153, 37, 28, 0.18);
@@ -1197,6 +1218,20 @@ body.kiosk-body {
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
+.hud-blur {
+  position: fixed;
+  inset: 0;
+  z-index: 9; /* sotto titolo (10) e webcam (15) */
+  pointer-events: none;
+  background: rgba(249, 246, 240, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-expo);
+}
+body.hud-panel-open .hud-blur { opacity: 1; }
+body.hud-panel-open .wheel-ticks { opacity: 0; }
+
 .gesture-row dt span {
   display: block;
   font-family: var(--font-sans);

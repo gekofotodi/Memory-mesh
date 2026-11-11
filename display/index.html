@@ -23,6 +23,17 @@
 
   <!-- Canvas Principale per il rendering (Light Mode espositivo) -->
   <canvas id="scene-canvas" aria-label="Spazio visivo delle memorie"></canvas>
+  <!-- D11: inchiostro sbavato per le croci del dettaglio (stessa logica di shared/inkBleed.js) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="ink-cross" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="2" seed="5" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feGaussianBlur in="rough" stdDeviation="0.9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -4.6"/>
+    </filter>
+  </svg>
+  <!-- D16: sfocatura dello sfondo mentre info o istruzioni sono aperte -->
+  <div class="hud-blur" aria-hidden="true"></div>
 
   <!-- Video sorgente webcam per MediaPipe (nascosto dall'HUD) -->
   <video id="webcam-video" autoplay playsinline muted></video>
@@ -120,10 +131,12 @@
     <div class="gesture-panel" id="gesture-panel">
       <span class="panel-eyebrow">GESTURE</span>
       <dl class="gesture-list">
-        <div class="gesture-row"><dt><span>Mano destra</span>Punta</dt><dd>Muovi l'indice per spostare il mirino</dd></div>
-        <div class="gesture-row"><dt><span>Mano destra</span>Pinch e trascina</dt><dd>Tieni chiuso e muovi per spostare la vista</dd></div>
-        <div class="gesture-row"><dt><span>Mano sinistra</span>Pinch</dt><dd>Unisci pollice e indice per aprire un ricordo</dd></div>
-        <div class="gesture-row"><dt><span>Mano sinistra</span>Ruota il polso</dt><dd>A destra avvicini, a sinistra allontani</dd></div>
+        <div class="gesture-row"><dt>Muovere il mirino</dt><dd>Punta l'indice della mano destra</dd></div>
+        <div class="gesture-row"><dt>Aprire un ricordo</dt><dd>Mirino sul ricordo, poi unisci pollice e indice della mano sinistra</dd></div>
+        <div class="gesture-row"><dt>Chiudere un ricordo</dt><dd>Lo stesso pinch con la sinistra, fuori dal riquadro</dd></div>
+        <div class="gesture-row"><dt>Spostare la vista</dt><dd>Unisci pollice e indice della destra e trascina</dd></div>
+        <div class="gesture-row"><dt>Avvicinare e allontanare</dt><dd>Mano sinistra aperta: ruota il polso a destra per avvicinare, a sinistra per allontanare</dd></div>
+        <div class="gesture-row"><dt>Cambiare vista</dt><dd>Porta il mirino al bordo sinistro dello schermo; al bordo destro trovi le opzioni della vista</dd></div>
       </dl>
     </div>
     <div class="camera-hud__viewport">

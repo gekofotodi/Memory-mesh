@@ -8,6 +8,7 @@
  * da una maschera radiale che segue il puntatore.
  *
  * Modalità hover:
+ *  - 'none'    → solo filtro statico (upload, U6)
  *  - 'pointer' → eventi pointer nativi (upload, mouse reale)
  *  - 'manual'  → il chiamante invoca setInkHoverPoint(x, y) (display: cursore virtuale)
  *
@@ -290,7 +291,7 @@ function bindTouch() {
  * @param {object} o
  * @param {string} o.selector  elementi da trattare (anche aggiunti in seguito)
  * @param {string} [o.restSelector]  quali hanno anche il filtro a riposo (default: tutti)
- * @param {'pointer'|'manual'} [o.hover]
+ * @param {'pointer'|'manual'|'none'} [o.hover]
  */
 export function initInkBleed({ selector, restSelector = '', hover = 'pointer' }) {
   opts = { selector, restSelector, hover };
