@@ -1126,6 +1126,35 @@ body.kiosk-body {
 }
 /* QR fermo (niente animazione): deve essere facile da inquadrare */
 
+/* Istruzioni di navigazione nello standby: 3 colonne × 2 righe, leggibili a distanza */
+.idle-gestures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 36px;
+  width: min(1040px, calc(100vw - 640px)); /* lascia libero l'angolo della webcam (≈ 280px a sinistra) */
+  margin: 22px 0 0;
+  text-align: left;
+}
+.idle-gesture {
+  padding-top: 10px;
+  border-top: 1px solid rgba(153, 37, 28, 0.22);
+}
+.idle-gesture dt {
+  font-family: var(--font-serif);
+  font-size: clamp(1rem, 1.25vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-dark);
+  margin-bottom: 3px;
+}
+.idle-gesture dd {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(0.85rem, 1vw, 1rem);
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
 /* ── HUD webcam: stato discreto quando la webcam manca o si riconnette ── */
 .camera-hud.is-offline .camera-hud__viewport { display: none; }
 .camera-hud__status {
