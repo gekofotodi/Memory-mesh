@@ -760,6 +760,13 @@ function handleSelect() {
 
   // 2. Check UI elements under cursor
   const el = document.elementFromPoint(x, y);
+
+  // D1 (11/11 pom.): con info o istruzioni aperte, un pinch fuori le chiude e basta
+  if (document.body.classList.contains('hud-panel-open') &&
+      !(el && el.closest('#hud-header, #camera-hud'))) {
+    closeHudPanels();
+    return;
+  }
   if (el) {
     // Wheel Left (Layouts)
     const layoutBtn = el.closest('#wheel-left .wheel-btn');
@@ -918,6 +925,14 @@ function bindUIEvents() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanelPinned(host); }
     });
   });
+
+  // D1: click fuori da info/istruzioni le chiude (manutenzione con ?mouse=1)
+  document.addEventListener('click', (e) => {
+    if (document.body.classList.contains('hud-panel-open') && !e.target.closest('#hud-header, #camera-hud')) {
+      closeHudPanels();
+      e.stopPropagation();
+    }
+  }, true);
 
   // Comandi audio/video della modale (click solo con ?mouse=1)
   els.modalDetail.addEventListener('click', (e) => {
@@ -1150,6 +1165,13 @@ function formatMemoryType(mediaType) {
 }
 
 function openDetailModal(memory) {
+  // Se si riapre durante l'animazione di chiusura, la chiusura si completa subito
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    finishCloseModals();
+    void els.modalDetail.offsetWidth; // riparte l'animazione di apertura
+  }
   state.lastActiveElement = document.activeElement;
   state.activeModal = 'detail';
 
@@ -1319,9 +1341,24 @@ function renderRelatedMemories(currentMem) {
   });
 }
 
+// D3: la chiusura ripete al contrario l'animazione di apertura (testi, media, riquadro,
+// croci), poi la modale si svuota. La scena torna interattiva subito.
+const CLOSE_ANIM_MS = 820;
+let closeTimer = null;
 function closeModals() {
   state.activeModal = null;
-  els.modalDetail.classList.remove('is-open');
+  const open = els.modalDetail.classList.contains('is-open');
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!open || reduce) { finishCloseModals(); return; }
+  if (closeTimer) return;
+  els.modalDetail.classList.add('is-closing');
+  if (els.detailVideoEl) els.detailVideoEl.pause();
+  if (els.detailAudioEl) els.detailAudioEl.pause();
+  closeTimer = setTimeout(() => { closeTimer = null; finishCloseModals(); }, CLOSE_ANIM_MS);
+}
+
+function finishCloseModals() {
+  els.modalDetail.classList.remove('is-open', 'is-closing');
   els.modalDetail.setAttribute('aria-hidden', 'true');
 
   if (els.detailAudioEl) {

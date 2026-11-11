@@ -131,6 +131,10 @@ export function initScene(canvas) {
   let gridSortMode = 'data';
   let focusedTimelineYear = null;
   let focusedClusterTag = null;
+  // D4: rotazione della nuvola 3D dei nodi
+  let cloudRotY = 0.4, cloudRotX = -0.18, cloudR = 300;
+  const CLOUD_FOCAL = 1500;
+  let drawOrder = [];          // ordine di disegno (in nodi: dal fondo al davanti)
   let focusedRoom = null;      // D5: stanza aperta in planimetria (chiave di FLOORS[activeFloor].rooms)
   let planZoomAccum = 1;       // D5: zoom accumulato in planimetria (soglie per entrare/uscire)
   // D14: anno aperto — lo scorrimento orizzontale passa all'anno prima/dopo, l'anno resta centrato
@@ -491,6 +495,7 @@ export function initScene(canvas) {
     });
 
     recalculateLayoutTargets();
+    if (currentLayout === 'nodi') fitCurrentLayout();
   }
 
   function addMemory(newMem) {
@@ -560,6 +565,7 @@ export function initScene(canvas) {
 
     nodes.unshift(newNode);
     recalculateLayoutTargets();
+    if (currentLayout === 'nodi') fitCurrentLayout();
     triggerFabricWave(newNode.x, newNode.y);
   }
 
@@ -570,42 +576,18 @@ export function initScene(canvas) {
     switch (currentLayout) {
       // 1. Nodi — Costellazione aurea stabile e armoniosa
       case 'nodi': {
-        const count = nodes.length;
+        // D4: nuvola sferica 3D (sfera di Fibonacci) fissa al centro; la proiezione
+        // e la rotazione si calcolano a ogni frame in updateCloud()
+        const N = Math.max(1, nodes.length);
+        cloudR = Math.max(260, 78 * Math.sqrt(N));
         nodes.forEach((node, i) => {
-          const phi = i * 2.39996; // Angolo aureo per distribuzione uniforme e naturale
-          const dist = 160 + Math.sqrt(i + 1) * 76;
-          node.baseX = Math.cos(phi) * dist;
-          node.baseY = Math.sin(phi) * dist * 0.74;
-          node.targetX = node.baseX;
-          node.targetY = node.baseY;
-          node.targetScale = 1.0;
+          const y = 1 - (2 * (i + 0.5)) / N;
+          const r = Math.sqrt(Math.max(0, 1 - y * y));
+          const th = i * 2.39996;
+          node.p3 = { x: Math.cos(th) * r * cloudR * 1.25, y: y * cloudR * 0.82, z: Math.sin(th) * r * cloudR };
           node.targetAlpha = 1.0;
         });
-
-        // Anti-collisione preliminare per garantire una spaziatura eccellente tra le miniature
-        for (let iter = 0; iter < 18; iter++) {
-          for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-              const nA = nodes[i];
-              const nB = nodes[j];
-              const dx = nB.targetX - nA.targetX;
-              const dy = nB.targetY - nA.targetY;
-              const d = Math.hypot(dx, dy) || 1;
-              const req = (nA.w + nB.w) / 2 + 42;
-              if (d < req) {
-                const push = (req - d) * 0.5;
-                nA.targetX -= (dx / d) * push;
-                nA.targetY -= (dy / d) * push;
-                nB.targetX += (dx / d) * push;
-                nB.targetY += (dy / d) * push;
-              }
-            }
-          }
-        }
-        nodes.forEach((node) => {
-          node.baseX = node.targetX;
-          node.baseY = node.targetY;
-        });
+        updateCloud(true);
         break;
       }
 
@@ -1032,7 +1014,16 @@ export function initScene(canvas) {
 
   // Inquadratura specifica per ciascun layout (chiamata dopo recalculateLayoutTargets)
   function fitCurrentLayout() {
-    if (currentLayout === 'timeline') {
+    if (currentLayout === 'nodi') {
+      // D4: nuvola centrata sullo schermo, zoom che la contiene tutta
+      const availW = Math.max(200, width - FIT_PAD_X * 2);
+      const availH = Math.max(200, height - FIT_PAD_TOP - FIT_PAD_BOTTOM);
+      const z = Math.min(availW / (cloudR * 2.5 * 1.3 + 140), availH / (cloudR * 1.64 * 1.3 + 140), 1.1);
+      camera.targetZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, z));
+      camera.targetX = 0;
+      camera.targetY = 0;
+      fitZoom = camera.targetZoom;
+    } else if (currentLayout === 'timeline') {
       // Include la linea di base e le etichette anno/mese sotto di essa
       fitCameraToContent({ extraMaxY: 300, maxZoom: 1.1 });
       // Altezza sullo schermo della linea del tempo: l'anno aperto la riusa (D26)
@@ -1057,7 +1048,10 @@ export function initScene(canvas) {
     if (currentLayout === layoutName) return;
     currentLayout = layoutName;
 
-    if (layoutName === 'planimetria') {
+    if (layoutName === 'nodi') {
+      camera.targetX = 0;
+      camera.targetY = 0;
+    } else if (layoutName === 'planimetria') {
       planimetriaEntranceTime = performance.now();
       focusedRoom = null;
       planZoomAccum = 1;
@@ -1208,6 +1202,13 @@ export function initScene(canvas) {
   // ── Camera Manipulation ──────────────────────────────────────
   function pan(dx, dy) {
     if (currentLayout === 'planimetria') return; // D5: vista fissa
+    if (currentLayout === 'nodi') {
+      // D4: la vista resta ferma, il trascinamento ruota la nuvola
+      cloudRotY += dx * 0.0045;
+      cloudRotX = Math.max(-1.1, Math.min(1.1, cloudRotX - dy * 0.0045));
+      cloudTouchedAt = performance.now();
+      return;
+    }
     if (currentLayout === 'timeline') {
       // D13: solo orizzontale
       if (focusedTimelineYear === null) {
@@ -1321,8 +1322,9 @@ export function initScene(canvas) {
   // ── Hit-Testing ──────────────────────────────────────────────
   function hitTest(screenX, screenY) {
     const worldP = screenToWorld(screenX, screenY);
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const n = nodes[i];
+    const order = drawOrder.length === nodes.length ? drawOrder : nodes;
+    for (let i = order.length - 1; i >= 0; i--) {
+      const n = order[i];
       if (n.alpha < 0.05) continue;
       const halfW = (n.w * n.scale) / 2;
       const halfH = (n.h * n.scale) / 2;
@@ -1340,26 +1342,37 @@ export function initScene(canvas) {
   }
 
   // ── Movimento Delicato per Nodi ───────────────────────────────
-  function updateForces() {
+  // D4: proiezione prospettica della nuvola; i ricordi restano frontali (solo scala e
+  // trasparenza cambiano con la profondità), l'ordine di disegno segue la profondità
+  function updateCloud(immediate = false) {
     if (currentLayout !== 'nodi') return;
-
-    // Movimento molto lento, calmo e meditativo: i nodi rimangono ancorati alla loro
-    // posizione e hanno solo un leggero galleggiamento sul posto (nessun moto caotico o deriva)
-    const time = performance.now() * 0.00030;
-
-    nodes.forEach((node, idx) => {
-      if (node.baseX === undefined) {
-        node.baseX = node.targetX;
-        node.baseY = node.targetY;
-      }
-      const phase = time + idx * 0.95;
-      const floatX = Math.sin(phase) * 4.2;
-      const floatY = Math.cos(phase * 0.85) * 3.6;
-
-      node.targetX = node.baseX + floatX;
-      node.targetY = node.baseY + floatY;
+    const cy = Math.cos(cloudRotY), sy = Math.sin(cloudRotY);
+    const cx = Math.cos(cloudRotX), sx = Math.sin(cloudRotX);
+    nodes.forEach((node) => {
+      const p = node.p3;
+      if (!p) return;
+      const x1 = p.x * cy + p.z * sy;
+      const z1 = -p.x * sy + p.z * cy;
+      const y2 = p.y * cx - z1 * sx;
+      const z2 = p.y * sx + z1 * cx;
+      const persp = CLOUD_FOCAL / (CLOUD_FOCAL + z2);
+      node.depth = z2;
+      node.targetX = x1 * persp;
+      node.targetY = y2 * persp;
+      node.targetScale = 0.92 * persp;
+      const front = 1 - (z2 + cloudR) / (2 * cloudR); // 1 davanti, 0 dietro
+      node.targetAlpha = 0.38 + 0.62 * Math.max(0, Math.min(1, front));
+      if (immediate) node.baseX = node.targetX;
     });
   }
+
+  function updateForces() {
+    if (currentLayout !== 'nodi') return;
+    // Rotazione lentissima quando nessuno tocca la nuvola: si legge la profondità
+    if (performance.now() - cloudTouchedAt > 4000) cloudRotY += 0.0009;
+    updateCloud();
+  }
+  let cloudTouchedAt = 0;
 
   // ── Update Logic (Movimenti reattivi e fluidi) ───────────────
   // D9: smorzamenti basati sul tempo reale, non sui frame: se un frame arriva in ritardo
@@ -1414,7 +1427,9 @@ export function initScene(canvas) {
       });
     }
 
-    const kPos = frameEase(0.1), kScale = frameEase(0.16), kAlpha = frameEase(0.12);
+    const inCloud = currentLayout === 'nodi';
+    if (inCloud) { camera.targetX = 0; camera.targetY = 0; }
+    const kPos = frameEase(inCloud ? 0.22 : 0.1), kScale = frameEase(inCloud ? 0.22 : 0.16), kAlpha = frameEase(0.12);
     nodes.forEach((node) => {
       node.x += (node.targetX - node.x) * kPos;
       node.y += (node.targetY - node.y) * kPos;
@@ -1431,6 +1446,7 @@ export function initScene(canvas) {
       node.alpha += (targetA - node.alpha) * kAlpha;
     });
 
+    drawOrder = inCloud ? nodes.slice().sort((a, b) => (b.depth || 0) - (a.depth || 0)) : nodes;
     if (pointerScreen.x > 0 && pointerScreen.y > 0) {
       hoveredNode = hitTest(pointerScreen.x, pointerScreen.y);
     } else {
@@ -1532,8 +1548,18 @@ export function initScene(canvas) {
     ctx.fillStyle = '#F9F6F0';
     ctx.fillRect(0, 0, width, height);
 
-    // D1: leggera grana rossa, fissa sullo schermo e sotto ai ricordi
+    // Grana rossa sotto ai ricordi. D5: fissa sullo schermo solo nei nodi; nelle altre
+    // viste è agganciata al mondo e scorre/si ingrandisce insieme alla visualizzazione
     if (grainPattern) {
+      if (grainPattern.setTransform) {
+        if (currentLayout === 'nodi') {
+          grainPattern.setTransform(new DOMMatrix());
+        } else {
+          grainPattern.setTransform(new DOMMatrix()
+            .translate(width / 2 - camera.x * camera.zoom, height / 2 - camera.y * camera.zoom)
+            .scale(camera.zoom));
+        }
+      }
       ctx.fillStyle = grainPattern;
       ctx.fillRect(0, 0, width, height);
     }
@@ -2590,7 +2616,7 @@ export function initScene(canvas) {
 
   // ── Miniature Fotografiche (Solo bordo caldo, no cornice panna) ──
   function drawThumbnails(now) {
-    nodes.forEach((node) => {
+    (drawOrder.length === nodes.length ? drawOrder : nodes).forEach((node) => {
       if (node.alpha <= 0.02) return;
 
       ctx.save();
