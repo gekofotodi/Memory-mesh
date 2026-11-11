@@ -9,7 +9,7 @@
   <!-- Google Fonts — Instrument Sans (Testi); titoli in Helvetica di sistema -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
 
   <!-- MediaPipe Hands & Camera Utils CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
@@ -121,8 +121,8 @@
       <span class="panel-eyebrow">GESTURE</span>
       <dl class="gesture-list">
         <div class="gesture-row"><dt><span>Mano destra</span>Punta</dt><dd>Muovi l'indice per spostare il mirino</dd></div>
-        <div class="gesture-row"><dt><span>Mano destra</span>Pinch</dt><dd>Unisci pollice e indice per aprire un ricordo</dd></div>
-        <div class="gesture-row"><dt><span>Mano sinistra</span>Pinch e trascina</dt><dd>Tieni chiuso e muovi per spostare la vista</dd></div>
+        <div class="gesture-row"><dt><span>Mano destra</span>Pinch e trascina</dt><dd>Tieni chiuso e muovi per spostare la vista</dd></div>
+        <div class="gesture-row"><dt><span>Mano sinistra</span>Pinch</dt><dd>Unisci pollice e indice per aprire un ricordo</dd></div>
         <div class="gesture-row"><dt><span>Mano sinistra</span>Ruota il polso</dt><dd>A destra avvicini, a sinistra allontani</dd></div>
       </dl>
     </div>
@@ -153,18 +153,26 @@
 
           <!-- 2. Solo VIDEO: mostra solo il video con i comandi -->
           <div class="media-box media-box--video" id="media-box-video">
-            <div class="media-tilt-card" id="media-tilt-video">
-              <video id="detail-video-el" class="media-video" controls playsinline preload="metadata"></video>
+            <div class="media-tilt-card media-hover" id="media-tilt-video">
+              <video id="detail-video-el" class="media-video" playsinline preload="metadata"></video>
+              <div class="media-controls media-controls--overlay">
+                <button type="button" class="media-ctl" data-media-action="toggle">Pausa</button>
+                <span class="media-ctl__time">0:00 / 0:00</span>
+              </div>
             </div>
           </div>
 
-          <!-- 3. Solo AUDIO: mostra solo la sound wave e i comandi -->
+          <!-- 3. Solo AUDIO: forma d'onda reale del file; parte da solo, comandi solo in hover (come il video) -->
           <div class="media-box media-box--audio" id="media-box-audio">
             <div class="media-tilt-card media-tilt-card--audio" id="media-tilt-audio">
-              <div class="audio-waveform-wrap">
-                <canvas id="audio-waveform-canvas" width="420" height="90"></canvas>
+              <div class="audio-wave media-hover" id="audio-wave">
+                <canvas id="audio-waveform-canvas" width="880" height="200"></canvas>
+                <div class="media-controls">
+                  <button type="button" class="media-ctl" data-media-action="toggle">Pausa</button>
+                  <span class="media-ctl__time">0:00 / 0:00</span>
+                </div>
               </div>
-              <audio id="detail-audio-el" class="media-audio-player" controls></audio>
+              <audio id="detail-audio-el" preload="auto"></audio>
             </div>
           </div>
 

@@ -7,7 +7,8 @@
 
 ## Display
 
-- [ ] D18 !! · gesture · provare sul kiosk: saluto per chiudere l'attesa, mirino con la mano destra nella metà destra, luminosità webcam [?]
+- [ ] D32 !! · gesture · provare sul PC del kiosk lo scambio delle mani (D19): destra sposta, sinistra seleziona
+- [ ] D33 !! · test memorie · eliminare prima dell'evento le 5 memorie [TEST] (id 14–18) e i file in uploads/test/
 
 ## Upload
 
@@ -32,3 +33,17 @@
 - [x] D15 · webcam: anteprima più luminosa e contrastata (velatura scura tolta) + luminosità/contrasto alzati sulla webcam se il driver lo consente · (display/tracking.js)
 - [x] D16 · cluster: contorni organici a goccia che avvolgono i ricordi e si fondono quando sono vicini (inspo "visualizzazione sezioni.png") · (display/scene.js)
 - [x] D17 · menu: tolto il pallino; linee del menu chiuso arrotondate e più spesse · (display/style.css)
+- [x] D18 · mouse eliminato: eventi bloccati e cursore nascosto; solo /display/?mouse=1 lo riattiva per manutenzione · (display/main.js, style.css)
+- [x] D19 · mani scambiate: destra = puntatore + pinch per spostare la vista, sinistra = pinch per selezionare (+ zoom col polso) · (display/tracking.js, main.js, index.html)
+- [x] D20 · cluster: niente linee tra i ricordi, solo le isole · (display/scene.js)
+- [x] D21 · filtro cluster: restano solo i ricordi del tag scelto, a griglia, e la vista si centra sul cluster · (display/scene.js)
+- [x] D22 · nodi: collegamenti solo per tag condiviso, colorati per tag; in hover il nome del tag sulla linea · (display/scene.js)
+- [x] D23 · planimetria: ricordi dentro la propria stanza e solo sul piano di quella stanza; cambiando piano si aggiornano · (display/scene.js)
+- [x] D24 · standby: la webcam resta accesa e visibile sopra la schermata di attesa · (display/main.js, style.css)
+- [x] D25 · timeline: tolte le scritte in hover sotto gli anni · (display/scene.js)
+- [x] D26 · timeline: l'anno aperto resta alla stessa altezza della timeline generale · (display/scene.js)
+- [x] D27 · timeline: niente tasto, solo l'anno scritto dopo DIC (pinch sull'anno per chiudere) · (display/scene.js)
+- [x] D28 · ink bleed in hover su tutte le scritte (filtro a riposo solo su titoli e menu) · (shared/inkBleed.js, display/main.js)
+- [x] D29 · audio: forma d'onda reale del file a barre, parte da solo, comandi Pausa/tempo solo in hover (anche sul video); pinch sull'onda = salta lì · (display/audioWave.js, main.js, index.html, style.css)
+- [x] D30 · memorie testuali: card con testo in corsivo (Caveat) trattate come foto 2D, sia nel display sia nell'immagine creata dall'upload · (shared/textCard.js, display/scene.js, main.js, upload/app.js, index.html)
+- [x] D31 · caricate 5 memorie [TEST]: 2 video CC0 (MDN) e 3 modelli 3D (Khronos: papera, volpe, avocado) · (Supabase, bucket uploads/test/)

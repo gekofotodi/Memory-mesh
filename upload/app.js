@@ -13,6 +13,7 @@
 
 import { supabase } from '../shared/supabase-config.js';
 import { initInkBleed } from '../shared/inkBleed.js';
+import { renderTextCard, ensureTextCardFont } from '../shared/textCard.js';
 
 // ── Constants ──────────────────────────────────────────────────
 const MAX_IMAGE_SIDE = 1920;
@@ -649,76 +650,11 @@ function compressImage(file) {
 }
 
 // ── Canvas Text Card Image Generator ───────────────────────────
-function generateTextCardImage(text, title = '') {
+async function generateTextCardImage(text, title = '') {
+  // D30: stessa card del display (testo in corsivo calligrafico)
+  await ensureTextCardFont();
+  const canvas = renderTextCard(text, title);
   return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 800;
-    const ctx = canvas.getContext('2d');
-
-    // Background: light cream (panna chiaro)
-    ctx.fillStyle = '#F9F6F0';
-    ctx.fillRect(0, 0, 1200, 800);
-
-    // Outer border
-    ctx.strokeStyle = '#EADBCE';
-    ctx.lineWidth = 14;
-    ctx.strokeRect(20, 20, 1160, 760);
-
-    // Inner subtle hairline
-    ctx.strokeStyle = 'rgba(153, 37, 28, 0.08)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(38, 38, 1124, 724);
-
-    // Header badge
-    ctx.fillStyle = '#99251C';
-    ctx.font = '700 20px "Instrument Sans", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText('// MEMORIA TESTUALE · STOÀ', 72, 72);
-
-    // Decorative quote mark
-    ctx.fillStyle = 'rgba(153, 37, 28, 0.25)';
-    ctx.font = 'italic 400 140px "Instrument Serif", Georgia, serif';
-    ctx.fillText('“', 70, 115);
-
-    // Main quote text wrapping in Instrument Serif (italic editorial)
-    ctx.fillStyle = '#99251C';
-    ctx.font = 'italic 400 52px "Instrument Serif", Georgia, serif';
-    const maxWidth = 1040;
-    const lineHeight = 66;
-    const x = 72;
-    let y = 230;
-
-    const words = text.split(/\s+/);
-    let line = '';
-
-    for (let i = 0; i < words.length; i++) {
-      const testLine = line + (line ? ' ' : '') + words[i];
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && i > 0) {
-        ctx.fillText(line, x, y);
-        line = words[i];
-        y += lineHeight;
-        if (y > 640) {
-          line += '…';
-          break;
-        }
-      } else {
-        line = testLine;
-      }
-    }
-    if (line && y <= 640) {
-      ctx.fillText(line, x, y);
-    }
-
-    // Title footer in Instrument Sans Bold
-    if (title) {
-      ctx.fillStyle = 'rgba(153, 37, 28, 0.70)';
-      ctx.font = '700 22px "Instrument Sans", sans-serif';
-      ctx.fillText(title.toUpperCase(), 72, 715);
-    }
-
     // Export to WebP blob (fallback JPEG se il browser non codifica WebP, es. Safari iOS)
     const exportAs = (mime) => canvas.toBlob(
       (blob) => {

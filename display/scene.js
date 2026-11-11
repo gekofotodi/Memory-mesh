@@ -93,6 +93,11 @@ const MONTH_NAMES = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SE
  * Inizializza il canvas engine per la modalità Display
  * @param {HTMLCanvasElement} canvas
  */
+import { renderTextCard, ensureTextCardFont } from '../shared/textCard.js';
+
+// D30: chiave cache della card generata per le memorie testuali senza immagine
+const textCardKey = (m) => `textcard:${String(m.id)}`;
+
 export function initScene(canvas) {
   const ctx = canvas.getContext('2d');
 
@@ -406,6 +411,11 @@ export function initScene(canvas) {
             applyNodeAspectRatio(n, img.naturalWidth / img.naturalHeight);
           }
         };
+      } else if (mType === 'text' && !m.media_url && !imageCache.has(textCardKey(m))) {
+        // D30: card in corsivo calligrafico generata qui, trattata come un'immagine 2D
+        ensureTextCardFont().then(() => {
+          imageCache.set(textCardKey(m), renderTextCard(m.description || '', m.title || ''));
+        });
       } else if (mType === 'video' && m.media_url && !imageCache.has(m.media_url)) {
         extractVideoFirstFrame(m.media_url, (offCanvas) => {
           const n = nodes.find((node) => node.memory.media_url === m.media_url);
@@ -717,44 +727,70 @@ export function initScene(canvas) {
             }
           }
         }
+
+        // Filtro su un tema (D21): restano solo i suoi ricordi, raccolti attorno al centro del cluster
+        if (focusedClusterTag) {
+          const center = tagCenters.get(focusedClusterTag) || { x: 0, y: 0 };
+          const sel = nodes.filter((n) => n.tags.some((t) => String(t).toLowerCase().trim() === focusedClusterTag));
+          const K = sel.length;
+          const cols = Math.max(1, Math.ceil(Math.sqrt(K * 1.5)));
+          const rows = Math.ceil(K / cols);
+          sel.forEach((n, k) => {
+            const c = k % cols;
+            const r = Math.floor(k / cols);
+            n.targetX = center.x + (c - (cols - 1) / 2) * 150 + (r % 2 ? 36 : -36) * (cols > 1 ? 1 : 0);
+            n.targetY = center.y + (r - (rows - 1) / 2) * 118;
+            n.targetScale = 1.0;
+            n.targetAlpha = 1.0;
+          });
+          nodes.forEach((n) => {
+            if (sel.includes(n)) return;
+            n.targetAlpha = 0.0;
+            n.targetScale = 0.5;
+          });
+        }
         break;
       }
 
       // 3. Planimetria — Spaccato assonometrico e stanze del piano attivo
       case 'planimetria': {
+        // Ogni ricordo sta solo nella sua stanza e solo nel piano di quella stanza (D23):
+        // gli altri spariscono. Dentro la stanza i ricordi si dispongono a griglia.
         const currentFloorObj = FLOORS[activeFloor] || FLOORS.terra;
-        const roomCounts = {};
+        const byRoom = new Map();
 
         nodes.forEach((node) => {
           const loc = (node.memory.location_tag || '').toLowerCase().trim();
-          let targetRoom = currentFloorObj.rooms[loc];
-
-          // Check if memory belongs to a room on the active floor
-          if (!targetRoom) {
+          node.planBase = null;
+          if (!currentFloorObj.rooms[loc]) {
             node.targetAlpha = 0.0;
             node.targetScale = 0.3;
             node.targetX = 0;
             node.targetY = -800;
             return;
           }
+          if (!byRoom.has(loc)) byRoom.set(loc, []);
+          byRoom.get(loc).push(node);
+        });
 
-          node.targetAlpha = 1.0;
-          node.targetScale = 0.95;
-
-          const count = roomCounts[loc] || 0;
-          roomCounts[loc] = count + 1;
-
-          // Dispersione controllata attorno al baricentro 2D della stanza
-          const angle = count * 1.6;
-          const maxDistX = Math.max(8, targetRoom.w * 0.24);
-          const maxDistY = Math.max(8, targetRoom.h * 0.24);
-          const rx = targetRoom.x + Math.cos(angle) * Math.min(maxDistX, 32);
-          const ry = targetRoom.y + Math.sin(angle) * Math.min(maxDistY, 24);
-
-          // Proiezione in assonometria (quota z = 0 poiché il piano attivo si colloca al centro)
-          const iso = toIso(rx, ry, 0);
-          node.targetX = iso.x;
-          node.targetY = iso.y - 18; // Fluttua sul pavimento della stanza
+        byRoom.forEach((roomNodes, loc) => {
+          const room = currentFloorObj.rooms[loc];
+          const n = roomNodes.length;
+          const cols = Math.ceil(Math.sqrt(n * (room.w / room.h)));
+          const rows = Math.ceil(n / cols);
+          const scale = Math.max(0.42, Math.min(0.7, 0.85 / Math.max(cols, rows)));
+          roomNodes.forEach((node, k) => {
+            const c = k % cols;
+            const r = Math.floor(k / cols);
+            const rx = room.x + ((c + 0.5) / cols - 0.5) * room.w * 0.62;
+            const ry = room.y + ((r + 0.5) / rows - 0.5) * room.h * 0.62;
+            const iso = toIso(rx, ry, 0);
+            node.planBase = { x: iso.x, y: iso.y - 16 };
+            node.targetAlpha = 1.0;
+            node.targetScale = scale;
+            node.targetX = iso.x;
+            node.targetY = iso.y - 16 - planFloorZ(performance.now());
+          });
         });
         break;
       }
@@ -986,6 +1022,8 @@ export function initScene(canvas) {
     if (currentLayout === 'timeline') {
       // Include la linea di base e le etichette anno/mese sotto di essa
       fitCameraToContent({ extraMaxY: 300, maxZoom: 1.1 });
+      // Altezza sullo schermo della linea del tempo: l'anno aperto la riusa (D26)
+      timelineBaselineScreenY = (220 - camera.targetY) * camera.targetZoom + height / 2;
     } else if (currentLayout === 'griglia') {
       fitCameraToContent({ alignTop: true, maxZoom: 1.1 });
     } else if (currentLayout === 'cluster') {
@@ -1028,6 +1066,7 @@ export function initScene(canvas) {
   function setFloor(floorKey) {
     if (!FLOORS[floorKey]) return;
     activeFloor = floorKey;
+    if (currentLayout === 'planimetria') recalculateLayoutTargets(); // prima i ricordi restavano quelli del piano precedente
     camera.targetX = 0;
     camera.targetY = 0;
     // Transizione morbida di scorrimento verso il nuovo piano selezionato
@@ -1035,6 +1074,7 @@ export function initScene(canvas) {
   }
 
   let onTimelineYearChange = null;
+  let timelineBaselineScreenY = null;
 
   function setTimelineYear(year, skipCallback = false) {
     if (!year || year === 'all') {
@@ -1056,22 +1096,28 @@ export function initScene(canvas) {
       maxZoom: 1.1,
     });
     // Garantisce che tutti i 12 mesi siano visibili in larghezza
-    const monthsZoom = (width - FIT_PAD_X * 2) / (11 * 160 + 160);
+    const monthsZoom = (width - FIT_PAD_X * 2) / (11 * 160 + 160 + OPEN_YEAR_GAP + 60);
     if (camera.targetZoom > monthsZoom) {
       camera.targetZoom = Math.max(camera.minZoom, monthsZoom);
       fitZoom = camera.targetZoom;
     }
-    camera.targetX = 0;
+    camera.targetX = (OPEN_YEAR_GAP + 60) / 2; // mesi + anno scritto a destra, centrati
+    // Stessa altezza della linea del tempo generale (D26)
+    if (timelineBaselineScreenY !== null) {
+      camera.targetY = 220 - (timelineBaselineScreenY - height / 2) / camera.targetZoom;
+    }
     if (!skipCallback && onTimelineYearChange) onTimelineYearChange(String(yr));
   }
 
   function setClusterTag(tag) {
     if (!tag || tag === 'all') {
       focusedClusterTag = null;
+      recalculateLayoutTargets();
       fitCurrentLayout();
       return;
     }
     focusedClusterTag = tag.toLowerCase().trim();
+    recalculateLayoutTargets();
     // Inquadra l'isola del tag scelto (con margine per il contorno dell'isola)
     fitCurrentLayout();
   }
@@ -1216,6 +1262,11 @@ export function initScene(canvas) {
 
     updateForces();
 
+    if (currentLayout === 'planimetria') {
+      const fz = planFloorZ(performance.now());
+      nodes.forEach((node) => { if (node.planBase) node.targetY = node.planBase.y - fz; });
+    }
+
     nodes.forEach((node) => {
       // Interpolazione nodi velocizzata: 0.038 → 0.13 (≈3.4× più rapida)
       node.x += (node.targetX - node.x) * 0.13;
@@ -1327,8 +1378,8 @@ export function initScene(canvas) {
       drawClusterVennIslands(now);
     }
 
-    // 2. Filaments (Nodi & Cluster su hover interattivo)
-    if (currentLayout === 'nodi' || (currentLayout === 'cluster' && hoveredNode)) {
+    // 2. Collegamenti: solo nella vista Nodi (D20: nei cluster bastano le isole)
+    if (currentLayout === 'nodi') {
       drawFilaments(now);
     }
 
@@ -1352,6 +1403,17 @@ export function initScene(canvas) {
     const sx = (x - y) * cos30;
     const sy = (x + y) * sin30 * kVertical - z;
     return { x: sx, y: sy };
+  }
+
+  // Quota Z del piano attivo nell'animazione: esploso (0–2.4s), discesa al centro (2.4–4.8s), fermo
+  const PLAN_FLOOR_BASE_Z = { secondo: 220, primo: 0, terra: -220 };
+  function planFloorZ(now) {
+    const bZ = PLAN_FLOOR_BASE_Z[activeFloor] !== undefined ? PLAN_FLOOR_BASE_Z[activeFloor] : -220;
+    const elapsed = now - planimetriaEntranceTime;
+    if (elapsed <= 2400) return bZ;
+    if (elapsed >= 4800) return 0;
+    const t = (elapsed - 2400) / 2400;
+    return bZ * (1 - (0.5 - 0.5 * Math.cos(t * Math.PI)));
   }
 
   // ── Planimetria: Spaccato Assonometrico Esploso a 3 Piani ────
@@ -1846,6 +1908,7 @@ export function initScene(canvas) {
 
       const palette = getTagPalette(tag);
       const isFocused = focusedClusterTag === tagLower;
+      if (focusedClusterTag && !isFocused) return; // filtro attivo: gli altri cluster spariscono (D21)
 
       // Contorni organici (uno o più anelli) che avvolgono i ricordi del tag
       const loops = getClusterContours(tagLower, tagNodes, tagIndex);
@@ -1916,6 +1979,8 @@ export function initScene(canvas) {
   }
 
   // ── Timeline: Asse in Basso & Steli Annuali o Mensili ────────
+  const OPEN_YEAR_GAP = 120; // distanza dell'anno aperto dall'ultimo mese (DIC)
+
   function drawTimelineGuides() {
     ctx.save();
     const baselineY = 220;
@@ -1938,27 +2003,13 @@ export function initScene(canvas) {
       const totalMonthSpan = 11 * monthSpacing;
       const startMonthX = -totalMonthSpan / 2;
 
-      // 1. Intestazione Anno sopra i mesi con pulsante/indicatore di chiusura interattivo
+      // 1. Anno aperto: solo l'anno scritto dopo DIC (D27; a sinistra finiva sotto la webcam), toccandolo si torna a tutti gli anni
       const isHoverClose = hoveredTimelineItem && hoveredTimelineItem.type === 'close';
       ctx.save();
-      const bannerW = 360;
-      const bannerH = 54;
-      const bannerY = baselineY - 440;
-
-      ctx.fillStyle = isHoverClose ? 'rgba(153, 37, 28, 0.08)' : 'rgba(255, 253, 249, 0.90)';
-      ctx.fillRect(-bannerW / 2, bannerY, bannerW, bannerH);
-      ctx.strokeStyle = isHoverClose ? '#99251C' : '#EADBCE';
-      ctx.lineWidth = isHoverClose ? 1.5 : 0.85;
-      ctx.strokeRect(-bannerW / 2, bannerY, bannerW, bannerH);
-
       ctx.fillStyle = '#99251C';
-      ctx.font = '700 26.4px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.font = `700 ${isHoverClose ? 34 : 31}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(`Anno ${focusedYr}`, 0, baselineY - 414);
-
-      ctx.font = '700 8.5px "Instrument Sans", sans-serif';
-      ctx.fillStyle = isHoverClose ? '#99251C' : 'rgba(153, 37, 28, 0.70)';
-      ctx.fillText('CHIUDI MESI · MOSTRA TUTTI GLI ANNI', 0, baselineY - 397);
+      ctx.fillText(String(focusedYr), startMonthX + totalMonthSpan + OPEN_YEAR_GAP, baselineY + 38);
       ctx.restore();
 
       // 2. Steli mensili per ciascuno dei 12 mesi
@@ -2070,12 +2121,6 @@ export function initScene(canvas) {
         ctx.fillStyle = isHoverYr ? '#99251C' : 'rgba(153, 37, 28, 0.70)';
         ctx.fillText(`${yearNodes.length} ricordi`, x, baselineY + 54);
 
-        if (isHoverYr) {
-          ctx.font = '700 8px "Instrument Sans", sans-serif';
-          ctx.fillStyle = '#99251C';
-          ctx.fillText('CLICCA PER APRIRE I MESI', x, baselineY + 68);
-        }
-
         ctx.restore();
       });
     }
@@ -2106,10 +2151,6 @@ export function initScene(canvas) {
 
     ctx.font = '600 9px "Instrument Sans", sans-serif';
     ctx.fillText(`${count} ricordi`, x, baselineY + 46);
-    if (isHover) {
-      ctx.font = '700 7.5px "Instrument Sans", sans-serif';
-      ctx.fillText('APRI', x, baselineY + 58);
-    }
     ctx.restore();
   }
 
@@ -2120,8 +2161,9 @@ export function initScene(canvas) {
     const baselineY = 220;
 
     if (focusedTimelineYear !== null) {
-      // 1. Clic su banner / pulsante chiudi mesi
-      if (Math.abs(worldP.x) < 185 && worldP.y >= baselineY - 445 && worldP.y <= baselineY - 380) {
+      // 1. Clic sull'anno aperto: torna a tutti gli anni
+      const openYearX = (11 * 160) / 2 + OPEN_YEAR_GAP;
+      if (Math.abs(worldP.x - openYearX) < 60 && worldP.y >= baselineY + 5 && worldP.y <= baselineY + 52) {
         return { type: 'close' };
       }
       // 2. Clic su un altro anno visibile ai lati
@@ -2190,11 +2232,13 @@ export function initScene(canvas) {
   }
 
   // ── Filamenti di connessione (Ottimizzato con Path Batching) ──
+  // Collegamenti tra ricordi: SOLO tag in comune (D22). Ogni linea ha il colore del tema
+  // condiviso; puntando un ricordo le sue linee si accendono e mostrano il nome del tema.
   function drawFilaments(now) {
     if (nodes.length < 2) return;
     ctx.save();
 
-    const passiveLines = [];
+    const passiveByColor = new Map();
     const activeLines = [];
 
     for (let i = 0; i < nodes.length; i++) {
@@ -2205,51 +2249,55 @@ export function initScene(canvas) {
         const n2 = nodes[j];
         if (n2.alpha < 0.15) continue;
 
-        const shared = n1.tags.filter((t) => n2.tags.includes(t));
-        if (shared.length > 0) {
-          const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
-          if (dist < 520 || currentLayout === 'nodi') {
-            const isHoveredConnection = hoveredNode && (hoveredNode === n1 || hoveredNode === n2);
+        const shared = n1.tags.find((t) => n2.tags.includes(t));
+        if (!shared) continue;
 
-            const wave1 = fabricWave.active ? getWaveOffset(n1.x, n1.y, now) : { dx: 0, dy: 0 };
-            const wave2 = fabricWave.active ? getWaveOffset(n2.x, n2.y, now) : { dx: 0, dy: 0 };
+        const wave1 = fabricWave.active ? getWaveOffset(n1.x, n1.y, now) : { dx: 0, dy: 0 };
+        const wave2 = fabricWave.active ? getWaveOffset(n2.x, n2.y, now) : { dx: 0, dy: 0 };
+        const line = [n1.x + wave1.dx, n1.y + wave1.dy, n2.x + wave2.dx, n2.y + wave2.dy];
+        const color = getTagPalette(shared).stroke;
 
-            const lineData = [n1.x + wave1.dx, n1.y + wave1.dy, n2.x + wave2.dx, n2.y + wave2.dy];
-
-            if (isHoveredConnection) {
-              activeLines.push(lineData);
-            } else {
-              passiveLines.push(lineData);
-            }
-          }
+        if (hoveredNode && (hoveredNode === n1 || hoveredNode === n2)) {
+          activeLines.push({ line, color, tag: shared });
+        } else {
+          if (!passiveByColor.has(color)) passiveByColor.set(color, []);
+          passiveByColor.get(color).push(line);
         }
       }
     }
 
-    // 1. Disegno in batch delle connessioni passive (1 sola draw call)
-    if (passiveLines.length > 0) {
+    // 1. Collegamenti passivi: una draw call per colore
+    ctx.lineWidth = 1.0;
+    ctx.globalAlpha = hoveredNode ? 0.08 : 0.32;
+    passiveByColor.forEach((lines, color) => {
       ctx.beginPath();
-      for (let k = 0; k < passiveLines.length; k++) {
-        const l = passiveLines[k];
-        ctx.moveTo(l[0], l[1]);
-        ctx.lineTo(l[2], l[3]);
-      }
-      ctx.strokeStyle = hoveredNode ? 'rgba(153, 37, 28, 0.06)' : 'rgba(153, 37, 28, 0.22)';
-      ctx.lineWidth = 1.0;
+      for (const l of lines) { ctx.moveTo(l[0], l[1]); ctx.lineTo(l[2], l[3]); }
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    });
+
+    // 2. Collegamenti del ricordo puntato, con il nome del tema a metà linea
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 2.2;
+    for (const a of activeLines) {
+      ctx.beginPath();
+      ctx.moveTo(a.line[0], a.line[1]);
+      ctx.lineTo(a.line[2], a.line[3]);
+      ctx.strokeStyle = a.color;
       ctx.stroke();
     }
-
-    // 2. Disegno in batch delle connessioni attive in evidenza
-    if (activeLines.length > 0) {
-      ctx.beginPath();
-      for (let k = 0; k < activeLines.length; k++) {
-        const l = activeLines[k];
-        ctx.moveTo(l[0], l[1]);
-        ctx.lineTo(l[2], l[3]);
-      }
-      ctx.strokeStyle = '#99251C';
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
+    ctx.font = '700 13px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const a of activeLines) {
+      const mx = (a.line[0] + a.line[2]) / 2;
+      const my = (a.line[1] + a.line[3]) / 2;
+      const label = a.tag.charAt(0).toUpperCase() + a.tag.slice(1);
+      const w = ctx.measureText(label).width + 10;
+      ctx.fillStyle = 'rgba(249, 246, 240, 0.92)';
+      ctx.fillRect(mx - w / 2, my - 9, w, 18);
+      ctx.fillStyle = a.color;
+      ctx.fillText(label, mx, my);
     }
 
     ctx.restore();
@@ -2286,8 +2334,8 @@ export function initScene(canvas) {
         ctx.shadowOffsetY = 0;
       }
 
-      const mediaUrl = node.memory.media_url;
       const mediaType = (node.memory.media_type || '').toLowerCase();
+      const mediaUrl = node.memory.media_url || (mediaType === 'text' ? textCardKey(node.memory) : '');
 
       // Disegno del media a spigoli vivi (nessun bordo stondato, nessuna cornice panna)
       if ((mediaType === 'image' || mediaType === 'video' || mediaType === 'text') && imageCache.has(mediaUrl)) {
@@ -2411,6 +2459,10 @@ export function initScene(canvas) {
     getCamera: () => camera,
     getDistinctYears,
     getDistinctTags,
+    getTextCard: (memory) => {
+      const c = memory && imageCache.get(textCardKey(memory));
+      return c && c.toDataURL ? c.toDataURL('image/png') : '';
+    },
     getVideoPoster: (url) => {
       if (url && imageCache.has(url)) {
         const item = imageCache.get(url);

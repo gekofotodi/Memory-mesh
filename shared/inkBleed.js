@@ -25,7 +25,7 @@ const registry = new Map(); // el -> entry
 let defsEl = null;
 let rafId = 0;
 let counter = 0;
-let opts = { selector: '', hover: 'pointer' };
+let opts = { selector: '', restSelector: '', hover: 'pointer' };
 let hovered = null;
 
 const reduceMotion = typeof window !== 'undefined'
@@ -105,7 +105,8 @@ function register(el) {
   };
   registry.set(el, entry);
   applyParams(entry.base, entry.fs, 0);
-  el.style.filter = `url(#${id})`;
+  // Filtro a riposo solo su titoli/menu (restSelector); il resto del testo sbava solo in hover
+  if (!opts.restSelector || el.matches(opts.restSelector)) el.style.filter = `url(#${id})`;
   if (opts.hover === 'pointer') {
     el.addEventListener('pointerenter', (e) => { hoverAt(el, e.clientX, e.clientY, true); });
     el.addEventListener('pointermove', (e) => { hoverAt(el, e.clientX, e.clientY, false); });
@@ -256,10 +257,11 @@ export function setInkHoverPoint(x, y) {
 /**
  * @param {object} o
  * @param {string} o.selector  elementi da trattare (anche aggiunti in seguito)
+ * @param {string} [o.restSelector]  quali hanno anche il filtro a riposo (default: tutti)
  * @param {'pointer'|'manual'} [o.hover]
  */
-export function initInkBleed({ selector, hover = 'pointer' }) {
-  opts = { selector, hover };
+export function initInkBleed({ selector, restSelector = '', hover = 'pointer' }) {
+  opts = { selector, restSelector, hover };
   scan();
   // Registra anche gli elementi creati dinamicamente (es. voci del wheel menu)
   const mo = new MutationObserver((muts) => {

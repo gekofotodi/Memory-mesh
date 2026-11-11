@@ -49,9 +49,9 @@ display/style.css           (1196)
 
 ### Contratto tracking → main (non legare la scena alle gesture)
 `initTracking({videoEl, canvasEl, callbacks})` emette: `onPointerMove(x,y)`, `onSelect()`, `onPan(dx,dy)`, `onZoom(factor)`, `onHandStateChange(left,right)`.
-- Mano **destra** fisica (label MediaPipe `Left`, camera specchiata): puntatore con lerp 0.16 + deadzone 3.5px; pinch (isteresi 0.28/0.38, hold 120ms) = select; coordinate **congelate** all'inizio del pinch.
-- Mano **sinistra** fisica: pinch prolungato = pan con inerzia (decay 0.92); polso inclinato >20° a mano aperta = zoom continuo (×1.018 / ×0.982).
-- Senza webcam/MediaPipe → `enableMouseFallback()` (click = select, shift/right-drag = pan, rotella = zoom).
+- Mano **destra** fisica (label MediaPipe `Left`, camera specchiata): l'indice muove il puntatore (One Euro); pinch prolungato = pan con inerzia, puntatore congelato durante il pan (D19).
+- Mano **sinistra** fisica: pinch (isteresi 0.28/0.38, hold) = select sul punto del mirino; polso inclinato >20° a mano aperta = zoom continuo.
+- Mouse disattivato sul display (D18): eventi bloccati in cattura e cursore nascosto. Solo `/display/?mouse=1` lo riattiva per manutenzione/test (click = select, rotella = zoom).
 
 ### Layout e menu destro contestuale (`main.js → activateLayout`)
 | Layout | Menu destro |
@@ -110,7 +110,7 @@ Policy: `anon` INSERT su memories se `privacy_consent = true`; `anon` SELECT tut
 - [x] Video: autoplay muto in loop all'apertura (scelta di progetto). [ ] Audio: controlli nativi non azionabili con gesture.
 - [ ] Miniature caricano il file pieno (fino a 1920px) per disegnare ~86px; nessuna thumbnail dedicata.
 - [x] CDN non versionate (`supabase-js`, `@mediapipe/*`) → un rilascio upstream può rompere il kiosk.
-- [x] Riconnessione realtime (retry 5s). [x] Webcam: riavvio automatico (track `ended`, watchdog 8s senza frame, retry 10s se assente). [x] Schermata di attesa dopo 45s (titolo + QR), chiusa da mano/mouse/tasto.
+- [x] Riconnessione realtime (retry 5s). [x] Webcam: riavvio automatico (track `ended`, watchdog 8s senza frame, retry 10s se assente). [x] Schermata di attesa dopo 45s (titolo + QR), chiusa salutando (tastiera per manutenzione); la webcam resta accesa e visibile sopra lo standby (D24).
 - [x] Limiti server-side: bucket 10 MB + MIME ammessi (webp/jpeg, video mp4/mov/webm, audio, gltf); CHECK su `memories` (titolo ≤5 parole, tag/luoghi del vocabolario, media_type, URL del bucket). **Se aggiungi un tag o una stanza, aggiorna anche i CHECK `memories_tags_check` / `memories_location_check`.** Moderazione: **scelta di progetto, NESSUNA approvazione**.
 - [x] `alert()` sostituito da messaggio in pagina + 3 tentativi. [ ] File orfani se l'insert fallisce (serve una policy DELETE: non aperta ad anon per sicurezza).
 - [x] **Compressione:** Safari iOS non codifica WebP via canvas e restituiva PNG pesanti con estensione .webp → ora fallback JPEG verificando `blob.type`.

@@ -15,6 +15,7 @@ import { initTracking } from './tracking.js';
 import { initScene } from './scene.js';
 import { initWheelMenu } from './wheelMenu.js';
 import { initInkBleed, setInkHoverPoint } from '../shared/inkBleed.js';
+import { loadPeaks, drawWave } from './audioWave.js';
 
 // ── Fallback Memories (Centro Giovanile Stoà) ───────────────────
 // Displayed when database is empty or offline so the kiosk is vibrant
@@ -208,14 +209,29 @@ const els = {
   cameraHudStatus: $('#camera-hud-status'),
 };
 
+// ── Mouse disattivato (D18) ───────────────────────────────────
+// Il kiosk si usa solo con le mani: cursore di sistema nascosto e mouse ignorato.
+// Per la manutenzione: /display/?mouse=1 riattiva mouse, click e rotella.
+const MOUSE_ENABLED = new URLSearchParams(location.search).has('mouse');
+if (!MOUSE_ENABLED) {
+  document.documentElement.classList.add('no-mouse');
+  ['mousemove', 'mousedown', 'mouseup', 'pointerdown', 'pointermove', 'pointerup', 'click', 'dblclick', 'auxclick', 'contextmenu', 'wheel']
+    .forEach((type) => window.addEventListener(type, (e) => {
+      if (e.pointerType === 'touch') return;
+      e.stopImmediatePropagation();
+      if (e.cancelable) e.preventDefault();
+    }, { capture: true, passive: false }));
+}
+
 // ── Schermata di attesa (idle) ─────────────────────────────────
 // Dopo IDLE_MS senza mani/mouse compare il titolo grande con il QR per caricare;
 // sparisce al primo gesto (il gesto che la chiude non seleziona nulla).
 const IDLE_MS = 45000;
 const idle = { lastActivity: performance.now(), visible: false };
 
-// Durante l'attesa solo un saluto verso la webcam la chiude (più tastiera e click del mouse,
+// Durante l'attesa solo un saluto verso la webcam la chiude (più tastiera e click con ?mouse=1,
 // per la manutenzione). Mani, puntatore, pan e zoom non contano finché l'attesa è visibile.
+// La webcam resta accesa e visibile sopra l'attesa (D24): serve a vedere il saluto.
 const IDLE_DISMISS_SOURCES = new Set(['saluto', 'tastiera', 'click']);
 
 function markActivity(source = '') {
@@ -240,6 +256,7 @@ function showIdleOverlay() {
   els.wheelRight.classList.remove('is-visible');
   closeHudPanels();
   els.idleOverlay.classList.add('is-visible');
+  document.body.classList.add('is-idle');
   els.idleOverlay.setAttribute('aria-hidden', 'false');
 }
 
@@ -247,6 +264,7 @@ function hideIdleOverlay() {
   if (!idle.visible || !els.idleOverlay) return;
   idle.visible = false;
   els.idleOverlay.classList.remove('is-visible');
+  document.body.classList.remove('is-idle');
   els.idleOverlay.setAttribute('aria-hidden', 'true');
 }
 
@@ -319,7 +337,15 @@ async function init() {
   console.log('[display] Initializing Memory Mesh Kiosk...');
 
   // 0. Ink bleed su titoli e menu (hover pilotato dal cursore virtuale)
-  initInkBleed({ selector: '.header-title, .wheel-btn, .selection-title, .idle-title', hover: 'manual' });
+  // D28: tutte le scritte sbavano in hover; il filtro a riposo resta solo su titoli e menu
+  const INK_REST = '.header-title, .wheel-btn, .selection-title, .idle-title';
+  initInkBleed({
+    selector: `${INK_REST}, .header-subtitle, .idle-subtitle, .idle-cta, .idle-hint, .panel-eyebrow, .project-panel p, `
+      + '.gesture-row dt, .gesture-row dd, .selection-desc, .meta-col__label, .meta-col__val, .meta-col__tags > *, '
+      + '.related-row__label, .related-chip-link, .live-toast__text, .stamp-label, .text-card__body',
+    restSelector: INK_REST,
+    hover: 'manual',
+  });
 
   // 1. Initialise Canvas 2D Scene Engine
   state.scene = initScene(els.sceneCanvas);
@@ -612,12 +638,17 @@ function handlePointerMove(x, y) {
     setInkHoverPoint(px, py);
     setPanelHover(els.hudHeader, !!(elUnderCursor && elUnderCursor.closest('#hud-header')));
     setPanelHover(els.cameraHud, !!(elUnderCursor && elUnderCursor.closest('#camera-hud')));
+    document.querySelectorAll('.media-box.is-active .media-hover').forEach((h) => {
+      h.classList.toggle('is-hover', !!(elUnderCursor && h.contains(elUnderCursor)));
+    });
     if (
       elUnderCursor &&
       (elUnderCursor.closest('.wheel-btn') ||
         elUnderCursor.closest('#hud-title') ||
         elUnderCursor.closest('#camera-hud') ||
         elUnderCursor.closest('.bento-close-btn') ||
+        elUnderCursor.closest('.media-ctl') ||
+        elUnderCursor.closest('#audio-waveform-canvas') ||
         elUnderCursor.closest('.related-chip'))
     ) {
       isHoveringInteractive = true;
@@ -673,6 +704,8 @@ function handleSelect() {
         closeModals();
         return;
       }
+      if (el.closest('[data-media-action="toggle"]')) { toggleActiveMedia(); return; }
+      if (el.closest('#audio-waveform-canvas')) { seekAudioAt(x); return; }
       const relatedChip = el.closest('.related-chip') || el.closest('.related-chip-link');
       if (relatedChip) {
         const memId = relatedChip.dataset.id;
@@ -768,8 +801,8 @@ function handleHandStateChange(leftHand, rightHand) {
   if (els.hudStatusText) {
     if (isTracking) {
       const parts = [];
-      if (rightHand.detected) parts.push(rightHand.isPinching ? 'Destra: Pinch' : 'Destra: Puntatore');
-      if (leftHand.detected) parts.push(leftHand.isPanning ? 'Sinistra: Pan' : leftHand.isZooming ? 'Sinistra: Zoom' : 'Sinistra: Pronta');
+      if (rightHand.detected) parts.push(rightHand.isPinching ? 'Destra: Sposta' : 'Destra: Puntatore');
+      if (leftHand.detected) parts.push(leftHand.isPinching ? 'Sinistra: Seleziona' : leftHand.isZooming ? 'Sinistra: Zoom' : 'Sinistra: Pronta');
       els.hudStatusText.textContent = parts.join(' · ');
     } else {
       els.hudStatusText.textContent = 'In attesa delle mani';
@@ -782,7 +815,7 @@ function handleHandStateChange(leftHand, rightHand) {
 
   // Pinch progress ring on virtual cursor
   if (els.cursorProgressRing) {
-    const progress = rightHand.pinchProgress || 0;
+    const progress = leftHand.pinchProgress || 0; // pinch sinistro = selezione (D19)
     const perimeter = 113.1; // 2 * PI * 18
     const offset = perimeter - progress * perimeter;
     els.cursorProgressRing.style.strokeDashoffset = offset;
@@ -835,6 +868,12 @@ function bindUIEvents() {
   });
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#hud-header, #camera-hud')) closeHudPanels();
+  });
+
+  // Comandi audio/video della modale (click solo con ?mouse=1)
+  els.modalDetail.addEventListener('click', (e) => {
+    if (e.target.closest('[data-media-action="toggle"]')) { e.stopPropagation(); toggleActiveMedia(); }
+    else if (e.target.closest('#audio-waveform-canvas')) { e.stopPropagation(); seekAudioAt(e.clientX); }
   });
 
   // Detail Modal Close (Chiusura via click esterno o Esc)
@@ -1138,6 +1177,7 @@ function openDetailModal(memory) {
       els.detailVideoEl.muted = true;
       els.detailVideoEl.loop = true;
       els.detailVideoEl.play().catch(() => {});
+      startAudioVisualizer();
     } else if (els.mediaBoxText) {
       els.mediaBoxText.classList.add('is-active');
     }
@@ -1145,11 +1185,18 @@ function openDetailModal(memory) {
     // ── 2. AUDIO: mostra solo la sound wave e i comandi
     if (els.mediaBoxAudio && els.detailAudioEl && mUrl) {
       els.detailAudioEl.src = mUrl;
+      els.detailAudioEl.loop = true;
       els.mediaBoxAudio.classList.add('is-active');
-      startAudioVisualizer();
+      els.detailAudioEl.play().catch(() => {}); // parte da solo, come il video (kiosk: --autoplay-policy)
+      startAudioVisualizer(mUrl);
     } else if (els.mediaBoxText) {
       els.mediaBoxText.classList.add('is-active');
     }
+  } else if (mType === 'text' && !mUrl && els.mediaBoxPhoto && els.detailImg && state.scene && state.scene.getTextCard && state.scene.getTextCard(memory)) {
+    // ── D30: memoria testuale senza immagine → card in corsivo come foto 2D
+    els.detailImg.src = state.scene.getTextCard(memory);
+    els.detailImg.alt = memory.title ? `Memoria testuale: ${memory.title}` : 'Memoria testuale';
+    els.mediaBoxPhoto.classList.add('is-active');
   } else if (mType === 'image' || mType === 'photo' || mType === 'text' || (mUrl && /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(mUrl)) || mUrl) {
     // ── 3. FOTO: mostra solo la foto senza nessun altro elemento
     if (els.mediaBoxPhoto && els.detailImg && mUrl) {
@@ -1304,41 +1351,61 @@ function resetMediaTilt() {
   });
 }
 
-// ── Audio Waveform Visualizer ──────────────────────────────────
-function startAudioVisualizer() {
-  stopAudioVisualizer();
+// ── Audio e video della modale (D29) ───────────────────────────
+// Partono da soli; i comandi (Pausa/Riproduci + tempo) compaiono solo con il mirino sopra.
+// Audio: forma d'onda reale del file, la parte ascoltata è piena; pinch sull'onda = salta lì.
+function formatTime(t) {
+  if (!isFinite(t) || t < 0) t = 0;
+  return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+}
+
+function activeMedia() {
+  if (els.mediaBoxAudio && els.mediaBoxAudio.classList.contains('is-active')) return { el: els.detailAudioEl, box: els.mediaBoxAudio };
+  if (els.mediaBoxVideo && els.mediaBoxVideo.classList.contains('is-active')) return { el: els.detailVideoEl, box: els.mediaBoxVideo };
+  return null;
+}
+
+function toggleActiveMedia() {
+  const m = activeMedia();
+  if (!m || !m.el) return;
+  if (m.el.paused) m.el.play().catch(() => {});
+  else m.el.pause();
+}
+
+function seekAudioAt(clientX) {
   const canvas = els.audioWaveformCanvas;
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+  const audio = els.detailAudioEl;
+  if (!canvas || !audio || !isFinite(audio.duration)) return;
+  const r = canvas.getBoundingClientRect();
+  audio.currentTime = Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * audio.duration;
+  if (audio.paused) audio.play().catch(() => {});
+}
 
-  function drawWave() {
-    const w = canvas.width;
-    const h = canvas.height;
-    const time = performance.now() * 0.004;
+const mediaUi = { peaks: null, url: '' };
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.lineWidth = 2.5;
-
-    // Draw 3 harmonic waves in bordeaux tones
-    for (let layer = 0; layer < 3; layer++) {
-      ctx.beginPath();
-      ctx.strokeStyle = layer === 0 ? '#99251C' : layer === 1 ? 'rgba(153, 37, 28, 0.75)' : 'rgba(153, 37, 28, 0.45)';
-      ctx.globalAlpha = 0.5 + layer * 0.2;
-
-      for (let x = 0; x < w; x += 4) {
-        const freq = 0.02 + layer * 0.01;
-        const amp = 16 - layer * 3;
-        const y = h / 2 + Math.sin(x * freq + time + layer * 1.5) * amp;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1.0;
-    state.audioAnimId = requestAnimationFrame(drawWave);
+function startAudioVisualizer(url = '') {
+  stopAudioVisualizer();
+  mediaUi.url = url;
+  mediaUi.peaks = null;
+  if (url) {
+    loadPeaks(url).then((peaks) => { if (mediaUi.url === url) mediaUi.peaks = peaks; });
   }
 
-  state.audioAnimId = requestAnimationFrame(drawWave);
+  function tick() {
+    const m = activeMedia();
+    if (!m || !m.el) { state.audioAnimId = null; return; }
+    const dur = m.el.duration;
+    const progress = isFinite(dur) && dur > 0 ? m.el.currentTime / dur : 0;
+    if (m.box === els.mediaBoxAudio && els.audioWaveformCanvas) drawWave(els.audioWaveformCanvas, mediaUi.peaks, progress);
+    const btn = m.box.querySelector('.media-ctl');
+    const time = m.box.querySelector('.media-ctl__time');
+    const label = m.el.paused ? 'Riproduci' : 'Pausa';
+    if (btn && btn.textContent !== label) btn.textContent = label;
+    const t = `${formatTime(m.el.currentTime)} / ${formatTime(dur)}`;
+    if (time && time.textContent !== t) time.textContent = t;
+    state.audioAnimId = requestAnimationFrame(tick);
+  }
+  state.audioAnimId = requestAnimationFrame(tick);
 }
 
 function stopAudioVisualizer() {
@@ -1346,6 +1413,8 @@ function stopAudioVisualizer() {
     cancelAnimationFrame(state.audioAnimId);
     state.audioAnimId = null;
   }
+  mediaUi.url = '';
+  document.querySelectorAll('.media-hover.is-hover').forEach((h) => h.classList.remove('is-hover'));
 }
 
 // ── Start Application ──────────────────────────────────────────

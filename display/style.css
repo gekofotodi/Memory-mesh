@@ -565,35 +565,67 @@ body.kiosk-body {
   box-shadow: 0 16px 36px rgba(153, 37, 28, 0.12);
 }
 
-/* 3. Solo AUDIO: mostra solo la sound wave e i comandi */
+/* 3. Solo AUDIO: forma d'onda reale (barre) + comandi in hover (D29) */
 .media-box--audio {
   flex-direction: column !important;
-  gap: 28px;
   padding: 16px 20px;
 }
 
-.audio-waveform-wrap {
+.audio-wave {
   width: 100%;
-  max-width: 440px;
-  height: 96px;
+  max-width: 460px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 253, 249, 0.4);
-  border-radius: 4px;
+  gap: 16px;
 }
 
 #audio-waveform-canvas {
   width: 100%;
-  height: 100%;
+  height: 104px;
   display: block;
 }
 
-.media-audio-player {
-  width: 100%;
-  max-width: 440px;
-  height: 38px;
-  accent-color: var(--accent-red);
+/* Comandi audio/video: compaiono solo con il mirino sopra il media */
+.media-hover { position: relative; }
+.media-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease-expo), transform 0.25s var(--ease-expo);
+}
+.media-hover.is-hover .media-controls {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.media-controls--overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translate(-50%, 6px);
+  padding: 6px 8px 6px 6px;
+  border-radius: 999px;
+  background: rgba(249, 246, 240, 0.92);
+}
+.media-hover.is-hover .media-controls--overlay { transform: translate(-50%, 0); }
+.media-ctl {
+  min-width: 96px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--accent-red);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-red);
+  font: 600 0.95rem var(--font-sans);
+}
+.media-ctl__time {
+  color: var(--text-muted);
+  font: 600 0.88rem var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 /* 4. Solo TESTO: archivio testuale */
@@ -1248,3 +1280,9 @@ body.kiosk-body {
 }
 .wheel-tick.is-near { width: 22px; }
 .wheel-tick.is-active { width: 34px; height: 4.5px; margin-top: -2.25px; }
+
+/* D18: niente cursore di sistema (si usa solo il mirino; ?mouse=1 per la manutenzione) */
+html.no-mouse, html.no-mouse * { cursor: none !important; }
+
+/* D24: durante l'attesa la webcam resta visibile sopra lo standby, per vedere il saluto */
+body.is-idle .camera-hud { z-index: 95; }

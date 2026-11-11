@@ -2,9 +2,9 @@
  * Tracking Module — MediaPipe Hands Pipeline & Gesture Recognition
  *
  * Implements decoupled hand tracking:
- *  - Right Hand: Pointer & Selection with Lerp smoothing, jitter deadzone,
- *    and coordinate-freeze during pinch click.
- *  - Left Hand: 2D Canvas Pan (pinch-drag with release inertia) & Zoom (wrist tilt > 20°).
+ *  - Right Hand: pointer (index finger) + pinch-drag pan with release inertia
+ *    (pointer frozen while dragging).
+ *  - Left Hand: pinch = select under the pointer, zoom (wrist tilt > 20°).
  *  - Camera Canvas: Real-time skeleton visualization overlay with distinct color coding.
  *  - Mouse / Touch fallback for kiosk maintenance & test environments.
  *
@@ -98,24 +98,22 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
       frozenY: null,
       isPinching: false,
       pinchStartTime: 0,
-      hasTriggeredSelect: false,
-      pinchProgress: 0, // 0 to 1
+      prevX: 0,
+      prevY: 0,
+      velocityX: 0,
+      velocityY: 0,
       targetX: window.innerWidth / 2,
       targetY: window.innerHeight / 2,
       lastSeen: 0,
     },
 
-    // Left Hand (Pan & Zoom)
+    // Left Hand (Select & Zoom)
     left: {
       detected: false,
-      rawX: 0,
-      rawY: 0,
-      prevX: 0,
-      prevY: 0,
       isPinching: false,
-      isPanning: false,
-      velocityX: 0,
-      velocityY: 0,
+      pinchStartTime: 0,
+      hasTriggeredSelect: false,
+      pinchProgress: 0, // 0 to 1
       wristAngleDeg: 0,
       isZooming: false,
       zoomDir: 0, // -1, 0, 1
@@ -326,44 +324,48 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     const targetX = euroX.filter(mapRange(1.0 - indexTip.x, POINTER_X_RANGE) * window.innerWidth, now);
     const targetY = euroY.filter(mapRange(indexTip.y, POINTER_Y_RANGE) * window.innerHeight, now);
 
-    // Pinch distance (Thumb tip to Index tip, normalized by hand scale)
-    const rawPinchDist = distance3D(thumbTip, indexTip);
-    const normPinchDist = rawPinchDist / handScale;
+    // Pinch destro = trascina la vista (D19): il mirino resta fermo, la scena segue la mano
+    const normPinchDist = distance3D(thumbTip, indexTip) / handScale;
+    const handX = (1.0 - landmarks[MIDDLE_MCP].x) * window.innerWidth;
+    const handY = landmarks[MIDDLE_MCP].y * window.innerHeight;
 
-    // Pinch state machine with hysteresis
     if (!r.isPinching && normPinchDist < PINCH_ENTER_DIST) {
-      // ENTER PINCH: CRITICAL REQUIREMENT -> FREEZE (X, Y) COORDINATES
       r.isPinching = true;
-      r.pinchStartTime = now;
-      r.hasTriggeredSelect = false;
       r.frozenX = r.smoothX;
       r.frozenY = r.smoothY;
+      r.prevX = handX;
+      r.prevY = handY;
+      r.velocityX = 0;
+      r.velocityY = 0;
+      if (state.inertiaAnimId) { cancelAnimationFrame(state.inertiaAnimId); state.inertiaAnimId = null; }
     } else if (r.isPinching && normPinchDist > PINCH_EXIT_DIST) {
-      // RELEASE PINCH: unfreeze coordinates
-      r.isPinching = false;
-      r.frozenX = null;
-      r.frozenY = null;
-      r.pinchProgress = 0;
-      r.hasTriggeredSelect = false;
+      releaseRightPan();
     }
 
     if (r.isPinching) {
-      // While pinching, coordinates remain frozen!
-      const elapsed = now - r.pinchStartTime;
-      r.pinchProgress = Math.min(1.0, elapsed / PINCH_HOLD_MS_TO_SELECT);
-
-      if (!r.hasTriggeredSelect && r.pinchProgress >= 1.0) {
-        r.hasTriggeredSelect = true;
-        cb.onSelect();
-      }
-
-      // Keep reporting the frozen position
+      const deltaX = handX - r.prevX;
+      const deltaY = handY - r.prevY;
+      if (deltaX || deltaY) cb.onPan(deltaX, deltaY);
+      r.velocityX = deltaX * 0.7 + r.velocityX * 0.3;
+      r.velocityY = deltaY * 0.7 + r.velocityY * 0.3;
+      r.prevX = handX;
+      r.prevY = handY;
       cb.onPointerMove(r.frozenX, r.frozenY);
     } else {
       // Movimento libero: il loop rAF (pointerLoop) insegue questo bersaglio
       r.targetX = targetX;
       r.targetY = targetY;
     }
+  }
+
+  // Fine del trascinamento con la destra: inerzia e mirino di nuovo libero
+  function releaseRightPan() {
+    const r = state.right;
+    if (!r.isPinching) return;
+    r.isPinching = false;
+    r.frozenX = null;
+    r.frozenY = null;
+    startPanInertia(r.velocityX, r.velocityY);
   }
 
   function analyzeLeftHand(landmarks, now) {
@@ -374,43 +376,24 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
     const indexTip = landmarks[INDEX_TIP];
     const thumbTip = landmarks[THUMB_TIP];
 
-    // Screen coordinate of left hand center
-    const currX = (1.0 - landmarks[MIDDLE_MCP].x) * window.innerWidth;
-    const currY = landmarks[MIDDLE_MCP].y * window.innerHeight;
-
-    // Left hand pinch for 2D Pan
+    // Pinch sinistro = seleziona sotto il mirino (D19), con isteresi e breve tenuta
     const pinchDist = distance3D(thumbTip, indexTip) / handScale;
-    const isPinching = pinchDist < PINCH_ENTER_DIST;
-
-    if (isPinching) {
-      if (!l.isPanning) {
-        l.isPanning = true;
-        l.prevX = currX;
-        l.prevY = currY;
-        l.velocityX = 0;
-        l.velocityY = 0;
-      } else {
-        const deltaX = currX - l.prevX;
-        const deltaY = currY - l.prevY;
-
-        // Apply pan directly
-        cb.onPan(deltaX, deltaY);
-
-        // Track velocity for inertia
-        l.velocityX = deltaX * 0.7 + l.velocityX * 0.3;
-        l.velocityY = deltaY * 0.7 + l.velocityY * 0.3;
-
-        l.prevX = currX;
-        l.prevY = currY;
-      }
-    } else {
-      if (l.isPanning) {
-        l.isPanning = false;
-        // Trigger release inertia
-        startPanInertia(l.velocityX, l.velocityY);
+    if (!l.isPinching && pinchDist < PINCH_ENTER_DIST) {
+      l.isPinching = true;
+      l.pinchStartTime = now;
+      l.hasTriggeredSelect = false;
+    } else if (l.isPinching && pinchDist > PINCH_EXIT_DIST) {
+      l.isPinching = false;
+      l.pinchProgress = 0;
+      l.hasTriggeredSelect = false;
+    }
+    if (l.isPinching) {
+      l.pinchProgress = Math.min(1.0, (now - l.pinchStartTime) / PINCH_HOLD_MS_TO_SELECT);
+      if (!l.hasTriggeredSelect && l.pinchProgress >= 1.0) {
+        l.hasTriggeredSelect = true;
+        cb.onSelect();
       }
     }
-    l.isPinching = isPinching;
 
     // Zoom via Wrist Tilt / Rotation (> 20 deg)
     // Vector from Wrist (0) to Middle MCP (9)
@@ -481,14 +464,21 @@ export function initTracking({ videoEl, canvasEl, callbacks = {} }) {
         }
 
         // In mirrored camera mode:
-        // 'Left' detection = physical Right Hand (Pointer & Select)
-        // 'Right' detection = physical Left Hand (Pan & Zoom)
+        // 'Left' detection = physical Right Hand (Pointer & Pan)
+        // 'Right' detection = physical Left Hand (Select & Zoom)
         if (label === 'Left') {
           analyzeRightHand(landmarks, now);
         } else {
           analyzeLeftHand(landmarks, now);
         }
       }
+    }
+
+    // Mano uscita dall'inquadratura durante un pinch: rilascia
+    if (!state.right.detected) releaseRightPan();
+    if (!state.left.detected && state.left.isPinching) {
+      state.left.isPinching = false;
+      state.left.pinchProgress = 0;
     }
 
     // Notify outside world of hand states (UI indicator updates)
