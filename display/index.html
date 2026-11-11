@@ -260,6 +260,12 @@
     <span class="live-toast__text">NUOVO RICORDO AGGIUNTO ALLA RETE</span>
   </div>
 
+  <!-- QR fisso in basso a destra per caricare un ricordo (nascosto nello standby, che ha il suo) -->
+  <aside class="corner-qr" aria-label="QR code per aggiungere un ricordo">
+    <div class="corner-qr__frame"><img src="./qr-upload.svg" width="120" height="120" alt="" /></div>
+    <span class="corner-qr__label">Aggiungi un ricordo</span>
+  </aside>
+
   <!-- ── 8b. SCHERMATA DI ATTESA (idle): titolo grande + QR upload ──── -->
   <div class="idle-overlay" id="idle-overlay" aria-hidden="true">
     <div class="idle-overlay__content">

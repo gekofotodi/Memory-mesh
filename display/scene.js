@@ -21,10 +21,9 @@ const FLOORS = {
     // Disposizione schematica: la pianta reale non c'è ancora; se arriva, basta cambiare qui.
     rooms: {
       cucina:        { x: -205, y: -85, w: 170, h: 150, label: 'Cucina' },
-      'sala del re': { x: 5,    y: -60, w: 230, h: 200, label: 'Sala del Re' },
+      'sala del re': { x: 5,    y: 0,   w: 230, h: 320, label: 'Sala del Re' },
       studio:        { x: 210,  y: -85, w: 160, h: 150, label: 'Studio' },
       ghiacciaia:    { x: -205, y: 80,  w: 170, h: 160, label: 'Ghiacciaia' },
-      esterno:       { x: 5,    y: 105, w: 230, h: 110, label: 'Esterno' },
       giardino:      { x: 210,  y: 80,  w: 160, h: 160, label: 'Giardino' },
     }
   },

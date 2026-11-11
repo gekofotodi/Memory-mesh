@@ -113,7 +113,8 @@ if (!MOUSE_ENABLED) {
 // ── Schermata di attesa (idle) ─────────────────────────────────
 // Dopo IDLE_MS senza mani/mouse compare il titolo grande con il QR per caricare;
 // sparisce al primo gesto (il gesto che la chiude non seleziona nulla).
-const IDLE_MS = 45000;
+// 11/11: 5 s senza mani davanti alla webcam; con ?mouse=1 (manutenzione) resta 45 s.
+const IDLE_MS = MOUSE_ENABLED ? 45000 : 5000;
 const idle = { lastActivity: performance.now(), visible: false };
 
 // Durante l'attesa solo un saluto verso la webcam la chiude (più tastiera e click con ?mouse=1,
