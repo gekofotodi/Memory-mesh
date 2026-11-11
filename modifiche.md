@@ -8,7 +8,7 @@
 ## Display
 
 - [ ] D32 !! · gesture · provare sul PC del kiosk lo scambio delle mani (D19): destra sposta, sinistra seleziona
-- [ ] D33 !! · test memorie · eliminare prima dell'evento le 5 memorie [TEST] (id 14–18) e i file in uploads/test/
+- [ ] D33 !! · test memorie · decidere se eliminare prima dell'evento le 5 memorie [TEST] (id 14–18, file in uploads/test/) e le 10 demo (id 19–28, file in uploads/demo/)
 
 ## Upload
 
@@ -47,3 +47,4 @@
 - [x] D29 · audio: forma d'onda reale del file a barre, parte da solo, comandi Pausa/tempo solo in hover (anche sul video); pinch sull'onda = salta lì · (display/audioWave.js, main.js, index.html, style.css)
 - [x] D30 · memorie testuali: card con testo in corsivo (Caveat) trattate come foto 2D, sia nel display sia nell'immagine creata dall'upload · (shared/textCard.js, display/scene.js, main.js, upload/app.js, index.html)
 - [x] D31 · caricate 5 memorie [TEST]: 2 video CC0 (MDN) e 3 modelli 3D (Khronos: papera, volpe, avocado) · (Supabase, bucket uploads/test/)
+- [x] D34 · ripristinate nel database le 10 memorie demo (6 foto, 3 audio, 1 testo; senza il video doppione) → 15 memorie in tutto · (Supabase, bucket uploads/demo/)
