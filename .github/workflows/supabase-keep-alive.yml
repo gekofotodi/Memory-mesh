@@ -1,0 +1,34 @@
+# Keeps the Supabase Free-tier project awake.
+# Supabase pauses free projects after 7 days without database activity,
+# so this runs twice a week (Mon & Thu) to stay well inside that window.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '17 8 * * 1,4'   # Mon & Thu, 08:17 UTC
+  workflow_dispatch:          # manual "Run workflow" button for testing
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Public (publishable) values — same ones already shipped in shared/supabase-config.js.
+      # Override them with repo secrets if you ever rotate the key.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://nkymnsfkrmpnkmdyrayd.supabase.co' }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_rVkZHl2lJDe56MqOqdo8XQ_0ilCgyIz' }}
+    steps:
+      - name: Query the memories table
+        run: |
+          status=$(curl -sS -o response.json -w '%{http_code}' \
+            --retry 3 --retry-delay 10 \
+            "$SUPABASE_URL/rest/v1/memories?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "HTTP $status"
+          cat response.json; echo
+          if [ "$status" -ge 400 ]; then
+            echo "::error::Supabase ping failed (HTTP $status). If the project is already paused, restore it from the dashboard."
+            exit 1
+          fi
